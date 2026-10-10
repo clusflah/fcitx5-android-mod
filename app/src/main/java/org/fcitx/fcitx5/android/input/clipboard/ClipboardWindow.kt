@@ -288,5 +288,23 @@ class ClipboardWindow : InputWindow.ExtendedInputWindow<ClipboardWindow>() {
         context.getString(R.string.clipboard)
     }
 
-    override fun onCreateBarExtension(): View = ui.extension
+    private val barExtension by lazy {
+        android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            addView(
+                org.fcitx.fcitx5.android.input.bar.ui.ToolButton(context, R.drawable.ic_common_phrase, theme).apply {
+                    contentDescription = context.getString(R.string.common_phrase)
+                    setOnClickListener {
+                        windowManager.attachWindow(org.fcitx.fcitx5.android.input.phrase.CommonPhraseWindow())
+                    }
+                },
+                android.widget.LinearLayout.LayoutParams(context.dp(40), context.dp(40))
+            )
+            (ui.extension.parent as? android.view.ViewGroup)?.removeView(ui.extension)
+            addView(ui.extension)
+        }
+    }
+
+    // 剪贴板 / 常用语 共用一个工具栏入口：这里放一个切换到常用语的按钮
+    override fun onCreateBarExtension(): View = barExtension
 }

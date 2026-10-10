@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="azure_voice_input">Voice input</string>
+    <string name="azure_voice_enabled">Azure voice input</string>
+    <string name="azure_voice_enabled_summary">Hold space to talk, release to recognize and type (overrides the space long-press behavior)</string>
+    <string name="azure_speech_key">Azure Speech key</string>
+    <string name="azure_speech_region">Azure region (e.g. eastasia)</string>
+    <string name="azure_stt_language">Recognition language (e.g. zh-CN)</string>
+    <string name="azure_stt_endpoint">Custom STT endpoint (optional)</string>
+    <string name="azure_tts_enabled">Read result aloud</string>
+    <string name="azure_tts_enabled_summary">Speak recognized text with Azure TTS</string>
+    <string name="azure_tts_voice">TTS voice</string>
+    <string name="azure_tts_endpoint">Custom TTS endpoint (optional)</string>
+    <string name="azure_voice_hint">Tap the mic to finish · max 60 s</string>
+    <string name="azure_voice_listening">Listening…</string>
+    <string name="azure_voice_recognizing">Recognizing…</string>
+    <string name="azure_voice_no_match">Didn\'t catch that</string>
+    <string name="azure_voice_tap_retry">Tap the mic to retry</string>
+    <string name="azure_voice_need_permission">Microphone permission required</string>
+    <string name="azure_voice_permission_granted">Microphone allowed, long-press space again</string>
+    <string name="azure_voice_permission_denied">Microphone permission denied</string>
+</resources>

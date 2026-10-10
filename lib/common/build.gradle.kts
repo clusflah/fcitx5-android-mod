@@ -16,7 +16,7 @@ android {
 }
 
 val gitVersion = extra["gitVersion"] as groovy.lang.Closure<*>
-version = gitVersion()
+version = runCatching { gitVersion().toString() }.getOrDefault("0.1.3-mod")
 
 publishing {
     repositories {

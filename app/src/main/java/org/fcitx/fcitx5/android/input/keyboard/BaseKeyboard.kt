@@ -4,6 +4,8 @@
  */
 package org.fcitx.fcitx5.android.input.keyboard
 
+import org.fcitx.fcitx5.android.input.voice.VoicePushToTalk
+
 import android.content.Context
 import android.graphics.Rect
 import android.view.MotionEvent
@@ -159,6 +161,11 @@ abstract class BaseKeyboard(
                 swipeThresholdY = disabledSwipeThreshold
                 onGestureListener = OnGestureListener { view, event ->
                     when (event.type) {
+                        // push-to-talk: releasing (or cancelling) the held space key sends the recording
+                        GestureType.Up -> {
+                            if (VoicePushToTalk.isRecording) VoicePushToTalk.release()
+                            false
+                        }
                         GestureType.Move -> when (val count = event.countX) {
                             0 -> false
                             else -> {

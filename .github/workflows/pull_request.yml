@@ -1,6 +1,10 @@
 name: Pull Request
 
 on:
+  workflow_dispatch:
+  push:
+    branches:
+      - common-phrase
   pull_request:
     types:
       - opened

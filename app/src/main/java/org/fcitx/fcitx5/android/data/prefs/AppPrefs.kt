@@ -138,6 +138,28 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             switch(R.string.reset_keyboard_on_focus_change, "reset_keyboard_on_focus_change", true)
         val expandToolbarByDefault =
             switch(R.string.expand_toolbar_by_default, "expand_toolbar_by_default", false)
+        val aiPredictAuto =
+            switch(R.string.ai_predict_auto, "ai_predict_auto", false, R.string.ai_predict_auto_summary)
+        // ---- toolbar shortcuts: each one can be hidden ----
+        val showUndoButton = switch(R.string.show_undo_button, "show_undo_button", true)
+        val showRedoButton = switch(R.string.show_redo_button, "show_redo_button", true)
+        val showCursorMoveButton =
+            switch(R.string.show_cursor_move_button, "show_cursor_move_button", true)
+        val showClipboardButton =
+            switch(R.string.show_clipboard_button, "show_clipboard_button", true)
+        val showAiAssistButton =
+            switch(R.string.show_ai_assist_button, "show_ai_assist_button", true)
+        val aiPredictDelay = int(
+            R.string.ai_predict_delay, "ai_predict_delay",
+            50, 0, 1000, "ms", 10
+        ) { aiPredictAuto.getValue() }
+        val showAiPredictButton =
+            switch(R.string.show_ai_predict_button, "show_ai_predict_button", true)
+        val showTranslateButton =
+            switch(R.string.show_translate_button, "show_translate_button", true)
+        val showMoreButton = switch(
+            R.string.show_more_button, "show_more_button", true, R.string.show_more_button_summary
+        )
         val inlineSuggestions = switch(R.string.inline_suggestions, "inline_suggestions", true)
         val toolbarNumRowOnPassword =
             switch(R.string.toolbar_num_row_on_password, "toolbar_num_row_on_password", true)
@@ -153,6 +175,30 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         val preferredVoiceInput = voiceInputPreference(
             R.string.preferred_voice_input, "preferred_voice_input", ""
         ) { showVoiceInputButton.getValue() }
+
+        val azureVoiceEnabled =
+            switch(R.string.azure_voice_enabled, "azure_voice_enabled", false, R.string.azure_voice_enabled_summary)
+        val azureSpeechKey = string(R.string.azure_speech_key, "azure_speech_key", "", true) {
+            azureVoiceEnabled.getValue()
+        }
+        val azureSpeechRegion = string(R.string.azure_speech_region, "azure_speech_region", "eastasia") {
+            azureVoiceEnabled.getValue()
+        }
+        val azureSttLanguage = string(R.string.azure_stt_language, "azure_stt_language", "zh-CN") {
+            azureVoiceEnabled.getValue()
+        }
+        val azureSttEndpoint = string(R.string.azure_stt_endpoint, "azure_stt_endpoint", "") {
+            azureVoiceEnabled.getValue()
+        }
+        val azureTtsEnabled = switch(
+            R.string.azure_tts_enabled, "azure_tts_enabled", false, R.string.azure_tts_enabled_summary
+        ) { azureVoiceEnabled.getValue() }
+        val azureTtsVoice = string(R.string.azure_tts_voice, "azure_tts_voice", "zh-CN-XiaoxiaoNeural") {
+            azureVoiceEnabled.getValue()
+        }
+        val azureTtsEndpoint = string(R.string.azure_tts_endpoint, "azure_tts_endpoint", "") {
+            azureVoiceEnabled.getValue()
+        }
 
         val expandKeypressArea =
             switch(R.string.expand_keypress_area, "expand_keypress_area", false)

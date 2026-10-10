@@ -28,6 +28,13 @@ object UserDataManager {
 
     private val json = Json { prettyPrint = true }
 
+    private const val OFFICIAL_PACKAGE = "org.fcitx.fcitx5.android"
+    private const val COMMON_PHRASES = "common_phrases.json"
+
+    private fun isCompatiblePackage(pkg: String) =
+        pkg == OFFICIAL_PACKAGE || pkg.startsWith("$OFFICIAL_PACKAGE.") &&
+                !pkg.startsWith("$OFFICIAL_PACKAGE.plugin")
+
     @Serializable
     data class Metadata(
         val packageName: String,
@@ -65,6 +72,12 @@ object UserDataManager {
             writeFileTree(dataBasesDir, "databases", zipStream)
             // external
             writeFileTree(externalDir, "external", zipStream)
+            // common phrases (常用语)
+            File(appContext.filesDir, COMMON_PHRASES).takeIf { it.isFile }?.let { f ->
+                zipStream.putNextEntry(ZipEntry("files/"))
+                zipStream.putNextEntry(ZipEntry("files/$COMMON_PHRASES"))
+                f.inputStream().use { it.copyTo(zipStream) }
+            }
             // recently_used moved to SharedPreference and shoud not be exported
             // metadata
             zipStream.putNextEntry(ZipEntry("metadata.json"))
@@ -97,9 +110,24 @@ object UserDataManager {
                 val metadataFile = extracted.find { it.name == "metadata.json" }
                     ?: errorRuntime(R.string.exception_user_data_metadata)
                 val metadata = json.decodeFromString<Metadata>(metadataFile.readText())
-                if (metadata.packageName != BuildConfig.APPLICATION_ID)
+                // accept backups from the official build and its variants (.debug / .mod)
+                if (!isCompatiblePackage(metadata.packageName))
                     errorRuntime(R.string.exception_user_data_package_name_mismatch)
-                copyDir(File(tempDir, "shared_prefs"), sharedPrefsDir)
+                // default SharedPreferences file is named "<packageName>_preferences.xml";
+                // rename it so settings from another variant apply to this one
+                val prefsSrc = File(tempDir, "shared_prefs")
+                if (metadata.packageName != BuildConfig.APPLICATION_ID) {
+                    val from = File(prefsSrc, "${metadata.packageName}_preferences.xml")
+                    val to = File(prefsSrc, "${BuildConfig.APPLICATION_ID}_preferences.xml")
+                    if (from.exists()) {
+                        to.delete()
+                        from.renameTo(to)
+                    }
+                }
+                copyDir(prefsSrc, sharedPrefsDir)
+                // common phrases (常用语)
+                File(tempDir, "files/$COMMON_PHRASES").takeIf { it.isFile }
+                    ?.copyTo(File(appContext.filesDir, COMMON_PHRASES), overwrite = true)
                 copyDir(File(tempDir, "databases"), dataBasesDir)
                 copyDir(File(tempDir, "external"), externalDir)
                 // keep importing recently_used for backwords compatibility

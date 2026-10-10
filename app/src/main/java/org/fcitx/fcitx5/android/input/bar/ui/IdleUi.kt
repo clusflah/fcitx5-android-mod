@@ -19,6 +19,7 @@ import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.input.bar.KawaiiBarComponent
+import org.fcitx.fcitx5.android.input.bar.ui.idle.AiSuggestionUi
 import org.fcitx.fcitx5.android.input.bar.ui.idle.ButtonsBarUi
 import org.fcitx.fcitx5.android.input.bar.ui.idle.ClipboardSuggestionUi
 import org.fcitx.fcitx5.android.input.bar.ui.idle.InlineSuggestionsUi
@@ -50,7 +51,7 @@ class IdleUi(
 ) : Ui {
 
     enum class State {
-        Empty, Toolbar, Clipboard, NumberRow, InlineSuggestion
+        Empty, Toolbar, Clipboard, NumberRow, InlineSuggestion, AiSuggestion, VoiceStatus
     }
 
     var currentState = State.Empty
@@ -89,11 +90,23 @@ class IdleUi(
 
     val inlineSuggestionsBar = InlineSuggestionsUi(ctx)
 
+    val aiSuggestionUi = AiSuggestionUi(ctx, theme)
+
+    /** push-to-talk progress ("正在聆听… 松开发送" / "识别中…") */
+    val voiceStatus = android.widget.TextView(ctx).apply {
+        textSize = 15f
+        gravity = Gravity.CENTER
+        isSingleLine = true
+        setTextColor(theme.keyTextColor)
+    }
+
     private val animator = ViewAnimator(ctx).apply {
         add(emptyBar, lParams(matchParent, matchParent))
         add(buttonsUi.root, lParams(matchParent, matchParent))
         add(clipboardUi.root, lParams(matchParent, matchParent))
         add(inlineSuggestionsBar.root, lParams(matchParent, matchParent))
+        add(aiSuggestionUi.root, lParams(matchParent, matchParent))
+        add(voiceStatus, lParams(matchParent, matchParent))
     }
 
     private val inAnimation by lazy {
@@ -211,6 +224,8 @@ class IdleUi(
             !fromUser ||
             disableAnimation ||
             (state == State.InlineSuggestion || currentState == State.InlineSuggestion) ||
+            (state == State.AiSuggestion || currentState == State.AiSuggestion) ||
+            (state == State.VoiceStatus || currentState == State.VoiceStatus) ||
             (state == State.NumberRow || currentState == State.NumberRow)
         ) {
             clearAnimation()
@@ -223,6 +238,8 @@ class IdleUi(
             State.Clipboard -> animator.displayedChild = 2
             State.NumberRow -> {}
             State.InlineSuggestion -> animator.displayedChild = 3
+            State.AiSuggestion -> animator.displayedChild = 4
+            State.VoiceStatus -> animator.displayedChild = 5
         }
         if (state == State.NumberRow) {
             numberRow.keyActionListener = commonKeyActionListener.listener

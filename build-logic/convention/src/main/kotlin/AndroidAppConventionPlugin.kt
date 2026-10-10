@@ -41,6 +41,7 @@ class AndroidAppConventionPlugin : AndroidBaseConventionPlugin() {
             }
             buildTypes {
                 release {
+                    applicationIdSuffix = ".mod"
                     isMinifyEnabled = true
                     isShrinkResources = true
                     signingConfig = signingConfigs.fromProjectEnv(target)

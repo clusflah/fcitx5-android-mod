@@ -55,6 +55,9 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
+        if (savedInstanceState == null && SetupCheckActivity.consumePending(this)) {
+            startActivity(Intent(this, SetupCheckActivity::class.java))
+        }
         // always show toolbar back arrow icon
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         navController = binding.navHostFragment.getFragment<NavHostFragment>().navController

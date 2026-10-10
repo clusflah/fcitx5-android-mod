@@ -1,4 +1,6 @@
-if(DEFINED ENV{ECM_DIR})
+if(DEFINED FCITX_ECM_DIR AND EXISTS "${FCITX_ECM_DIR}/ECMConfig.cmake")
+    set(ECM_DIR "${FCITX_ECM_DIR}")
+elseif(DEFINED ENV{ECM_DIR})
     set(ECM_DIR $ENV{ECM_DIR})
 elseif(CMAKE_HOST_WIN32)
     set(ECM_DIR "C:/msys64/ucrt64/share/ECM/cmake")

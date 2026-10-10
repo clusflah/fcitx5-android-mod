@@ -36,7 +36,11 @@
 
     <uses-permission android:name="${applicationId}.permission.PLUGIN" />
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application
+        android:networkSecurityConfig="@xml/network_security_config"
         android:name=".FcitxApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -120,6 +124,45 @@
             android:taskAffinity=".ui.main.ClipboardEditActivity"
             android:theme="@style/Theme.DialogTheme"
             android:windowSoftInputMode="stateAlwaysVisible|adjustPan" />
+
+        <activity
+            android:name=".ui.main.VoicePermissionActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=".ui.main.VoicePermissionActivity"
+            android:theme="@style/Theme.DialogTheme" />
+
+        <activity
+            android:name=".ui.main.AiAssistActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="@string/ai_assist"
+            android:launchMode="singleInstance"
+            android:taskAffinity=".ui.main.AiAssistActivity"
+            android:theme="@style/Theme.AppCompat.DayNight.Dialog"
+            android:windowSoftInputMode="stateHidden|adjustResize" />
+
+        <activity
+            android:name=".ui.main.SetupCheckActivity"
+            android:exported="false"
+            android:label="@string/setup_check"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
+
+        <activity
+            android:name=".ui.main.AiSettingsActivity"
+            android:exported="false"
+            android:label="@string/ai_assist"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.main.CommonPhraseActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="@string/common_phrase"
+            android:taskAffinity=".ui.main.CommonPhraseActivity"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
 
         <service
             android:name=".input.FcitxInputMethodService"

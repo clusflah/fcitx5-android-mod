@@ -14,6 +14,22 @@ open class NativeBaseConventionPlugin : Plugin<Project> {
 
     override fun apply(target: Project) {
         val prebuiltDir = target.rootProject.projectDir.resolve("lib/fcitx5/src/main/cpp/prebuilt")
+        // Bundled host tools (extra-cmake-modules + msgfmt.exe) so Windows builds need no MSYS2
+        val toolsDir = target.rootProject.projectDir.resolve("tools/windows")
+        val bundledArgs = mutableListOf<String>()
+        val ecmDir = toolsDir.resolve("ecm/share/ECM/cmake")
+        if (ecmDir.isDirectory) {
+            bundledArgs += "-DFCITX_ECM_DIR=${ecmDir.absolutePath.replace('\\', '/')}"
+        }
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            // CMake's FindGettext requires both msgfmt and msgmerge
+            listOf("MSGFMT" to "msgfmt.exe", "MSGMERGE" to "msgmerge.exe").forEach { (name, exe) ->
+                val f = toolsDir.resolve("gettext/bin/$exe")
+                if (f.isFile) {
+                    bundledArgs += "-DGETTEXT_${name}_EXECUTABLE=${f.absolutePath.replace('\\', '/')}"
+                }
+            }
+        }
         val isBuildingBundle = target.rootProject.gradle.startParameter.taskNames.any {
             it.startsWith("${target.path}:bundle")
         }
@@ -29,6 +45,7 @@ open class NativeBaseConventionPlugin : Plugin<Project> {
                             "-DVERSION_NAME=${Versions.baseVersionName}",
                             "-DPREBUILT_DIR=${prebuiltDir.absolutePath}"
                         )
+                        arguments(*bundledArgs.toTypedArray())
                     }
                 }
             }

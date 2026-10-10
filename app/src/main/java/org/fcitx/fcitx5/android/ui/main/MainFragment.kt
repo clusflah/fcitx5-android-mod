@@ -104,6 +104,15 @@ class MainFragment : PaddingPreferenceFragment() {
                     R.drawable.ic_clipboard,
                     SettingsRoute.Clipboard
                 )
+                addPreference(R.string.setup_check, icon = R.drawable.ic_baseline_settings_24) {
+                    startActivity(Intent(requireContext(), SetupCheckActivity::class.java))
+                }
+                addPreference(R.string.common_phrase, icon = R.drawable.ic_common_phrase) {
+                    startActivity(Intent(requireContext(), CommonPhraseActivity::class.java))
+                }
+                addPreference(R.string.ai_assist, icon = R.drawable.ic_ai_assist) {
+                    startActivity(Intent(requireContext(), AiSettingsActivity::class.java))
+                }
                 addDestinationPreference(
                     R.string.emoji_and_symbols,
                     R.drawable.ic_baseline_emoji_symbols_24,

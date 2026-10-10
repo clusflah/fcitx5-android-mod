@@ -63,6 +63,8 @@ class AdvancedSettingsFragment : ManagedPreferenceFragment(AppPrefs.getInstance(
                             val inputStream = cr.openInputStream(uri)!!
                             UserDataManager.import(inputStream).getOrThrow()
                         }
+                        // open the new-phone checklist on next launch
+                        org.fcitx.fcitx5.android.ui.main.SetupCheckActivity.markPending(ctx)
                         AppUtil.showRestartNotification(ctx)
                         val exportTime = formatDateTime(metadata.exportTime)
                         ctx.toast(getString(R.string.user_data_imported, exportTime))

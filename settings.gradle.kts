@@ -1,6 +1,9 @@
 pluginManagement {
     includeBuild("build-logic")
     repositories {
+        maven("https://maven.aliyun.com/repository/gradle-plugin")
+        maven("https://maven.aliyun.com/repository/google")
+        maven("https://maven.aliyun.com/repository/public")
         gradlePluginPortal()
         google()
         mavenCentral()
@@ -9,8 +12,11 @@ pluginManagement {
 
 @Suppress("UnstableApiUsage")
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // PREFER_SETTINGS: repositories added by ~/.gradle/init.gradle only cause a warning, not a failure
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
+        maven("https://maven.aliyun.com/repository/google")
+        maven("https://maven.aliyun.com/repository/public")
         google()
         mavenCentral()
     }
@@ -28,6 +34,7 @@ include(":app")
 include(":lib:plugin-base")
 include(":plugin:anthy")
 include(":plugin:clipboard-filter")
+include(":plugin:clipboard-sync")
 include(":plugin:unikey")
 include(":plugin:rime")
 include(":plugin:hangul")

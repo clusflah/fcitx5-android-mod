@@ -40,6 +40,7 @@ import androidx.autofill.inline.common.ViewStyle
 import androidx.autofill.inline.v1.InlineSuggestionUi
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
+import org.fcitx.fcitx5.android.data.ai.AiPendingCommit
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -562,6 +563,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
 
     override fun onWindowShown() {
         super.onWindowShown()
+        commitPendingAiText(currentInputEditorInfo)
         highlightColor =
             styledColorOrDefault(android.R.attr.colorAccent, DefaultHighlightColor).alpha(0.4f)
         InputFeedbacks.syncSystemPrefs()
@@ -724,6 +726,69 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         }
     }
 
+    /**
+     * The AI assistant runs in its own Activity; when the user taps "输入" there, the reply is
+     * queued and typed into the editor that regains focus after the assistant closes.
+     * The keyboard is often not re-shown at that point, so this runs from onStartInput as well.
+     */
+    private val aiHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var aiText: String? = null
+    private var aiDeadline = 0L
+    private var aiCommittedTo: android.view.inputmethod.InputConnection? = null
+
+    private val aiCommitTask: Runnable = object : Runnable {
+        override fun run() {
+            val text = aiText ?: return
+            if (android.os.SystemClock.elapsedRealtime() > aiDeadline) {
+                aiText = null; return
+            }
+            val ic = currentInputConnection
+            val info = currentInputEditorInfo
+            if (ic == null || info == null || info.packageName == packageName || info.isTypeNull()) {
+                aiHandler.postDelayed(this, 150); return
+            }
+            if (ic.commitText(text, 1)) {
+                aiCommittedTo = ic
+                aiHandler.postDelayed(aiVerifyTask, 500)
+            } else {
+                aiHandler.postDelayed(this, 150)
+            }
+        }
+    }
+
+    /** Some apps restart input right after regaining focus, dropping text sent to the old connection. */
+    private val aiVerifyTask = Runnable {
+        val text = aiText ?: return@Runnable
+        val ic = currentInputConnection
+        if (ic == null || ic === aiCommittedTo) {
+            aiText = null; return@Runnable
+        }
+        val before = runCatching { ic.getTextBeforeCursor(text.length + 4, 0)?.toString() }.getOrNull().orEmpty()
+        if (before.endsWith(text)) {
+            aiText = null
+        } else {
+            aiCommittedTo = null
+            aiHandler.post(aiCommitTask)
+        }
+    }
+
+    /**
+     * The AI assistant runs in its own Activity; when the user taps "输入" there, the reply is
+     * queued and typed into the editor that regains focus after the assistant closes.
+     * Called from onStartInput / onStartInputView / onWindowShown, whichever comes first.
+     */
+    private fun commitPendingAiText(info: EditorInfo?) {
+        if (info == null || info.packageName == packageName || info.isTypeNull()) return
+        AiPendingCommit.take()?.let {
+            aiText = it
+            aiDeadline = android.os.SystemClock.elapsedRealtime() + 4000
+        }
+        if (aiText == null) return
+        aiHandler.removeCallbacks(aiCommitTask)
+        aiHandler.removeCallbacks(aiVerifyTask)
+        aiHandler.postDelayed(aiCommitTask, 250)
+    }
+
     override fun onStartInput(attribute: EditorInfo, restarting: Boolean) {
         // update selection as soon as possible
         // sometimes when restarting input, onUpdateSelection happens before onStartInput, and
@@ -737,6 +802,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         inputDeviceMgr.notifyOnStartInput(attribute)
         Timber.d("onStartInput: initialSel=${selection.current}, restarting=$restarting")
         val isNullType = attribute.isTypeNull()
+        commitPendingAiText(attribute)
         // wait until InputContext created/activated
         postFcitxJob {
             if (restarting) {
@@ -757,6 +823,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         Timber.d("onStartInputView: restarting=$restarting")
+        commitPendingAiText(info)
         postFcitxJob {
             focus(true)
         }
@@ -1049,6 +1116,10 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         Timber.d("onFinishInputView: finishingInput=$finishingInput")
+        // keyboard hidden while holding space: drop the recording
+        if (org.fcitx.fcitx5.android.input.voice.VoicePushToTalk.isRecording) {
+            org.fcitx.fcitx5.android.input.voice.VoicePushToTalk.cancel()
+        }
         decorLocationUpdated = false
         inputDeviceMgr.onFinishInputView()
         currentInputConnection?.apply {

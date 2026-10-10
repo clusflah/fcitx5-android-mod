@@ -30,6 +30,7 @@ import org.fcitx.fcitx5.android.input.keyboard.KeyAction.PickerSwitchAction
 import org.fcitx.fcitx5.android.input.keyboard.KeyAction.QuickPhraseAction
 import org.fcitx.fcitx5.android.input.keyboard.KeyAction.ShowInputMethodPickerAction
 import org.fcitx.fcitx5.android.input.keyboard.KeyAction.SpaceLongPressAction
+import org.fcitx.fcitx5.android.input.voice.VoicePushToTalk
 import org.fcitx.fcitx5.android.input.keyboard.KeyAction.SymAction
 import org.fcitx.fcitx5.android.input.keyboard.KeyAction.UnicodeAction
 import org.fcitx.fcitx5.android.input.picker.PickerWindow
@@ -171,6 +172,13 @@ class CommonKeyActionListener :
                     }
                 }
                 is SpaceLongPressAction -> {
+                    if (kbdPrefs.azureVoiceEnabled.getValue()) {
+                        // hold to talk: recording stops when the space key is released (see BaseKeyboard)
+                        // called on the main thread from the long-press handler; start synchronously so a
+                        // quick release right after the long press can't miss the recorder
+                        VoicePushToTalk.start(service)
+                        return@KeyActionListener
+                    }
                     when (spaceKeyLongPressBehavior) {
                         SpaceLongPressBehavior.None -> {}
                         SpaceLongPressBehavior.Enumerate -> service.postFcitxJob {

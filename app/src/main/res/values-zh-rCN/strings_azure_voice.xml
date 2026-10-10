@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="azure_voice_input">语音输入</string>
+    <string name="azure_voice_enabled">Azure 语音输入</string>
+    <string name="azure_voice_enabled_summary">按住空格键说话，松开即识别并输入（开启后替代空格长按行为）</string>
+    <string name="azure_speech_key">Azure 语音密钥</string>
+    <string name="azure_speech_region">Azure 区域（如 eastasia）</string>
+    <string name="azure_stt_language">识别语言（如 zh-CN）</string>
+    <string name="azure_stt_endpoint">自定义语音识别地址（可选）</string>
+    <string name="azure_tts_enabled">朗读识别结果</string>
+    <string name="azure_tts_enabled_summary">使用 Azure 语音合成朗读识别出的文字</string>
+    <string name="azure_tts_voice">朗读音色</string>
+    <string name="azure_tts_endpoint">自定义语音合成地址（可选）</string>
+    <string name="azure_voice_hint">点击麦克风结束 · 最长 60 秒</string>
+    <string name="azure_voice_listening">正在聆听…</string>
+    <string name="azure_voice_recognizing">正在识别…</string>
+    <string name="azure_voice_no_match">没有听清</string>
+    <string name="azure_voice_tap_retry">点击麦克风重试</string>
+    <string name="azure_voice_need_permission">需要麦克风权限</string>
+    <string name="azure_voice_permission_granted">已允许麦克风，请再次长按空格</string>
+    <string name="azure_voice_permission_denied">麦克风权限被拒绝</string>
+</resources>

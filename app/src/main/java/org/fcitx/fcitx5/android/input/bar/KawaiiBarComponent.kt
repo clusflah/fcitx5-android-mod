@@ -54,6 +54,13 @@ import org.fcitx.fcitx5.android.input.candidates.expanded.window.FlexboxExpanded
 import org.fcitx.fcitx5.android.input.candidates.expanded.window.GridExpandedCandidateWindow
 import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateComponent
 import org.fcitx.fcitx5.android.input.clipboard.ClipboardWindow
+import org.fcitx.fcitx5.android.input.phrase.CommonPhraseWindow
+import org.fcitx.fcitx5.android.input.phrase.AiPredictWindow
+import org.fcitx.fcitx5.android.ui.main.AiAssistActivity
+import org.fcitx.fcitx5.android.data.ai.AiSuggest
+import org.fcitx.fcitx5.android.input.voice.VoicePushToTalk
+import org.fcitx.fcitx5.android.utils.toast
+import org.fcitx.fcitx5.android.utils.clipboardManager
 import org.fcitx.fcitx5.android.input.dependency.UniqueViewComponent
 import org.fcitx.fcitx5.android.input.dependency.context
 import org.fcitx.fcitx5.android.input.dependency.inputMethodService
@@ -109,6 +116,69 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     private var clipboardTimeoutJob: Job? = null
 
     private var isClipboardFresh: Boolean = false
+
+    // ---------- AI 联想 (auto mode) ----------
+    private val aiPredictAuto = prefs.keyboard.aiPredictAuto
+    private var isAiFresh = false
+    private var isVoiceStatus = false
+    private var aiBlocked = false          // password / incognito fields
+    private var preeditEmpty = true
+    private var candidatesEmpty = true
+    private var aiJob: Job? = null
+    private var aiLastContext: String? = null
+
+    private fun clearAiSuggestion() {
+        aiJob?.cancel()
+        aiJob = null
+        if (isAiFresh) {
+            isAiFresh = false
+            evalIdleUiState()
+        }
+    }
+
+    /** Called whenever the editor settles (no composing text, no candidates). */
+    private fun scheduleAiPredict() {
+        if (!aiPredictAuto.getValue() || aiBlocked || !preeditEmpty || !candidatesEmpty) return
+        aiJob?.cancel()
+        aiJob = service.lifecycleScope.launch {
+            // short wait so the several selection updates of one commit collapse into one request;
+            // adjustable in Settings → Virtual Keyboard → AI 联想延迟
+            delay(prefs.keyboard.aiPredictDelay.getValue().toLong())
+            val before = runCatching {
+                service.currentInputConnection
+                    ?.getTextBeforeCursor(AiSuggest.MAX_CONTEXT, 0)?.toString()
+            }.getOrNull().orEmpty()
+            if (before.isBlank() || before.endsWith("\n")) {
+                aiLastContext = null
+                if (isAiFresh) { isAiFresh = false; evalIdleUiState() }
+                return@launch
+            }
+            if (before == aiLastContext && isAiFresh) return@launch
+            aiLastContext = before
+            isAiFresh = true
+            idleUi.aiSuggestionUi.setLoading()
+            evalIdleUiState()
+            try {
+                val items = AiSuggest.predict(context, before)
+                if (items.isEmpty()) {
+                    isAiFresh = false
+                } else {
+                    idleUi.aiSuggestionUi.setSuggestions(items)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                isAiFresh = false   // fail quietly in auto mode
+            }
+            evalIdleUiState()
+        }
+    }
+
+    @Keep
+    private val onAiPredictAutoListener = ManagedPreference.OnChangeListener<Boolean> { _, on ->
+        if (on) scheduleAiPredict() else clearAiSuggestion()
+        idleUi.buttonsUi.aiPredictButton.alpha = if (on) 1f else 0.4f
+    }
     private var isInlineSuggestionPresent: Boolean = false
     private var isCapabilityFlagsPassword: Boolean = false
     private var isKeyboardLayoutNumber: Boolean = false
@@ -175,7 +245,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
 
     private fun evalIdleUiState(fromUser: Boolean = false) {
         val newState = when {
+            isVoiceStatus -> IdleUi.State.VoiceStatus
             numberRowState == NumberRowState.ForceShow -> IdleUi.State.NumberRow
+            isAiFresh -> IdleUi.State.AiSuggestion
             isClipboardFresh -> IdleUi.State.Clipboard
             isInlineSuggestionPresent -> IdleUi.State.InlineSuggestion
             isCapabilityFlagsPassword && !isKeyboardLayoutNumber && numberRowState != NumberRowState.ForceHide -> IdleUi.State.NumberRow
@@ -275,6 +347,8 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                     }
                     else -> {
                         isToolbarManuallyToggled = !expandToolbarByDefault
+                        isAiFresh = false
+                        aiJob?.cancel()
                         idleUi.updateState(IdleUi.State.Toolbar, fromUser = true)
                     }
                 }
@@ -303,9 +377,50 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 clipboardButton.setOnClickListener {
                     windowManager.attachWindow(ClipboardWindow())
                 }
+                aiPredictButton.alpha = if (aiPredictAuto.getValue()) 1f else 0.4f
+                aiPredictButton.setOnClickListener {
+                    val on = !aiPredictAuto.getValue()
+                    aiPredictAuto.setValue(on)
+                    context.toast(if (on) "AI 联想：已开启（打字停顿后自动出现）" else "AI 联想：已关闭")
+                }
+                aiPredictButton.setOnLongClickListener {
+                    windowManager.attachWindow(AiPredictWindow())
+                    true
+                }
+                translateButton.setOnClickListener {
+                    // translate the selection if there is one, replacing it on "输入"
+                    val selected = runCatching {
+                        service.currentInputConnection?.getSelectedText(0)?.toString()
+                    }.getOrNull()
+                    service.startActivity(
+                        android.content.Intent(service, AiAssistActivity::class.java).apply {
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            putExtra(AiAssistActivity.EXTRA_MODE, AiAssistActivity.MODE_TRANSLATE)
+                            putExtra(AiAssistActivity.EXTRA_TEXT, selected ?: "")
+                        }
+                    )
+                }
+                aiAssistButton.setOnClickListener {
+                    val clip = runCatching {
+                        service.clipboardManager.primaryClip?.takeIf { it.itemCount > 0 }
+                            ?.getItemAt(0)?.coerceToText(service)?.toString()
+                    }.getOrNull() ?: ClipboardManager.lastEntry?.text
+                    service.startActivity(
+                        android.content.Intent(service, AiAssistActivity::class.java).apply {
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            putExtra(AiAssistActivity.EXTRA_CLIPBOARD, clip ?: "")
+                        }
+                    )
+                }
                 moreButton.setOnClickListener {
                     windowManager.attachWindow(StatusAreaWindow())
                 }
+            }
+            aiSuggestionUi.onSuggestionClick = { text ->
+                isAiFresh = false
+                service.commitText(text)
+                // the commit moves the cursor; onSelectionUpdate will request the next suggestions
+                evalIdleUiState()
             }
             clipboardUi.suggestionView.apply {
                 setOnClickListener {
@@ -429,6 +544,12 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         ClipboardManager.addOnUpdateListener(onClipboardUpdateListener)
         clipboardSuggestion.registerOnChangeListener(onClipboardSuggestionUpdateListener)
         clipboardItemTimeout.registerOnChangeListener(onClipboardTimeoutUpdateListener)
+        aiPredictAuto.registerOnChangeListener(onAiPredictAutoListener)
+        VoicePushToTalk.listener = { text ->
+            isVoiceStatus = text != null
+            if (text != null) idleUi.voiceStatus.text = text
+            evalIdleUiState()
+        }
     }
 
     override fun onStartInput(info: EditorInfo, capFlags: CapabilityFlags) {
@@ -436,6 +557,12 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             idleUi.privateMode(info.imeOptions.hasFlag(EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
         }
         isCapabilityFlagsPassword = toolbarNumRowOnPassword && capFlags.has(CapabilityFlag.Password)
+        aiBlocked = capFlags.has(CapabilityFlag.Password) ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                        info.imeOptions.hasFlag(EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
+        aiJob?.cancel()
+        isAiFresh = false
+        aiLastContext = null
         isInlineSuggestionPresent = false
         numberRowState = NumberRowState.Auto
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -453,10 +580,19 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
 
     override fun onPreeditEmptyStateUpdate(empty: Boolean) {
         barStateMachine.push(PreeditUpdated, PreeditEmpty to empty)
+        preeditEmpty = empty
+        if (!empty) clearAiSuggestion()
     }
 
     override fun onCandidateUpdate(data: CandidateListEvent.Data) {
         barStateMachine.push(CandidatesUpdated, CandidateEmpty to data.candidates.isEmpty())
+        candidatesEmpty = data.candidates.isEmpty()
+        if (!candidatesEmpty) aiJob?.cancel()
+    }
+
+    override fun onSelectionUpdate(start: Int, end: Int) {
+        if (start != end) { clearAiSuggestion(); return }
+        scheduleAiPredict()
     }
 
     override fun onWindowAttached(window: InputWindow) {

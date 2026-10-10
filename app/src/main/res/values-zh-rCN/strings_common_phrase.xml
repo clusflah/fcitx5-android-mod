@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="common_phrase">常用语</string>
+    <string name="common_phrase_manage">管理常用语</string>
+    <string name="common_phrase_empty">该分组还没有常用语，点此添加</string>
+    <string name="common_phrase_empty_manage">还没有常用语。长按上方分组标签可重命名 / 排序 / 删除分组。</string>
+    <string name="common_phrase_add">添加常用语</string>
+    <string name="common_phrase_edit">编辑常用语</string>
+    <string name="common_phrase_label_hint">说明，例如：学号</string>
+    <string name="common_phrase_content_hint">内容，例如：20100710</string>
+    <string name="common_phrase_content_required">内容不能为空</string>
+    <string name="common_phrase_group_name">分组名称</string>
+    <string name="common_phrase_group_add">新建分组</string>
+    <string name="common_phrase_group_manage">管理当前分组</string>
+    <string name="common_phrase_group_rename">重命名分组</string>
+    <string name="common_phrase_group_delete">删除分组</string>
+    <string name="common_phrase_group_delete_confirm">删除分组“%1$s”及其中的 %2$d 条常用语？</string>
+    <string name="show_common_phrase_button">在工具栏显示常用语按钮</string>
+    <string name="move_up">上移</string>
+    <string name="move_down">下移</string>
+</resources>

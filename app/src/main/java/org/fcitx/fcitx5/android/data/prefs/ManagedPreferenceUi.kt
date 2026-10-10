@@ -102,6 +102,37 @@ abstract class ManagedPreferenceUi<T : Preference>(
         }
     }
 
+    class EditTextString(
+        @StringRes
+        val title: Int,
+        key: String,
+        val defaultValue: String,
+        val password: Boolean = false,
+        enableUiOn: (() -> Boolean)? = null
+    ) : ManagedPreferenceUi<EditTextPreference>(key, enableUiOn) {
+        override fun createUi(context: Context) = EditTextPreference(context).apply {
+            key = this@EditTextString.key
+            isIconSpaceReserved = false
+            isSingleLineTitle = false
+            setDefaultValue(this@EditTextString.defaultValue)
+            setTitle(this@EditTextString.title)
+            setDialogTitle(this@EditTextString.title)
+            if (password) {
+                setOnBindEditTextListener {
+                    it.inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                            android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+                }
+                summaryProvider = Preference.SummaryProvider<EditTextPreference> { p ->
+                    if (p.text.isNullOrEmpty()) "-" else "•".repeat(8)
+                }
+            } else {
+                summaryProvider = Preference.SummaryProvider<EditTextPreference> { p ->
+                    p.text.takeUnless { it.isNullOrEmpty() } ?: "-"
+                }
+            }
+        }
+    }
+
     class EditTextInt(
         @StringRes
         val title: Int,

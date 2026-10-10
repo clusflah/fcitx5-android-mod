@@ -21,10 +21,11 @@ class AndroidPluginAppConventionPlugin : Plugin<Project> {
             }
             buildTypes {
                 release {
-                    buildConfigField("String", "MAIN_APPLICATION_ID", "\"org.fcitx.fcitx5.android\"")
+                    applicationIdSuffix = ".mod"
+                    buildConfigField("String", "MAIN_APPLICATION_ID", "\"org.fcitx.fcitx5.android.mod\"")
                     addManifestPlaceholders(
                         mapOf(
-                            "mainApplicationId" to "org.fcitx.fcitx5.android",
+                            "mainApplicationId" to "org.fcitx.fcitx5.android.mod",
                         )
                     )
                 }

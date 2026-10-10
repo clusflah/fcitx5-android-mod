@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="common_phrase">Common phrases</string>
+    <string name="common_phrase_manage">Manage common phrases</string>
+    <string name="common_phrase_empty">No phrases in this group. Tap here to add.</string>
+    <string name="common_phrase_empty_manage">No phrases yet. Long-press a group tab to rename / reorder / delete it.</string>
+    <string name="common_phrase_add">Add phrase</string>
+    <string name="common_phrase_edit">Edit phrase</string>
+    <string name="common_phrase_label_hint">Description, e.g. Student ID</string>
+    <string name="common_phrase_content_hint">Content, e.g. 20100710</string>
+    <string name="common_phrase_content_required">Content cannot be empty</string>
+    <string name="common_phrase_group_name">Group name</string>
+    <string name="common_phrase_group_add">Add group</string>
+    <string name="common_phrase_group_manage">Manage current group</string>
+    <string name="common_phrase_group_rename">Rename group</string>
+    <string name="common_phrase_group_delete">Delete group</string>
+    <string name="common_phrase_group_delete_confirm">Delete group \"%1$s\" and its %2$d phrase(s)?</string>
+    <string name="show_common_phrase_button">Show common phrases button in toolbar</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+</resources>

@@ -5,11 +5,14 @@
 package org.fcitx.fcitx5.android.input.bar.ui.idle
 
 import android.content.Context
+import android.view.View
 import androidx.annotation.DrawableRes
 import com.google.android.flexbox.AlignItems
 import com.google.android.flexbox.FlexboxLayout
 import com.google.android.flexbox.JustifyContent
 import org.fcitx.fcitx5.android.R
+import org.fcitx.fcitx5.android.data.prefs.AppPrefs
+import org.fcitx.fcitx5.android.data.prefs.ManagedPreference
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.input.bar.ui.ToolButton
 import splitties.dimensions.dp
@@ -23,28 +26,53 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
         justifyContent = JustifyContent.SPACE_AROUND
     }
 
-    private fun toolButton(@DrawableRes icon: Int) = ToolButton(ctx, icon, theme).also {
-        val size = ctx.dp(40)
-        root.addView(it, FlexboxLayout.LayoutParams(size, size))
-    }
+    private val prefs = AppPrefs.getInstance().keyboard
 
-    val undoButton = toolButton(R.drawable.ic_baseline_undo_24).apply {
+    // listeners must be kept strongly referenced, ManagedPreference holds them weakly
+    private val visibilityListeners = mutableListOf<ManagedPreference.OnChangeListener<Boolean>>()
+
+    /** Every toolbar shortcut can be shown or hidden from Settings → Virtual Keyboard. */
+    private fun toolButton(@DrawableRes icon: Int, show: ManagedPreference.PBool) =
+        ToolButton(ctx, icon, theme).also { button ->
+            val size = ctx.dp(40)
+            root.addView(button, FlexboxLayout.LayoutParams(size, size))
+            button.visibility = if (show.getValue()) View.VISIBLE else View.GONE
+            val listener = ManagedPreference.OnChangeListener<Boolean> { _, v ->
+                button.visibility = if (v) View.VISIBLE else View.GONE
+            }
+            visibilityListeners.add(listener)
+            show.registerOnChangeListener(listener)
+        }
+
+    val undoButton = toolButton(R.drawable.ic_baseline_undo_24, prefs.showUndoButton).apply {
         contentDescription = ctx.getString(R.string.undo)
     }
 
-    val redoButton = toolButton(R.drawable.ic_baseline_redo_24).apply {
+    val redoButton = toolButton(R.drawable.ic_baseline_redo_24, prefs.showRedoButton).apply {
         contentDescription = ctx.getString(R.string.redo)
     }
 
-    val cursorMoveButton = toolButton(R.drawable.ic_cursor_move).apply {
+    val cursorMoveButton = toolButton(R.drawable.ic_cursor_move, prefs.showCursorMoveButton).apply {
         contentDescription = ctx.getString(R.string.text_editing)
     }
 
-    val clipboardButton = toolButton(R.drawable.ic_clipboard).apply {
+    val clipboardButton = toolButton(R.drawable.ic_clipboard, prefs.showClipboardButton).apply {
         contentDescription = ctx.getString(R.string.clipboard)
     }
 
-    val moreButton = toolButton(R.drawable.ic_baseline_more_horiz_24).apply {
+    val aiAssistButton = toolButton(R.drawable.ic_ai_assist, prefs.showAiAssistButton).apply {
+        contentDescription = ctx.getString(R.string.ai_assist)
+    }
+
+    val aiPredictButton = toolButton(R.drawable.ic_ai_predict, prefs.showAiPredictButton).apply {
+        contentDescription = ctx.getString(R.string.ai_predict)
+    }
+
+    val translateButton = toolButton(R.drawable.ic_translate, prefs.showTranslateButton).apply {
+        contentDescription = ctx.getString(R.string.ai_translate)
+    }
+
+    val moreButton = toolButton(R.drawable.ic_baseline_more_horiz_24, prefs.showMoreButton).apply {
         contentDescription = ctx.getString(R.string.status_area)
     }
 
