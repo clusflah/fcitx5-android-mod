@@ -1,9 +1,12 @@
 pluginManagement {
     includeBuild("build-logic")
     repositories {
-        maven("https://maven.aliyun.com/repository/gradle-plugin")
-        maven("https://maven.aliyun.com/repository/google")
-        maven("https://maven.aliyun.com/repository/public")
+        // Aliyun mirrors speed up local builds in China; skip them on CI (GitHub runners)
+        if (System.getenv("CI") == null) {
+            maven("https://maven.aliyun.com/repository/gradle-plugin")
+            maven("https://maven.aliyun.com/repository/google")
+            maven("https://maven.aliyun.com/repository/public")
+        }
         gradlePluginPortal()
         google()
         mavenCentral()
@@ -15,8 +18,10 @@ dependencyResolutionManagement {
     // PREFER_SETTINGS: repositories added by ~/.gradle/init.gradle only cause a warning, not a failure
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
-        maven("https://maven.aliyun.com/repository/google")
-        maven("https://maven.aliyun.com/repository/public")
+        if (System.getenv("CI") == null) {
+            maven("https://maven.aliyun.com/repository/google")
+            maven("https://maven.aliyun.com/repository/public")
+        }
         google()
         mavenCentral()
     }
