@@ -120,6 +120,8 @@ jobs:
         run: |
           notes="自动编译：$(git log -1 --format='%h %s')
 
+          修改内容见 [MODIFICATIONS.md](https://github.com/${GITHUB_REPOSITORY}/blob/master/MODIFICATIONS.md)
+
           - 只支持 arm64-v8a
           - 包名 org.fcitx.fcitx5.android.mod，可与原版共存
           - 插件需和主程序来自同一个 Release（同一签名）"
