@@ -41,6 +41,11 @@ object AiClient {
                     // thinking tokens count toward the output limit; skip the limit when thinking can't be disabled
                     val canDisableThinking = fast && model.startsWith("gemini-2.5") && model.contains("flash")
                     if (canDisableThinking) gen.put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+                    // Gemini 3 can't turn thinking off; 3.x Flash defaults to "medium", "low" is the lowest
+                    // level every 3.x Flash accepts. Flash-Lite already defaults to "minimal".
+                    if (fast && model.startsWith("gemini-3") && model.contains("flash") && !model.contains("lite")) {
+                        gen.put("thinkingConfig", JSONObject().put("thinkingLevel", "low"))
+                    }
                     if (maxTokens != null && (canDisableThinking || model.startsWith("gemini-2.0") || model.startsWith("gemini-1.5"))) {
                         gen.put("maxOutputTokens", maxTokens)
                     }
@@ -67,8 +72,16 @@ object AiClient {
                     messages.put(JSONObject().put("role", "system").put("content", systemPrompt))
                 messages.put(JSONObject().put("role", "user").put("content", userText))
                 val body = JSONObject().put("model", model).put("messages", messages).put("stream", false)
-                // reasoning models spend tokens on thinking; don't cap them
-                if (maxTokens != null && !model.contains("reasoner") && !model.contains("thinking")) {
+                // deepseek-flash / deepseek-v4-pro and kimi-k2.6 think by default; for quick answers
+                // (AI 联想) turn it off. kimi-k3 always thinks and rejects `thinking`, so lower the effort.
+                val isKimiK3 = provider == AiProvider.Kimi && model.startsWith("kimi-k3")
+                val thinkingOff = fast && (provider == AiProvider.DeepSeek || provider == AiProvider.Kimi && !isKimiK3)
+                if (thinkingOff) body.put("thinking", JSONObject().put("type", "disabled"))
+                if (fast && isKimiK3) body.put("reasoning_effort", "low")
+                // reasoning models spend tokens on thinking; only cap the output when thinking is off
+                val mayThink = provider != AiProvider.Local && !thinkingOff ||
+                        model.contains("reasoner") || model.contains("thinking")
+                if (maxTokens != null && !mayThink) {
                     body.put("max_tokens", maxTokens)
                 }
                 temperature?.let { body.put("temperature", it) }

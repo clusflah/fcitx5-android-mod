@@ -16,9 +16,9 @@ enum class AiProvider(
     val defaultBaseUrl: String,
     val defaultModel: String
 ) {
-    Gemini("Gemini", "https://generativelanguage.googleapis.com/v1beta", "gemini-2.5-flash"),
-    DeepSeek("DeepSeek", "https://api.deepseek.com", "deepseek-chat"),
-    Kimi("Kimi", "https://api.moonshot.cn/v1", "moonshot-v1-8k"),
+    Gemini("Gemini", "https://generativelanguage.googleapis.com/v1beta", "gemini-3.8-flash"),
+    DeepSeek("DeepSeek", "https://api.deepseek.com", "deepseek-flash"),
+    Kimi("Kimi", "https://api.moonshot.cn/v1", "kimi-k2.6"),
 
     /** Any OpenAI-compatible server, e.g. Pocket LLM's LAN server running on this phone */
     Local("本地模型", "http://127.0.0.1:8080/v1", "qwen3_litert");
@@ -50,7 +50,20 @@ object AiConfig {
 
     fun apiKey(ctx: Context, p: AiProvider) = sp(ctx).getString("key_${p.name}", "")!!
     fun model(ctx: Context, p: AiProvider) =
-        sp(ctx).getString("model_${p.name}", "")!!.ifBlank { p.defaultModel }
+        sp(ctx).getString("model_${p.name}", "")!!.trim()
+            .takeUnless { it.isBlank() || isRetired(it) } ?: p.defaultModel
+
+    /**
+     * Model names the providers have shut down; requests with them fail, so fall back to the default.
+     * DeepSeek: deepseek-chat / deepseek-reasoner (2026-07-24).
+     * Kimi: kimi-latest, kimi-thinking-preview, kimi-k2-* series, kimi-k2.5, moonshot-v1-* (2025-11 – 2026-08).
+     */
+    fun isRetired(model: String): Boolean {
+        val m = model.lowercase()
+        return m == "deepseek-chat" || m == "deepseek-reasoner" ||
+                m == "kimi-latest" || m == "kimi-thinking-preview" || m == "kimi-k2.5" ||
+                m.startsWith("kimi-k2-") || m.startsWith("moonshot-v1-")
+    }
     fun baseUrl(ctx: Context, p: AiProvider) =
         sp(ctx).getString("url_${p.name}", "")!!.ifBlank { p.defaultBaseUrl }
     fun rawModel(ctx: Context, p: AiProvider) = sp(ctx).getString("model_${p.name}", "")!!

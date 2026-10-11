@@ -65,7 +65,11 @@ class AiSettingsActivity : AppCompatActivity() {
                         "这里的 API Key 填该密码，模型填 /v1/models 返回的模型 id（如 qwen3_litert）。"
             })
             val key = field(if (p == AiProvider.Local) "密码 / API Key" else "API Key", AiConfig.apiKey(this, p), password = true)
-            val model = field("模型（默认 ${p.defaultModel}）", AiConfig.rawModel(this, p))
+            // a shut-down model name is ignored (the default is used), so don't show it
+            val model = field(
+                "模型（默认 ${p.defaultModel}）",
+                AiConfig.rawModel(this, p).takeUnless { AiConfig.isRetired(it.trim()) } ?: ""
+            )
             val url = field("接口地址（默认 ${p.defaultBaseUrl}）", AiConfig.rawBaseUrl(this, p))
             box.addView(key); box.addView(model); box.addView(url)
             Triple(key, model, url)
