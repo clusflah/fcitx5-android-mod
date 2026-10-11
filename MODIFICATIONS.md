@@ -22,9 +22,29 @@
 
 ---
 
+## 截图一览
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/toolbar.jpg" width="240"><br>键盘工具栏</td>
+    <td align="center"><img src="docs/screenshots/ai-predict.jpg" width="240"><br>AI 联想</td>
+    <td align="center"><img src="docs/screenshots/common-phrase.jpg" width="240"><br>常用语管理</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/settings-ai.jpg" width="240"><br>大模型设置</td>
+    <td align="center"><img src="docs/screenshots/settings-azure-voice.jpg" width="240"><br>Azure 语音设置</td>
+    <td align="center"><img src="docs/screenshots/settings-keyboard-toolbar.jpg" width="240"><br>工具栏按钮设置</td>
+  </tr>
+</table>
+
+---
+
 ## 新增功能
 
 ### 1. 常用语
+
+<img src="docs/screenshots/common-phrase.jpg" width="260" align="right">
+
 把经常要输入的内容（学号、地址、邮箱、固定回复等）存起来，在键盘上一点就能输入。
 
 - **分组管理**：可以新建分组；长按分组标签可以重命名、排序、删除。
@@ -33,8 +53,13 @@
   - 键盘工具栏的剪贴板按钮 → 剪贴板窗口右上角的“常用语”按钮
   - 设置主页 → 常用语（管理、编辑、排序）
 - 数据保存在应用私有目录的 `common_phrases.json` 中，会一起写入备份。
+- 截图中，上方是分组标签（当前选中的是“VPS”分组），下方是这个分组里的常用语。点“添加常用语”可以新增。
+
+<br clear="right">
 
 ### 2. Azure 语音输入（按住空格说话）
+
+<img src="docs/screenshots/settings-azure-voice.jpg" width="260" align="right">
 使用微软 Azure 语音服务进行识别，**按住空格键说话，松开即识别并输入**。
 
 - 开启：设置 → 虚拟键盘 → Azure 语音输入。开启后会替代原来的空格长按功能。
@@ -44,15 +69,23 @@
 - 第一次使用会请求麦克风权限；授权后再按住空格即可。
 - **密码输入框里不会录音**：在密码框中长按空格，执行的是原来的空格长按功能（设置 → 虚拟键盘 → 空格长按行为）。
 - 需要你自己申请 Azure 语音服务密钥，产生的费用由你的 Azure 账号承担。
+- 开启 Azure 语音输入时，原版的“显示语音输入按钮”（调用系统语音输入）可以关掉，两者互不依赖。
+
+<br clear="right">
 
 ### 3. 大模型助手
 从键盘工具栏打开一个对话框，用大模型处理文字，处理完可以直接输入到当前应用。
+
+<img src="docs/screenshots/settings-ai.jpg" width="260" align="right">
 
 - **支持的服务**：Gemini、DeepSeek、Kimi，以及任意兼容 OpenAI 接口的**本地模型**（默认地址 `http://127.0.0.1:8080/v1`，例如在手机上运行的 Pocket LLM）。
 - 每个服务可以分别设置 API Key、模型名称和接口地址。设置入口：设置主页 → 大模型助手，或者对话框里的“⚙ 设置”。
 - **内置提示词**：润色、翻译成英文、翻译成中文、帮我回复、总结、直接提问。提示词可以自定义、增删。
 - **使用流程**：打开时会自动填入剪贴板内容 → 选择提示词 → 发送 → 模型的回复可以修改 → 点“输入”，回复会打进刚才的应用（同时复制到剪贴板作为备份）。也可以重新生成或复制。
 - API Key 只保存在手机本地，代码中没有任何内置密钥。
+- 截图是“大模型设置”页面：最上面选默认模型，下面每个服务各有 API Key、模型名称和接口地址三栏。模型名称留空就用默认模型；也可以填其他模型名，比如截图里 Gemini 填的就是自定义的模型名。改完点右上角“保存”。
+
+<br clear="right">
 
 ### 4. 中外互译
 工具栏上的翻译按钮，打开的是大模型助手的翻译模式。
@@ -64,6 +97,10 @@
 ### 5. AI 联想
 根据光标前已经输入的文字，让大模型预测接下来可能要输入的 5 个词语或短语，点一下就能输入。
 
+<img src="docs/screenshots/ai-predict.jpg" width="260" align="right">
+
+截图中输入“我们”之后，工具栏上自动出现了 AI 联想的结果：要、一起、都是、已经……左边的灯泡图标表示这是 AI 联想，点任意一个词就会直接输入。
+
 - **自动模式**：打字停顿后，联想结果会自动出现在工具栏上。点工具栏的 AI 联想按钮可以开启或关闭自动模式，停顿多久后触发也可以在设置里调整（默认 50 毫秒）。
 - **手动模式**：长按 AI 联想按钮，会打开联想面板，可以“换一批”。
 - AI 联想可以单独指定使用哪个模型（比如用响应快的本地模型）；使用本地模型时会自动缩短上下文以加快速度。
@@ -71,8 +108,30 @@
   - **密码输入框和无痕模式下不会启用**；
   - 使用云端模型会消耗 API 额度。
 
+<br clear="right">
+
 ### 6. 工具栏按钮自定义
 设置 → 虚拟键盘 中可以单独显示或隐藏每一个工具栏按钮：撤销、重做、文本编辑、剪贴板/常用语、大模型助手、中外互译、AI 联想，以及状态面板（…）按钮。
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/toolbar.jpg" width="260"><br>展开后的工具栏</td>
+    <td align="center"><img src="docs/screenshots/settings-keyboard-toolbar.jpg" width="260"><br>设置 → 虚拟键盘</td>
+  </tr>
+</table>
+
+工具栏按钮从左到右依次是：
+
+| 图标 | 功能 |
+|---|---|
+| ‹ | 收起工具栏 |
+| ↶ ↷ | 撤销 / 重做 |
+| 光标 | 文本编辑（移动光标、选择、复制粘贴） |
+| 剪贴板 | 剪贴板（右上角可以切换到常用语） |
+| ✦ 星星 | 大模型助手 |
+| 💡 灯泡 | AI 联想：点击开关自动联想，长按打开联想面板 |
+| 文A | 中外互译 |
+| … | 状态面板 |
 
 > 隐藏状态面板按钮后，就无法从工具栏打开状态面板（输入法开关、Rime 的简繁/预测等选项）了。
 
