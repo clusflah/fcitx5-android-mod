@@ -4,40 +4,46 @@
 
     <SwitchPreferenceCompat
         app:key="quick_sync"
+        app:iconSpaceReserved="false"
         app:title="@string/quick_sync"
         app:summary="@string/quick_sync_summary"
         app:defaultValue="true" />
 
     <EditTextPreference
         app:key="server_address"
+        app:iconSpaceReserved="false"
         app:title="@string/server_address"
         app:summary="@string/server_address_summary"
         app:useSimpleSummaryProvider="true" />
 
     <EditTextPreference
         app:key="username"
+        app:iconSpaceReserved="false"
         app:title="@string/username"
         app:useSimpleSummaryProvider="true" />
 
     <EditTextPreference
         app:key="password"
+        app:iconSpaceReserved="false"
         app:title="@string/password"
-        app:useSimpleSummaryProvider="false"
-        app:summary="******"/>
+        app:useSimpleSummaryProvider="false" />
 
     <EditTextPreference
         app:key="sync_interval"
+        app:iconSpaceReserved="false"
         app:title="@string/sync_interval"
         app:defaultValue="3"
         app:useSimpleSummaryProvider="true" />
 
     <Preference
         app:key="download_path"
+        app:iconSpaceReserved="false"
         app:title="@string/download_path"
         app:summary="@string/download_path_not_set" />
 
     <Preference
         app:key="test_connection"
+        app:iconSpaceReserved="false"
         app:title="@string/test_connection"
         app:summary="@string/clicktest" />
 
