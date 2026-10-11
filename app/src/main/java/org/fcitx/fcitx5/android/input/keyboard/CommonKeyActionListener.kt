@@ -8,6 +8,8 @@ package org.fcitx.fcitx5.android.input.keyboard
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import org.fcitx.fcitx5.android.core.CapabilityFlag
+import org.fcitx.fcitx5.android.core.CapabilityFlags
 import org.fcitx.fcitx5.android.core.FcitxAPI
 import org.fcitx.fcitx5.android.daemon.launchOnReady
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
@@ -172,7 +174,11 @@ class CommonKeyActionListener :
                     }
                 }
                 is SpaceLongPressAction -> {
-                    if (kbdPrefs.azureVoiceEnabled.getValue()) {
+                    // never record in password fields: fall back to the normal long-press behavior
+                    val isPassword = service.currentInputEditorInfo?.let {
+                        CapabilityFlags.fromEditorInfo(it).has(CapabilityFlag.Password)
+                    } ?: false
+                    if (kbdPrefs.azureVoiceEnabled.getValue() && !isPassword) {
                         // hold to talk: recording stops when the space key is released (see BaseKeyboard)
                         // called on the main thread from the long-press handler; start synchronously so a
                         // quick release right after the long press can't miss the recorder
