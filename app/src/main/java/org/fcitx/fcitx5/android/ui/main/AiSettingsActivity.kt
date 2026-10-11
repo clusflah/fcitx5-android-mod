@@ -8,6 +8,8 @@ import android.os.Bundle
 import android.text.InputType
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -31,6 +33,11 @@ class AiSettingsActivity : AppCompatActivity() {
     private lateinit var fields: Map<AiProvider, Triple<EditText, EditText, EditText>>
     private lateinit var promptList: LinearLayout
     private var prompts = mutableListOf<AiPrompt>()
+
+    /** AI 联想 model name per provider; the field below the spinner edits the selected provider's entry */
+    private lateinit var predictModelField: EditText
+    private val predictModels = mutableMapOf<AiProvider, String>()
+    private var shownPredictProvider: AiProvider? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +63,16 @@ class AiSettingsActivity : AppCompatActivity() {
             setSelection(AiConfig.predictProvider(context)?.let { it.ordinal + 1 } ?: 0)
         }
         box.addView(predictSpinner)
+        AiProvider.entries.forEach { p ->
+            predictModels[p] = AiConfig.rawPredictModel(this, p).takeUnless { AiConfig.isRetired(it.trim()) } ?: ""
+        }
+        predictModelField = field("", "")
+        box.addView(predictModelField)
+        box.addView(TextView(this).apply {
+            textSize = 12f
+            text = "可以给联想单独指定一个更快、更便宜的模型，例如 Gemini 填 gemini-3.5-flash-lite。" +
+                    "留空则使用该服务下面填写的模型。"
+        })
 
         fields = AiProvider.entries.associateWith { p ->
             box.addView(header(p.label))
@@ -90,6 +107,31 @@ class AiSettingsActivity : AppCompatActivity() {
 
         setContentWithToolbar(ScrollView(this).apply { addView(box) }, "大模型设置")
         renderPrompts()
+
+        val onSelect = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) =
+                refreshPredictModelField()
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+        providerSpinner.onItemSelectedListener = onSelect
+        predictSpinner.onItemSelectedListener = onSelect
+        refreshPredictModelField()
+    }
+
+    private fun selectedPredictProvider(): AiProvider =
+        predictSpinner.selectedItemPosition.takeIf { it > 0 }?.let { AiProvider.entries[it - 1] }
+            ?: AiProvider.entries[providerSpinner.selectedItemPosition]
+
+    /** Show the AI 联想 model of the provider currently selected for prediction. */
+    private fun refreshPredictModelField() {
+        shownPredictProvider?.let { predictModels[it] = predictModelField.text.toString() }
+        val p = selectedPredictProvider()
+        if (p == shownPredictProvider) return
+        shownPredictProvider = p
+        val fallback = fields[p]?.second?.text?.toString()?.trim()
+            ?.takeUnless { it.isBlank() || AiConfig.isRetired(it) } ?: p.defaultModel
+        predictModelField.hint = "${p.label} 联想模型（留空则用 $fallback）"
+        predictModelField.setText(predictModels[p].orEmpty())
     }
 
     private fun header(text: String) = TextView(this).apply {
@@ -116,6 +158,8 @@ class AiSettingsActivity : AppCompatActivity() {
         fields.forEach { (p, f) ->
             AiConfig.saveProvider(this, p, f.first.text.toString(), f.second.text.toString(), f.third.text.toString())
         }
+        shownPredictProvider?.let { predictModels[it] = predictModelField.text.toString() }
+        predictModels.forEach { (p, m) -> AiConfig.setPredictModel(this, p, m) }
         AiConfig.savePrompts(this, prompts)
     }
 

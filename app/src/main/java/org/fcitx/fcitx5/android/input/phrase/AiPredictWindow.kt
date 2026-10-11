@@ -114,7 +114,7 @@ class AiPredictWindow : InputWindow.ExtendedInputWindow<AiPredictWindow>() {
                     status.text = "没有得到建议，点“换一批”重试"
                     return@launch
                 }
-                status.text = "点选续写内容直接输入（${provider.label}）"
+                status.text = "点选续写内容直接输入（${provider.label} · ${AiConfig.predictModel(ctx, provider)}）"
                 items.forEach { addSuggestion(it) }
             } catch (e: CancellationException) {
                 throw e

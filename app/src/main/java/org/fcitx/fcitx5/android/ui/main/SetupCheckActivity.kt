@@ -198,7 +198,9 @@ class SetupCheckActivity : AppCompatActivity() {
         val predict = AiConfig.predictProvider(this) ?: main
         val missing = setOf(main, predict).filter { AiConfig.apiKey(this, it).isBlank() }
         if (missing.isEmpty()) {
-            row(Status.Ok, "大模型配置", "默认模型：${main.label}；AI 联想：${predict.label}，API Key 已填写。")
+            row(Status.Ok, "大模型配置",
+                "默认模型：${main.label}（${AiConfig.model(this, main)}）；" +
+                        "AI 联想：${predict.label}（${AiConfig.predictModel(this, predict)}），API Key 已填写。")
         } else {
             row(Status.Warn, "大模型配置", "${missing.joinToString("、") { it.label }} 还没有填写 API Key（不用大模型功能可忽略）。",
                 "打开大模型设置") {
@@ -217,7 +219,8 @@ class SetupCheckActivity : AppCompatActivity() {
         if (!usesLocal) return
         val base = AiConfig.baseUrl(this, AiProvider.Local).trimEnd('/')
         val key = AiConfig.apiKey(this, AiProvider.Local)
-        val model = AiConfig.model(this, AiProvider.Local)
+        val model = if (AiConfig.provider(this) == AiProvider.Local) AiConfig.model(this, AiProvider.Local)
+        else AiConfig.predictModel(this, AiProvider.Local)
         val gen = generation
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {

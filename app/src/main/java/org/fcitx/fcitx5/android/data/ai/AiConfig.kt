@@ -67,6 +67,13 @@ object AiConfig {
     fun baseUrl(ctx: Context, p: AiProvider) =
         sp(ctx).getString("url_${p.name}", "")!!.ifBlank { p.defaultBaseUrl }
     fun rawModel(ctx: Context, p: AiProvider) = sp(ctx).getString("model_${p.name}", "")!!
+
+    /** Model used by AI 联想 on this provider; blank = same as [model] */
+    fun predictModel(ctx: Context, p: AiProvider) =
+        rawPredictModel(ctx, p).trim().takeUnless { it.isBlank() || isRetired(it) } ?: model(ctx, p)
+    fun rawPredictModel(ctx: Context, p: AiProvider) = sp(ctx).getString("predict_model_${p.name}", "")!!
+    fun setPredictModel(ctx: Context, p: AiProvider, model: String) =
+        sp(ctx).edit().putString("predict_model_${p.name}", model.trim()).apply()
     fun rawBaseUrl(ctx: Context, p: AiProvider) = sp(ctx).getString("url_${p.name}", "")!!
 
     fun saveProvider(ctx: Context, p: AiProvider, key: String, model: String, url: String) {

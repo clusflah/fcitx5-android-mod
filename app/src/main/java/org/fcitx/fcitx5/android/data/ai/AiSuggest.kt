@@ -26,7 +26,7 @@ object AiSuggest {
         else before.takeLast(MAX_CONTEXT)
         val reply = AiClient.chat(
             provider, AiConfig.baseUrl(ctx, provider), AiConfig.apiKey(ctx, provider),
-            AiConfig.model(ctx, provider), SYSTEM_PROMPT, input,
+            AiConfig.predictModel(ctx, provider), SYSTEM_PROMPT, input,
             maxTokens = 80, temperature = 0.3, fast = true
         )
         return reply.lines()
