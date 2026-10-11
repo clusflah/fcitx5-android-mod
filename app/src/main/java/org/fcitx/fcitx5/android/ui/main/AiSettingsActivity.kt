@@ -70,8 +70,8 @@ class AiSettingsActivity : AppCompatActivity() {
         box.addView(predictModelField)
         box.addView(TextView(this).apply {
             textSize = 12f
-            text = "可以给联想单独指定一个更快、更便宜的模型，例如 Gemini 填 gemini-3.5-flash-lite。" +
-                    "留空则使用该服务下面填写的模型。"
+            text = "联想要求快，留空时默认使用该服务最快的模型；助手默认使用最好的模型。" +
+                    "本地模型留空时与下面填写的模型相同。"
         })
 
         fields = AiProvider.entries.associateWith { p ->
@@ -128,9 +128,8 @@ class AiSettingsActivity : AppCompatActivity() {
         val p = selectedPredictProvider()
         if (p == shownPredictProvider) return
         shownPredictProvider = p
-        val fallback = fields[p]?.second?.text?.toString()?.trim()
-            ?.takeUnless { it.isBlank() || AiConfig.isRetired(it) } ?: p.defaultModel
-        predictModelField.hint = "${p.label} 联想模型（留空则用 $fallback）"
+        predictModelField.hint = p.defaultPredictModel?.let { "${p.label} 联想模型（默认 $it）" }
+            ?: "${p.label} 联想模型（留空则与下面的模型相同）"
         predictModelField.setText(predictModels[p].orEmpty())
     }
 
@@ -147,6 +146,12 @@ class AiSettingsActivity : AppCompatActivity() {
                 password -> InputType.TYPE_TEXT_VARIATION_PASSWORD
                 multi -> InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 else -> 0
+            }
+            if (!password && !multi) {
+                // wrap long hints / URLs instead of cutting them off. The input type stays single-line
+                // (no MULTI_LINE flag), so Enter still can't insert a newline.
+                setHorizontallyScrolling(false)
+                maxLines = 4
             }
         }
 

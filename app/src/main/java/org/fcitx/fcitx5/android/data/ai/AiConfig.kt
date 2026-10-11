@@ -11,17 +11,25 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 
+/**
+ * [defaultModel]: the provider's strongest model, used by the assistant.
+ * [defaultPredictModel]: its fastest model, used by AI 联想; null = same as the assistant's model.
+ */
 enum class AiProvider(
     val label: String,
     val defaultBaseUrl: String,
-    val defaultModel: String
+    val defaultModel: String,
+    val defaultPredictModel: String?
 ) {
-    Gemini("Gemini", "https://generativelanguage.googleapis.com/v1beta", "gemini-3.8-flash"),
-    DeepSeek("DeepSeek", "https://api.deepseek.com", "deepseek-flash"),
-    Kimi("Kimi", "https://api.moonshot.cn/v1", "kimi-k2.6"),
+    Gemini(
+        "Gemini", "https://generativelanguage.googleapis.com/v1beta",
+        "gemini-3.1-pro-preview", "gemini-3.5-flash-lite"
+    ),
+    DeepSeek("DeepSeek", "https://api.deepseek.com", "deepseek-v4-pro", "deepseek-flash"),
+    Kimi("Kimi", "https://api.moonshot.cn/v1", "kimi-k3", "kimi-k2.6"),
 
     /** Any OpenAI-compatible server, e.g. Pocket LLM's LAN server running on this phone */
-    Local("本地模型", "http://127.0.0.1:8080/v1", "qwen3_litert");
+    Local("本地模型", "http://127.0.0.1:8080/v1", "qwen3_litert", null);
 }
 
 data class AiPrompt(
@@ -68,9 +76,10 @@ object AiConfig {
         sp(ctx).getString("url_${p.name}", "")!!.ifBlank { p.defaultBaseUrl }
     fun rawModel(ctx: Context, p: AiProvider) = sp(ctx).getString("model_${p.name}", "")!!
 
-    /** Model used by AI 联想 on this provider; blank = same as [model] */
+    /** Model used by AI 联想 on this provider; blank = the provider's fastest model (local: same as [model]) */
     fun predictModel(ctx: Context, p: AiProvider) =
-        rawPredictModel(ctx, p).trim().takeUnless { it.isBlank() || isRetired(it) } ?: model(ctx, p)
+        rawPredictModel(ctx, p).trim().takeUnless { it.isBlank() || isRetired(it) }
+            ?: p.defaultPredictModel ?: model(ctx, p)
     fun rawPredictModel(ctx: Context, p: AiProvider) = sp(ctx).getString("predict_model_${p.name}", "")!!
     fun setPredictModel(ctx: Context, p: AiProvider, model: String) =
         sp(ctx).edit().putString("predict_model_${p.name}", model.trim()).apply()
