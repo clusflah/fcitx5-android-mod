@@ -30,6 +30,7 @@ import org.fcitx.fcitx5.android.core.data.DataManager
 import org.fcitx.fcitx5.android.daemon.FcitxDaemon
 import org.fcitx.fcitx5.android.data.ai.AiConfig
 import org.fcitx.fcitx5.android.data.ai.AiProvider
+import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import splitties.dimensions.dp
 import java.net.HttpURLConnection
@@ -87,6 +88,7 @@ class SetupCheckActivity : AppCompatActivity() {
         checkIme()
         checkPlugins()
         checkVoice()
+        checkOtp()
         checkAi()
         checkLocalModel()
         checkRime()
@@ -188,6 +190,21 @@ class SetupCheckActivity : AppCompatActivity() {
         } else {
             row(Status.Bad, "麦克风权限", "语音输入需要麦克风权限。", "授权麦克风") {
                 startActivity(Intent(this, VoicePermissionActivity::class.java))
+            }
+        }
+    }
+
+    // ---------- 短信验证码 ----------
+    private fun checkOtp() {
+        if (!AppPrefs.getInstance().keyboard.otpCodeEnabled.getValue()) {
+            row(Status.Info, "短信验证码", "未开启（设置 → 虚拟键盘 → 短信验证码）。")
+            return
+        }
+        if (OtpCodeManager.hasPermission(this)) {
+            row(Status.Ok, "短信验证码", "已允许读取短信，收到验证码会显示在工具栏上。")
+        } else {
+            row(Status.Bad, "短信验证码", "已开启，但还没有读取短信的权限。", "允许读取短信") {
+                startActivity(Intent(this, SmsPermissionActivity::class.java))
             }
         }
     }

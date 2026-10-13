@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="otp_code_enabled">短信验证码</string>
+    <string name="otp_code_enabled_summary">收到验证码短信后在工具栏显示，点一下即可输入。需要读取短信权限；验证码只在本机使用，不会联网或发送给任何服务</string>
+    <string name="otp_auto_fill">验证码智能自动填入</string>
+    <string name="otp_auto_fill_summary">当前输入框看起来是验证码框时，自动填入 1 分钟内收到的验证码（每个验证码只填一次）</string>
+    <string name="otp_permission_granted">已允许读取短信，新的验证码会显示在工具栏上</string>
+    <string name="otp_permission_denied">读取短信权限被拒绝</string>
+</resources>

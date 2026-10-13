@@ -57,7 +57,12 @@ import org.fcitx.fcitx5.android.input.clipboard.ClipboardWindow
 import org.fcitx.fcitx5.android.input.phrase.CommonPhraseWindow
 import org.fcitx.fcitx5.android.input.phrase.AiPredictWindow
 import org.fcitx.fcitx5.android.ui.main.AiAssistActivity
+import org.fcitx.fcitx5.android.ui.main.SmsPermissionActivity
 import org.fcitx.fcitx5.android.data.ai.AiSuggest
+import org.fcitx.fcitx5.android.data.otp.OtpCode
+import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.fcitx.fcitx5.android.input.voice.VoicePushToTalk
 import org.fcitx.fcitx5.android.utils.toast
 import org.fcitx.fcitx5.android.utils.clipboardManager
@@ -136,9 +141,84 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         }
     }
 
+    // ---------- 短信验证码 ----------
+    private val otpCodeEnabled = prefs.keyboard.otpCodeEnabled
+    private val otpAutoFill by prefs.keyboard.otpAutoFill
+    private var otpCode: OtpCode? = null              // code offered on the bar
+    private var otpNeedsPermission = false            // offer "去允许" instead
+    private var otpPromptDismissed = false            // user closed the permission prompt
+    private var otpExpireJob: Job? = null
+    private var otpTypedThisSession = false           // keep AI 联想 from sending the code anywhere
+    private var currentEditorInfo: EditorInfo? = null
+
+    /** Look up the newest code; with [autoFill], type it right away into an empty code field. */
+    private fun refreshOtp(autoFill: Boolean) {
+        if (!otpCodeEnabled.getValue()) {
+            otpNeedsPermission = false
+            showOtp(null)
+            return
+        }
+        if (!OtpCodeManager.hasPermission(context)) {
+            otpNeedsPermission = !otpPromptDismissed
+            if (otpNeedsPermission) idleUi.otpCodeUi.showPermissionPrompt()
+            evalIdleUiState()
+            return
+        }
+        otpNeedsPermission = false
+        OtpCodeManager.ensureObserving(context)
+        service.lifecycleScope.launch {
+            val code = withContext(Dispatchers.IO) { OtpCodeManager.latest(context) }
+                ?.takeUnless { OtpCodeManager.isHandled(it) }
+            val info = currentEditorInfo
+            if (code != null && autoFill && otpAutoFill && info != null &&
+                OtpCodeManager.looksLikeCodeField(info) &&
+                System.currentTimeMillis() - code.receivedAt < OtpCodeManager.AUTO_FILL_MAX_AGE_MS &&
+                isFieldEmpty()
+            ) {
+                typeOtp(code)
+            } else {
+                showOtp(code)
+            }
+        }
+    }
+
+    private fun showOtp(code: OtpCode?) {
+        otpCode = code
+        otpExpireJob?.cancel()
+        otpExpireJob = null
+        if (code != null) {
+            idleUi.otpCodeUi.showCode(code.code, code.source)
+            val left = code.receivedAt + OtpCodeManager.MAX_AGE_MS - System.currentTimeMillis()
+            otpExpireJob = service.lifecycleScope.launch {
+                delay(left.coerceAtLeast(0L))
+                otpCode = null
+                evalIdleUiState()
+            }
+        }
+        evalIdleUiState()
+    }
+
+    private fun typeOtp(code: OtpCode) {
+        OtpCodeManager.markHandled(code)
+        otpTypedThisSession = true
+        clearAiSuggestion()
+        service.commitText(code.code)
+        showOtp(null)
+    }
+
+    private fun isFieldEmpty(): Boolean = runCatching {
+        val ic = service.currentInputConnection ?: return false
+        ic.getTextBeforeCursor(1, 0).isNullOrEmpty() && ic.getTextAfterCursor(1, 0).isNullOrEmpty()
+    }.getOrDefault(false)
+
+    @Keep
+    private val onOtpCodeEnabledListener = ManagedPreference.OnChangeListener<Boolean> { _, _ ->
+        refreshOtp(autoFill = false)
+    }
+
     /** Called whenever the editor settles (no composing text, no candidates). */
     private fun scheduleAiPredict() {
-        if (!aiPredictAuto.getValue() || aiBlocked || !preeditEmpty || !candidatesEmpty) return
+        if (!aiPredictAuto.getValue() || aiBlocked || otpTypedThisSession || !preeditEmpty || !candidatesEmpty) return
         aiJob?.cancel()
         aiJob = service.lifecycleScope.launch {
             // short wait so the several selection updates of one commit collapse into one request;
@@ -246,6 +326,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     private fun evalIdleUiState(fromUser: Boolean = false) {
         val newState = when {
             isVoiceStatus -> IdleUi.State.VoiceStatus
+            otpCode != null || otpNeedsPermission -> IdleUi.State.OtpCode
             numberRowState == NumberRowState.ForceShow -> IdleUi.State.NumberRow
             isAiFresh -> IdleUi.State.AiSuggestion
             isClipboardFresh -> IdleUi.State.Clipboard
@@ -349,6 +430,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                         isToolbarManuallyToggled = !expandToolbarByDefault
                         isAiFresh = false
                         aiJob?.cancel()
+                        // the code comes back on the next input field unless it was used or dismissed
+                        otpCode = null
+                        otpNeedsPermission = false
                         idleUi.updateState(IdleUi.State.Toolbar, fromUser = true)
                     }
                 }
@@ -414,6 +498,28 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 }
                 moreButton.setOnClickListener {
                     windowManager.attachWindow(StatusAreaWindow())
+                }
+            }
+            otpCodeUi.onCodeClick = {
+                if (otpNeedsPermission) {
+                    otpNeedsPermission = false
+                    service.startActivity(
+                        android.content.Intent(service, SmsPermissionActivity::class.java)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                    evalIdleUiState()
+                } else {
+                    otpCode?.let { typeOtp(it) }
+                }
+            }
+            otpCodeUi.onDismiss = {
+                if (otpNeedsPermission) {
+                    otpPromptDismissed = true
+                    otpNeedsPermission = false
+                    evalIdleUiState()
+                } else {
+                    otpCode?.let { OtpCodeManager.markHandled(it) }
+                    showOtp(null)
                 }
             }
             aiSuggestionUi.onSuggestionClick = { text ->
@@ -545,6 +651,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         clipboardSuggestion.registerOnChangeListener(onClipboardSuggestionUpdateListener)
         clipboardItemTimeout.registerOnChangeListener(onClipboardTimeoutUpdateListener)
         aiPredictAuto.registerOnChangeListener(onAiPredictAutoListener)
+        otpCodeEnabled.registerOnChangeListener(onOtpCodeEnabledListener)
+        // a new SMS arrived: offer its code, or fill it into the code field the user is waiting in
+        OtpCodeManager.listener = { refreshOtp(autoFill = true) }
         VoicePushToTalk.listener = { text ->
             isVoiceStatus = text != null
             if (text != null) idleUi.voiceStatus.text = text
@@ -557,9 +666,13 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             idleUi.privateMode(info.imeOptions.hasFlag(EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
         }
         isCapabilityFlagsPassword = toolbarNumRowOnPassword && capFlags.has(CapabilityFlag.Password)
+        // also keep AI 联想 out of verification-code fields
         aiBlocked = capFlags.has(CapabilityFlag.Password) ||
                 (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                        info.imeOptions.hasFlag(EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
+                        info.imeOptions.hasFlag(EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING)) ||
+                OtpCodeManager.looksLikeCodeField(info)
+        currentEditorInfo = info
+        otpTypedThisSession = false
         aiJob?.cancel()
         isAiFresh = false
         aiLastContext = null
@@ -576,6 +689,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             if (shouldShowVoiceInput) switchToVoiceInputCallback else hideKeyboardCallback
         )
         evalIdleUiState()
+        refreshOtp(autoFill = true)
     }
 
     override fun onPreeditEmptyStateUpdate(empty: Boolean) {

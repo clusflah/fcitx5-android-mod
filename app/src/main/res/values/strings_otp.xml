@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="otp_code_enabled">SMS verification codes</string>
+    <string name="otp_code_enabled_summary">Show the code from a new verification SMS on the toolbar; tap it to type. Needs the SMS permission. Codes stay on this phone and are never sent anywhere.</string>
+    <string name="otp_auto_fill">Auto-fill verification codes</string>
+    <string name="otp_auto_fill_summary">When the current field looks like a code field, type a code received within the last minute automatically (once)</string>
+    <string name="otp_permission_granted">SMS permission granted; new verification codes will appear on the toolbar</string>
+    <string name="otp_permission_denied">SMS permission denied</string>
+</resources>

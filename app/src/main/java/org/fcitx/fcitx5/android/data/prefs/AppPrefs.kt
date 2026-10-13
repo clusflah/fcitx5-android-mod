@@ -140,6 +140,11 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             switch(R.string.expand_toolbar_by_default, "expand_toolbar_by_default", false)
         val aiPredictAuto =
             switch(R.string.ai_predict_auto, "ai_predict_auto", false, R.string.ai_predict_auto_summary)
+        val otpCodeEnabled =
+            switch(R.string.otp_code_enabled, "otp_code_enabled", false, R.string.otp_code_enabled_summary)
+        val otpAutoFill = switch(
+            R.string.otp_auto_fill, "otp_auto_fill", false, R.string.otp_auto_fill_summary
+        ) { otpCodeEnabled.getValue() }
         // ---- toolbar shortcuts: each one can be hidden ----
         val showUndoButton = switch(R.string.show_undo_button, "show_undo_button", true)
         val showRedoButton = switch(R.string.show_redo_button, "show_redo_button", true)
