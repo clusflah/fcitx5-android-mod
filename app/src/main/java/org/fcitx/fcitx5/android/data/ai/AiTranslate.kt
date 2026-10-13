@@ -12,10 +12,13 @@ import android.content.SharedPreferences
 /** Who translates: Index-Translate, or one of the assistant's providers. */
 sealed class TranslateEngine(val id: String, val label: String) {
     object IndexTranslate : TranslateEngine("index_translate", "Index-Translate（B站免费）")
+    /** the separate Offline Translator app; text never leaves the phone */
+    object Offline : TranslateEngine("offline_translator", "离线翻译（Offline Translator App）")
     class Provider(val provider: AiProvider) : TranslateEngine(provider.name, provider.label)
 
     companion object {
-        val all: List<TranslateEngine> get() = listOf(IndexTranslate) + AiProvider.entries.map { Provider(it) }
+        val all: List<TranslateEngine>
+            get() = listOf(IndexTranslate, Offline) + AiProvider.entries.map { Provider(it) }
         fun of(id: String?): TranslateEngine = all.find { it.id == id } ?: IndexTranslate
     }
 }
@@ -86,6 +89,9 @@ object AiTranslate {
                 if (AiConfig.apiKey(ctx, fallback).isBlank()) throw AiException("Index-Translate 不可用：${e.message}")
                 withProvider(ctx, fallback, userText)
             }
+            // no fallback to a cloud service: offline was chosen so the text stays on the phone
+            TranslateEngine.Offline ->
+                OfflineTranslator.translate(ctx, text, targetFor(ctx, text), fromChinese = looksChinese(text))
             is TranslateEngine.Provider -> withProvider(ctx, engine.provider, userText)
         }
     }

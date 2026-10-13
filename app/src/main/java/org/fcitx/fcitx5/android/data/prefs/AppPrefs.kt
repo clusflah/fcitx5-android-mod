@@ -192,6 +192,11 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
 
         val azureVoiceEnabled =
             switch(R.string.azure_voice_enabled, "azure_voice_enabled", false, R.string.azure_voice_enabled_summary)
+        /** Azure (cloud) or SenseVoice (offline, model managed in 设置 → 离线语音模型) */
+        val voiceEngine = enumList(
+            R.string.voice_engine, "voice_engine",
+            org.fcitx.fcitx5.android.input.voice.VoiceEngine.Azure
+        ) { azureVoiceEnabled.getValue() }
         val azureSpeechKey = string(R.string.azure_speech_key, "azure_speech_key", "", true) {
             azureVoiceEnabled.getValue()
         }

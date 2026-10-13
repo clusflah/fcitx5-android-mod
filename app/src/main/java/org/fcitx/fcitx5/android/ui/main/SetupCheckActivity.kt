@@ -32,6 +32,8 @@ import org.fcitx.fcitx5.android.data.ai.AiConfig
 import org.fcitx.fcitx5.android.data.ai.AiProvider
 import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
 import org.fcitx.fcitx5.android.data.password.PasswordManager
+import org.fcitx.fcitx5.android.input.voice.OfflineVoice
+import org.fcitx.fcitx5.android.input.voice.VoiceEngine
 import android.os.Build
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import splitties.dimensions.dp
@@ -180,10 +182,18 @@ class SetupCheckActivity : AppCompatActivity() {
     private fun checkVoice() {
         val kb = AppPrefs.getInstance().keyboard
         if (!kb.azureVoiceEnabled.getValue()) {
-            row(Status.Info, "语音输入", "未开启（设置 → 虚拟键盘 → Azure 语音输入）。")
+            row(Status.Info, "语音输入", "未开启（设置 → 虚拟键盘 → 按住空格语音输入）。")
             return
         }
-        if (kb.azureSpeechKey.getValue().isBlank()) {
+        if (kb.voiceEngine.getValue() == VoiceEngine.SenseVoice) {
+            if (OfflineVoice.isReady(this)) {
+                row(Status.Ok, "离线语音模型", "已安装（${OfflineVoice.sizeMb(this)} MB）。")
+            } else {
+                row(Status.Bad, "离线语音模型", "语音识别引擎是离线的 SenseVoice，但模型没有下载（备份不包含模型）。", "下载模型") {
+                    startActivity(Intent(this, OfflineVoiceActivity::class.java))
+                }
+            }
+        } else if (kb.azureSpeechKey.getValue().isBlank()) {
             row(Status.Bad, "语音输入", "已开启，但没有填写 Azure 语音密钥（设置 → 虚拟键盘）。")
         }
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==

@@ -57,19 +57,29 @@
 
 <br clear="right">
 
-### 2. Azure 语音输入（按住空格说话）
+### 2. 语音输入（按住空格说话）：离线 SenseVoice / Azure
 
 <img src="docs/screenshots/settings-azure-voice.jpg" width="260" align="right">
-使用微软 Azure 语音服务进行识别，**按住空格键说话，松开即识别并输入**。
+**按住空格键说话，松开即识别并输入**。识别引擎可以选（设置 → 虚拟键盘 → **语音识别引擎**）：
 
-- 开启：设置 → 虚拟键盘 → Azure 语音输入。开启后会替代原来的空格长按功能。
-- 需要填写：**Azure 语音密钥**和**区域**（如 `eastasia`）。识别语言默认是 `zh-CN`；如果用自建或代理服务，可以填自定义的识别地址。
+- **SenseVoice（离线，免费）**：阿里开源的 [SenseVoice](https://github.com/FunAudioLLM/SenseVoice) 语音识别模型，通过 [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)（Apache-2.0）在手机上运行。
+  - 支持**普通话、粤语、英语、日语、韩语**，自动加标点，数字写成阿拉伯数字。
+  - **录音只在手机上识别，不联网、不收费。**
+  - 模型约 227 MB，不打包在 APK 里：在 **设置 → 离线语音模型** 中下载（用系统下载器，离开页面也会继续），或者在电脑上下载后用“从文件导入”。下载源是 Hugging Face 上 k2-fsa 导出的 `sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09`；国内网络可能需要代理，也可以试 hf-mirror 镜像。
+  - 按下空格时就开始在后台加载模型，松开后马上识别。识别时占用约 300 MB 内存，闲置 5 分钟后自动释放。
+  - 加入这个功能后，APK 大约增加 10 MB（sherpa-onnx 和 onnxruntime 的 arm64 原生库）。
+- **Azure（云端，需要密钥）**：使用微软 Azure 语音服务。
+
+通用说明：
+- 开启：设置 → 虚拟键盘 → **按住空格语音输入**。开启后会替代原来的空格长按功能。“离线语音模型”页面里也有“设为语音识别引擎”按钮，一键开启离线识别。
+- 选了离线引擎但还没下载模型时，长按空格会提示，并打开“离线语音模型”页面。
+- Azure 需要填写：**Azure 语音密钥**和**区域**（如 `eastasia`）。识别语言默认是 `zh-CN`；如果用自建或代理服务，可以填自定义的识别地址。
 - 录音时工具栏会显示音量和状态，最长录 60 秒，超时会自动结束。
 - **朗读识别结果**（可选）：用 Azure 语音合成把识别出来的文字读出来，可以选择音色（默认 `zh-CN-XiaoxiaoNeural`）。
 - 第一次使用会请求麦克风权限；授权后再按住空格即可。
 - **密码输入框里不会录音**：在密码框中长按空格，执行的是原来的空格长按功能（设置 → 虚拟键盘 → 空格长按行为）。
-- 需要你自己申请 Azure 语音服务密钥，产生的费用由你的 Azure 账号承担。
-- 开启 Azure 语音输入时，原版的“显示语音输入按钮”（调用系统语音输入）可以关掉，两者互不依赖。
+- 用 Azure 时需要你自己申请 Azure 语音服务密钥，产生的费用由你的 Azure 账号承担。朗读识别结果目前只支持 Azure。
+- 开启按住空格语音输入时，原版的“显示语音输入按钮”（调用系统语音输入）可以关掉，两者互不依赖。
 
 <br clear="right">
 
@@ -111,6 +121,7 @@
 - **翻译方向**：**中文 → 在设置中选择的目标语言**（默认英语，可选日语、韩语、法语、德语、西班牙语、俄语等）；**外文 → 简体中文**。方向自动判断，平时操作不用选。
 - **翻译引擎**（大模型设置 → 中外互译 → 翻译使用）：
   - **Index-Translate（B站免费）**，默认：B 站开源的翻译专用模型（[bilibili/Index-Translate](https://github.com/bilibili/Index-Translate)，35B 版本）。免费、**不需要 API Key**、不需要“思考”，一般 1 秒左右出结果，网络用语也翻得地道。
+  - **离线翻译（Offline Translator App）**：调用另外安装的开源 App [Offline Translator](https://github.com/DavidVentura/offline-translator)（GPL-3.0），它在手机上运行 Mozilla Firefox 翻译用的 Bergamot 模型，**文字不会离开手机**。每个语言包几十 MB，要先在那个 App 里下载（中文、英语、日语等）。翻译质量不如 Index-Translate，但完全离线。选它时，失败了**不会**自动改用云端服务，避免文字被发出去。修改版只是通过它公开的接口调用，没有复制它的代码。
   - 也可以选 Gemini、DeepSeek、Kimi 或本地模型。用它们翻译时会关闭“思考”，以提高速度。
 - **隐私与可用性**：
   - 只有点翻译时才会发送文字，打字过程中不会发送。用 Index-Translate 时，文字会发到 B 站的服务器。官方没有公布这个免费接口的隐私政策、调用限制和服务期限。
@@ -243,6 +254,28 @@
 
 为了以后好合并原版的更新，这个键单独写在 `NumberSymbolSwitchKey.kt` 里，原版的 `TextKeyboard.kt` 只改了一行。
 
+### 14. Rime 语法模型（万象 LTS）：打整句更准，不需要改代码
+修改版自带的 Rime 引擎**已经编译进了语法模型插件（librime-octagram）**，另外还有 Lua 脚本和联想（predict）插件。只要放一个语法模型文件、改一行配置，整句输入的选词就会参考上下文。这里以**白霜拼音**为例，使用 [万象 LTS 语法模型](https://github.com/amzxyz/RIME-LMDG)，它的官方说明里也列出了 Fcitx5-Android。
+
+1. **下载模型**：[RIME-LMDG 的 LTS 发布页](https://github.com/amzxyz/RIME-LMDG/releases/tag/LTS)上的 `wanxiang-lts-zh-hans.gram`（简体，约 **379 MB**；繁体用 `wanxiang-lts-zh-hant.gram`）。
+2. **放进 Rime 用户目录**：修改版的目录是 `Android/data/org.fcitx.fcitx5.android.mod/files/data/rime/`（注意包名带 `.mod`，和原版不同）。Android 11 起，大多数文件管理器进不去 `Android/data`，可以用系统自带的**“文件”App**：在侧边栏找到“小企鹅输入法”，进入 `rime` 文件夹，把 `.gram` 文件复制进去。也可以用电脑通过 USB 复制。
+3. **改配置**：在同一个文件夹里，新建或编辑 `rime_frost.custom.yaml`（白霜的方案名是 `rime_frost`；其他方案就是 `方案名.custom.yaml`）。如果文件已经有 `patch:`，把下面几行合并进去：
+   ```yaml
+   patch:
+     grammar/language: wanxiang-lts-zh-hans
+     grammar/collocation_max_length: 5
+     grammar/collocation_min_length: 2
+     grammar/collocation_penalty: -14
+     grammar/non_collocation_penalty: -4
+     translator/contextual_suggestions: true
+   ```
+   白霜默认用的是一个很小的 `zh-moqi` 模型，几乎不起作用；上面的配置把它换成万象模型，惩罚参数用白霜文档推荐的值。
+4. **重新部署**：切换到中州韵，在输入法菜单里点“重新部署”，或者在 新手机检查 页面点“重启输入法引擎”。
+
+注意：
+- 模型文件很大，部署和第一次加载需要一点时间。有人在旧版小企鹅上遇到过加载后只能输入英文的问题（[rime-frost #184](https://github.com/gaboolic/rime-frost/issues/184)）。如果出现这种情况，删掉 `custom.yaml` 里新加的几行，重新部署就能恢复。
+- 语法模型只影响 Rime（中州韵）方案，对内置的拼音输入法没有影响。
+
 ---
 
 ## 网络与权限变化
@@ -251,10 +284,11 @@
 
 | 权限 / 配置 | 用途 |
 |---|---|
-| `INTERNET` | 大模型助手、AI 联想、Azure 语音 |
-| `RECORD_AUDIO` | Azure 语音输入 |
+| `INTERNET` | 大模型助手、AI 联想、Azure 语音、翻译；下载离线语音模型 |
+| `RECORD_AUDIO` | 按住空格语音输入（离线识别时录音不离开手机） |
 | `READ_SMS` | 短信验证码（开启这个功能后才会请求；只在本机读取最近 5 分钟的短信） |
 | 可以查看 `com.x8bit.bitwarden` 这个包 | 判断是否安装了 Bitwarden、打开 Bitwarden（Android 11 起需要声明才能看到别的 App） |
+| 可以查看 `dev.davidv.translator` 这个包 | 连接 Offline Translator 的翻译服务（离线翻译引擎） |
 | 允许 `127.0.0.1` / `localhost` 明文 HTTP | 连接手机上运行的本地模型；其他地址仍然只允许 HTTPS |
 
 ---
@@ -265,6 +299,7 @@
 - **只编译 arm64-v8a**：在 `gradle.properties` 中设置了 `buildABI=arm64-v8a`。如果需要其他架构，删掉这一行即可。
 - **版本号**：本地编译时版本号固定为 `0.1.3-mod`；GitHub Actions 编译时为 `0.1.3-mod.<运行次数>`。
 - **Windows 本地编译**：自带 extra-cmake-modules（`tools/windows/ecm`），不需要装 MSYS2；`msgfmt.exe`/`msgmerge.exe` 需要另外放到 `tools/windows/gettext/bin/`（这两个文件不在仓库里）。详见 [BUILD_WINDOWS.md](BUILD_WINDOWS.md)。
+- **sherpa-onnx**（离线语音）：编译时从 GitHub 下载 `sherpa-onnx-<版本>.aar` 到 `app/libs/`，校验 SHA-256 后使用。这个文件不提交到仓库（已加入 `.gitignore`）。只打包 arm64 的 `libsherpa-onnx-jni.so` 和 `libonnxruntime.so`。
 - **国内镜像**：本地编译时优先使用阿里云 Maven 镜像；在 CI 环境（有 `CI` 环境变量）中会跳过。
 - **签名**：签名信息不在仓库中。本地编译从 `~/.gradle/gradle.properties` 读取 `signKeyFile`、`signKeyAlias`、`signKeyPwd`；CI 从仓库 Secrets 读取 `SIGN_KEY_BASE64`、`SIGN_KEY_ALIAS`、`SIGN_KEY_PWD`。
 

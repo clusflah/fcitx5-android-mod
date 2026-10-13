@@ -30,3 +30,6 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# mod: sherpa-onnx (offline voice input) — the native code reads these classes and fields via JNI
+-keep class com.k2fsa.sherpa.onnx.** { *; }

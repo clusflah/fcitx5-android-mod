@@ -26,6 +26,8 @@
         </intent>
         <!-- Bitwarden: detect it and open it from the toolbar -->
         <package android:name="com.x8bit.bitwarden" />
+        <!-- Offline Translator: bind its translation service (offline translation engine) -->
+        <package android:name="dev.davidv.translator" />
     </queries>
 
     <permission
@@ -135,6 +137,12 @@
             android:exported="false"
             android:taskAffinity=".ui.main.VoicePermissionActivity"
             android:theme="@style/Theme.DialogTheme" />
+
+        <activity
+            android:name=".ui.main.OfflineVoiceActivity"
+            android:exported="false"
+            android:label="@string/offline_voice"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
 
         <activity
             android:name=".ui.main.SmsPermissionActivity"

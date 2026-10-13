@@ -1,3 +1,6 @@
+import java.net.URI
+import java.security.MessageDigest
+
 plugins {
     id("org.fcitx.fcitx5.android.app-convention")
     id("org.fcitx.fcitx5.android.native-app-convention")
@@ -129,6 +132,35 @@ dependencies {
     androidTestImplementation(libs.androidx.test.rules)
     androidTestImplementation(libs.androidx.lifecycle.testing)
     androidTestImplementation(libs.junit)
+}
+
+// ---- mod: sherpa-onnx for offline voice input (SenseVoice), see OfflineVoice.kt ----
+// The AAR (~48 MB, all ABIs) is downloaded once at configuration time instead of being committed,
+// and verified against its SHA-256. Uses Gradle's proxy settings (systemProp.https.proxyHost …).
+val sherpaOnnxVersion = "1.13.8"
+val sherpaOnnxSha256 = "633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96"
+val sherpaOnnxAar = file("libs/sherpa-onnx-$sherpaOnnxVersion.aar")
+fun sha256Of(f: File): String = MessageDigest.getInstance("SHA-256")
+    .digest(f.readBytes()).joinToString("") { b -> "%02x".format(b) }
+if (!sherpaOnnxAar.exists() || sha256Of(sherpaOnnxAar) != sherpaOnnxSha256) {
+    val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaOnnxVersion/sherpa-onnx-$sherpaOnnxVersion.aar"
+    logger.lifecycle("Downloading $url")
+    sherpaOnnxAar.parentFile.mkdirs()
+    val tmp = File(sherpaOnnxAar.path + ".part")
+    URI(url).toURL().openStream().use { input -> tmp.outputStream().use { out -> input.copyTo(out) } }
+    check(sha256Of(tmp) == sherpaOnnxSha256) { "sherpa-onnx AAR checksum mismatch" }
+    tmp.renameTo(sherpaOnnxAar)
+}
+dependencies {
+    implementation(files(sherpaOnnxAar))
+}
+android {
+    packaging {
+        jniLibs {
+            // only libsherpa-onnx-jni.so + libonnxruntime.so are used from Kotlin
+            excludes += setOf("**/libsherpa-onnx-c-api.so", "**/libsherpa-onnx-cxx-api.so")
+        }
+    }
 }
 
 configurations {

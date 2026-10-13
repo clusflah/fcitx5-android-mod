@@ -113,6 +113,9 @@ class MainFragment : PaddingPreferenceFragment() {
                 addPreference(R.string.ai_assist, icon = R.drawable.ic_ai_assist) {
                     startActivity(Intent(requireContext(), AiSettingsActivity::class.java))
                 }
+                addPreference(R.string.offline_voice, icon = R.drawable.ic_baseline_keyboard_voice_24) {
+                    startActivity(Intent(requireContext(), OfflineVoiceActivity::class.java))
+                }
                 addDestinationPreference(
                     R.string.emoji_and_symbols,
                     R.drawable.ic_baseline_emoji_symbols_24,

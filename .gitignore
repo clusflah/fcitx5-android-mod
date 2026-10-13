@@ -102,3 +102,6 @@ lint/tmp/
 
 ### Kotlin ###
 .kotlin/
+
+# mod: sherpa-onnx AAR, downloaded at build time (app/build.gradle.kts)
+/app/libs/

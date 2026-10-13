@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="azure_voice_input">Voice input</string>
-    <string name="azure_voice_enabled">Azure voice input</string>
+    <string name="azure_voice_enabled">Hold space to talk</string>
     <string name="azure_voice_enabled_summary">Hold space to talk, release to recognize and type (overrides the space long-press behavior)</string>
+    <string name="voice_engine">Speech recognition engine</string>
+    <string name="voice_engine_azure">Azure (cloud, needs a key)</string>
+    <string name="voice_engine_sensevoice">SenseVoice (offline, free)</string>
+    <string name="offline_voice">Offline voice model</string>
     <string name="azure_speech_key">Azure Speech key</string>
     <string name="azure_speech_region">Azure region (e.g. eastasia)</string>
     <string name="azure_stt_language">Recognition language (e.g. zh-CN)</string>

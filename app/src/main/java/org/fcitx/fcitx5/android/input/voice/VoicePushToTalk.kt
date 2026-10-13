@@ -19,6 +19,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.input.FcitxInputMethodService
+import org.fcitx.fcitx5.android.ui.main.OfflineVoiceActivity
 import org.fcitx.fcitx5.android.ui.main.VoicePermissionActivity
 
 object VoicePushToTalk {
@@ -33,6 +34,8 @@ object VoicePushToTalk {
     private var recognizeJob: Job? = null
 
     val isRecording get() = recorder != null
+
+    private fun engine() = AppPrefs.getInstance().keyboard.voiceEngine.getValue()
 
     fun config(): AzureConfig {
         val p = AppPrefs.getInstance().keyboard
@@ -56,7 +59,18 @@ object VoicePushToTalk {
             hideLater(svc, 2500)
             return
         }
+        val offline = engine() == VoiceEngine.SenseVoice
+        if (offline && !OfflineVoice.isReady(svc)) {
+            listener?.invoke("离线语音模型还没有下载，请在设置 → 离线语音模型中下载")
+            svc.startActivity(Intent(svc, OfflineVoiceActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+            hideLater(svc, 3000)
+            return
+        }
         recognizeJob?.cancel()
+        // load the offline model while the user talks, so recognition starts right on release
+        if (offline) OfflineVoice.preload(svc)
         val r = PcmRecorder()
         try {
             r.start()
@@ -96,7 +110,10 @@ object VoicePushToTalk {
         listener?.invoke("识别中…")
         recognizeJob = svc.lifecycleScope.launch {
             try {
-                val text = AzureSpeech.recognize(config(), wav)
+                val text = when (engine()) {
+                    VoiceEngine.Azure -> AzureSpeech.recognize(config(), wav)
+                    VoiceEngine.SenseVoice -> OfflineVoice.recognize(svc, wav)
+                }
                 if (text.isEmpty()) {
                     listener?.invoke("没有听清，请再试一次")
                     hideLater(svc, 1800)

@@ -97,6 +97,8 @@ class AiSettingsActivity : AppCompatActivity() {
             textSize = 12f
             text = "外文一律翻译成简体中文。Index-Translate 是 B 站开源的翻译模型，免费、不需要 API Key；" +
                     "翻译时文字会发送到 B 站的服务器，不可用时自动改用默认模型。" +
+                    "离线翻译需要另外安装开源的 Offline Translator App（GitHub: DavidVentura/offline-translator）" +
+                    "并在其中下载语言包，文字不会离开手机。" +
                     "工具栏“文A”：点按打开翻译窗口，长按把输入框里的文字（或选中的文字）直接替换成译文。"
         })
 
