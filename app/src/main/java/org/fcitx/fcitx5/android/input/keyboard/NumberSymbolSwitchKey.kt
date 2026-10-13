@@ -23,8 +23,9 @@ class NumberSymbolSwitchKey(
         variant = variant
     ),
     setOf(
-        // "" = the number keyboard, same as upstream's "?123"
-        Behavior.Press(KeyAction.LayoutSwitchAction("")),
+        // always the number keyboard; upstream's "" means "the last one used", which made tap
+        // open the symbol picker too after it had been used once
+        Behavior.Press(KeyAction.LayoutSwitchAction(NumberKeyboard.Name)),
         // same action as the "!?#" key on the number keyboard
         Behavior.LongPress(KeyAction.LayoutSwitchAction(PickerWindow.Key.Symbol.name))
     )
