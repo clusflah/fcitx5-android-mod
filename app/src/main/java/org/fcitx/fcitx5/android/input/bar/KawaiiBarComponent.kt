@@ -139,6 +139,10 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     private var aiJob: Job? = null
     private var aiLastContext: String? = null
 
+    /** AI suggestions tapped in a row; reset when the user types or moves the cursor themselves */
+    private var aiChainCount = 0
+    private var lastAiCommitAt = 0L
+
     private fun clearAiSuggestion() {
         aiJob?.cancel()
         aiJob = null
@@ -288,6 +292,12 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         if (!aiPredictAuto.getValue() || aiBlocked || otpTypedThisSession || isInlineSuggestionPresent ||
             !preeditEmpty || !candidatesEmpty
         ) return
+        // after this many suggestions tapped in a row, wait for the user to type again
+        val chainLimit = prefs.keyboard.aiPredictChainLimit.getValue()
+        if (chainLimit > 0 && aiChainCount > chainLimit) {
+            clearAiSuggestion()
+            return
+        }
         aiJob?.cancel()
         aiJob = service.lifecycleScope.launch {
             // short wait so the several selection updates of one commit collapse into one request;
@@ -623,6 +633,8 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             }
             aiSuggestionUi.onSuggestionClick = { text ->
                 isAiFresh = false
+                aiChainCount++
+                lastAiCommitAt = android.os.SystemClock.uptimeMillis()
                 service.commitText(text)
                 // the commit moves the cursor; onSelectionUpdate will request the next suggestions
                 evalIdleUiState()
@@ -792,6 +804,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         currentEditorInfo = info
         otpTypedThisSession = false
         isPasswordField = capFlags.has(CapabilityFlag.Password)
+        aiChainCount = 0
         aiJob?.cancel()
         isAiFresh = false
         aiLastContext = null
@@ -814,7 +827,10 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     override fun onPreeditEmptyStateUpdate(empty: Boolean) {
         barStateMachine.push(PreeditUpdated, PreeditEmpty to empty)
         preeditEmpty = empty
-        if (!empty) clearAiSuggestion()
+        if (!empty) {
+            aiChainCount = 0   // the user is typing again
+            clearAiSuggestion()
+        }
     }
 
     override fun onCandidateUpdate(data: CandidateListEvent.Data) {
@@ -824,6 +840,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     }
 
     override fun onSelectionUpdate(start: Int, end: Int) {
+        // a cursor change long after the last tapped suggestion is the user's own typing / editing
+        // (one commit causes several updates in quick succession, so allow a short window)
+        if (android.os.SystemClock.uptimeMillis() - lastAiCommitAt > 500) aiChainCount = 0
         if (start != end) { clearAiSuggestion(); return }
         scheduleAiPredict()
     }

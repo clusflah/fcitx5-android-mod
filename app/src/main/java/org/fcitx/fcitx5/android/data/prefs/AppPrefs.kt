@@ -159,6 +159,10 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             R.string.ai_predict_delay, "ai_predict_delay",
             50, 0, 1000, "ms", 10
         ) { aiPredictAuto.getValue() }
+        val aiPredictChainLimit = int(
+            R.string.ai_predict_chain_limit, "ai_predict_chain_limit",
+            2, 0, 10
+        ) { aiPredictAuto.getValue() }
         val showAiPredictButton =
             switch(R.string.show_ai_predict_button, "show_ai_predict_button", true)
         val showTranslateButton =
