@@ -142,9 +142,10 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             switch(R.string.ai_predict_auto, "ai_predict_auto", false, R.string.ai_predict_auto_summary)
         val otpCodeEnabled =
             switch(R.string.otp_code_enabled, "otp_code_enabled", false, R.string.otp_code_enabled_summary)
-        val otpAutoFill = switch(
-            R.string.otp_auto_fill, "otp_auto_fill", false, R.string.otp_auto_fill_summary
-        ) { otpCodeEnabled.getValue() }
+        val otpClipboard =
+            switch(R.string.otp_clipboard, "otp_clipboard", true, R.string.otp_clipboard_summary)
+        val otpAutoFill =
+            switch(R.string.otp_auto_fill, "otp_auto_fill", false, R.string.otp_auto_fill_summary)
         // ---- toolbar shortcuts: each one can be hidden ----
         val showUndoButton = switch(R.string.show_undo_button, "show_undo_button", true)
         val showRedoButton = switch(R.string.show_redo_button, "show_redo_button", true)
@@ -162,6 +163,10 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             switch(R.string.show_ai_predict_button, "show_ai_predict_button", true)
         val showTranslateButton =
             switch(R.string.show_translate_button, "show_translate_button", true)
+        val showPasswordManagerButton = switch(
+            R.string.show_password_manager_button, "show_password_manager_button", true,
+            R.string.show_password_manager_button_summary
+        )
         val showMoreButton = switch(
             R.string.show_more_button, "show_more_button", true, R.string.show_more_button_summary
         )

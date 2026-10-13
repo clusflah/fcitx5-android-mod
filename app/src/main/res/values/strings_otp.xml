@@ -2,8 +2,12 @@
 <resources>
     <string name="otp_code_enabled">SMS verification codes</string>
     <string name="otp_code_enabled_summary">Show the code from a new verification SMS on the toolbar; tap it to type. Needs the SMS permission. Codes stay on this phone and are never sent anywhere.</string>
+    <string name="otp_clipboard">Copied verification codes</string>
+    <string name="otp_clipboard_summary">When a 6–8 digit code is copied (e.g. the TOTP that Bitwarden copies after autofill), offer it on the toolbar like an SMS code</string>
     <string name="otp_auto_fill">Auto-fill verification codes</string>
-    <string name="otp_auto_fill_summary">When the current field looks like a code field, type a code received within the last minute automatically (once)</string>
+    <string name="otp_auto_fill_summary">When the current field looks like a code field, type a code received or copied within the last minute automatically (once)</string>
     <string name="otp_permission_granted">SMS permission granted; new verification codes will appear on the toolbar</string>
     <string name="otp_permission_denied">SMS permission denied</string>
+    <string name="show_password_manager_button">Show Bitwarden button in toolbar</string>
+    <string name="show_password_manager_button_summary">Opens Bitwarden, for apps where its autofill suggestions don\'t appear. Only shown when Bitwarden is installed.</string>
 </resources>

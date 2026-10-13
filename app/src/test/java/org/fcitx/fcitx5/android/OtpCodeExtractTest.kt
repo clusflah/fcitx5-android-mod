@@ -35,6 +35,16 @@ class OtpCodeExtractTest {
     }
 
     @Test
+    fun copiedCodes() {
+        assertEquals("123456", OtpCodeManager.fromClipboard("123456", true, 0)?.code)
+        assertEquals("123456", OtpCodeManager.fromClipboard(" 123 456 ", false, 0)?.code)
+        assertEquals("密码管理器", OtpCodeManager.fromClipboard("12345678", true, 0)?.source)
+        assertNull(OtpCodeManager.fromClipboard("12345", true, 0))       // too short
+        assertNull(OtpCodeManager.fromClipboard("13800138000", false, 0)) // phone number
+        assertNull(OtpCodeManager.fromClipboard("hunter2", true, 0))     // a password
+    }
+
+    @Test
     fun skipsAmountsDurationsAndCardTails() {
         // only numbers that are amounts / tails / durations besides the code
         assertEquals("2468", code("尾号5678的卡支付100元，验证码2468，30分钟内有效"))

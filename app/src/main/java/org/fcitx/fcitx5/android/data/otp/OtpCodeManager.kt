@@ -16,12 +16,30 @@ import android.os.Looper
 import android.provider.Telephony
 import android.view.inputmethod.EditorInfo
 
-data class OtpCode(val code: String, val source: String, val receivedAt: Long)
+/** [maxAgeMs]: how long the code is offered after [receivedAt] */
+data class OtpCode(
+    val code: String,
+    val source: String,
+    val receivedAt: Long,
+    val maxAgeMs: Long = OtpCodeManager.MAX_AGE_MS
+)
 
 object OtpCodeManager {
 
-    /** Codes older than this are not offered. */
+    /** SMS codes older than this are not offered. */
     const val MAX_AGE_MS = 5 * 60 * 1000L
+
+    /** Copied codes (TOTP from a password manager) rotate every 30 s, so offer them only briefly. */
+    const val CLIPBOARD_MAX_AGE_MS = 90 * 1000L
+
+    private val CLIPBOARD_CODE = Regex("[0-9]{6,8}")
+
+    /** A copied text that is just a 6–8 digit code ("123456" or "123 456"), as a code; else null. */
+    fun fromClipboard(text: String, sensitive: Boolean, copiedAt: Long): OtpCode? {
+        val digits = text.trim().replace(" ", "")
+        if (!CLIPBOARD_CODE.matches(digits)) return null
+        return OtpCode(digits, if (sensitive) "密码管理器" else "剪贴板", copiedAt, CLIPBOARD_MAX_AGE_MS)
+    }
 
     /** Auto-fill only uses codes this fresh. */
     const val AUTO_FILL_MAX_AGE_MS = 60 * 1000L

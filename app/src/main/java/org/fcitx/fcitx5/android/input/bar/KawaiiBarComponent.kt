@@ -10,6 +10,7 @@ import android.util.Size
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InlineSuggestion
 import android.view.inputmethod.InlineSuggestionsResponse
@@ -61,6 +62,7 @@ import org.fcitx.fcitx5.android.ui.main.SmsPermissionActivity
 import org.fcitx.fcitx5.android.data.ai.AiSuggest
 import org.fcitx.fcitx5.android.data.otp.OtpCode
 import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
+import org.fcitx.fcitx5.android.data.password.PasswordManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.fcitx.fcitx5.android.input.voice.VoicePushToTalk
@@ -150,25 +152,25 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     private var otpExpireJob: Job? = null
     private var otpTypedThisSession = false           // keep AI 联想 from sending the code anywhere
     private var currentEditorInfo: EditorInfo? = null
+    private val otpClipboard = prefs.keyboard.otpClipboard
+    private var clipboardOtp: OtpCode? = null         // 6–8 digit code just copied (e.g. Bitwarden TOTP)
 
-    /** Look up the newest code; with [autoFill], type it right away into an empty code field. */
+    private fun OtpCode.isFresh() = System.currentTimeMillis() - receivedAt < maxAgeMs
+
+    /**
+     * Look up the newest code from SMS and the clipboard; with [autoFill], type it right away into
+     * an empty code field.
+     */
     private fun refreshOtp(autoFill: Boolean) {
-        if (!otpCodeEnabled.getValue()) {
-            otpNeedsPermission = false
-            showOtp(null)
-            return
-        }
-        if (!OtpCodeManager.hasPermission(context)) {
-            otpNeedsPermission = !otpPromptDismissed
-            if (otpNeedsPermission) idleUi.otpCodeUi.showPermissionPrompt()
-            evalIdleUiState()
-            return
-        }
-        otpNeedsPermission = false
-        OtpCodeManager.ensureObserving(context)
+        val smsOn = otpCodeEnabled.getValue()
+        val smsAllowed = smsOn && OtpCodeManager.hasPermission(context)
+        otpNeedsPermission = smsOn && !smsAllowed && !otpPromptDismissed
+        if (smsAllowed) OtpCodeManager.ensureObserving(context)
         service.lifecycleScope.launch {
-            val code = withContext(Dispatchers.IO) { OtpCodeManager.latest(context) }
-                ?.takeUnless { OtpCodeManager.isHandled(it) }
+            val sms = if (smsAllowed) withContext(Dispatchers.IO) { OtpCodeManager.latest(context) } else null
+            val code = listOfNotNull(sms, clipboardOtp.takeIf { otpClipboard.getValue() })
+                .filter { it.isFresh() && !OtpCodeManager.isHandled(it) }
+                .maxByOrNull { it.receivedAt }
             val info = currentEditorInfo
             if (code != null && autoFill && otpAutoFill && info != null &&
                 OtpCodeManager.looksLikeCodeField(info) &&
@@ -186,9 +188,10 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         otpCode = code
         otpExpireJob?.cancel()
         otpExpireJob = null
+        if (code == null && otpNeedsPermission) idleUi.otpCodeUi.showPermissionPrompt()
         if (code != null) {
             idleUi.otpCodeUi.showCode(code.code, code.source)
-            val left = code.receivedAt + OtpCodeManager.MAX_AGE_MS - System.currentTimeMillis()
+            val left = code.receivedAt + code.maxAgeMs - System.currentTimeMillis()
             otpExpireJob = service.lifecycleScope.launch {
                 delay(left.coerceAtLeast(0L))
                 otpCode = null
@@ -218,7 +221,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
 
     /** Called whenever the editor settles (no composing text, no candidates). */
     private fun scheduleAiPredict() {
-        if (!aiPredictAuto.getValue() || aiBlocked || otpTypedThisSession || !preeditEmpty || !candidatesEmpty) return
+        if (!aiPredictAuto.getValue() || aiBlocked || otpTypedThisSession || isInlineSuggestionPresent ||
+            !preeditEmpty || !candidatesEmpty
+        ) return
         aiJob?.cancel()
         aiJob = service.lifecycleScope.launch {
             // short wait so the several selection updates of one commit collapse into one request;
@@ -271,6 +276,18 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     @Keep
     private val onClipboardUpdateListener =
         ClipboardManager.OnClipboardUpdateListener {
+            // a copied 6–8 digit code (e.g. the TOTP Bitwarden copies after autofill) goes to the code strip
+            if (otpClipboard.getValue()) {
+                val code = OtpCodeManager.fromClipboard(it.text, it.sensitive, it.timestamp)
+                if (code != null) {
+                    service.lifecycleScope.launch {
+                        clipboardOtp = code
+                        isClipboardFresh = false
+                        refreshOtp(autoFill = true)
+                    }
+                    return@OnClipboardUpdateListener
+                }
+            }
             if (!clipboardSuggestion.getValue()) return@OnClipboardUpdateListener
             service.lifecycleScope.launch {
                 if (it.text.isEmpty()) {
@@ -326,11 +343,13 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     private fun evalIdleUiState(fromUser: Boolean = false) {
         val newState = when {
             isVoiceStatus -> IdleUi.State.VoiceStatus
-            otpCode != null || otpNeedsPermission -> IdleUi.State.OtpCode
             numberRowState == NumberRowState.ForceShow -> IdleUi.State.NumberRow
+            otpCode != null -> IdleUi.State.OtpCode
+            // autofill (e.g. Bitwarden) on a login form beats AI 联想 and clipboard suggestions
+            isInlineSuggestionPresent -> IdleUi.State.InlineSuggestion
+            otpNeedsPermission -> IdleUi.State.OtpCode
             isAiFresh -> IdleUi.State.AiSuggestion
             isClipboardFresh -> IdleUi.State.Clipboard
-            isInlineSuggestionPresent -> IdleUi.State.InlineSuggestion
             isCapabilityFlagsPassword && !isKeyboardLayoutNumber && numberRowState != NumberRowState.ForceHide -> IdleUi.State.NumberRow
             /**
              * state matrix:
@@ -496,30 +515,36 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                         }
                     )
                 }
+                passwordManagerButton.setOnClickListener {
+                    if (!PasswordManager.launch(service)) context.toast("没有安装 Bitwarden")
+                }
                 moreButton.setOnClickListener {
                     windowManager.attachWindow(StatusAreaWindow())
                 }
             }
+            // the strip shows a code if there is one, otherwise the SMS permission prompt
             otpCodeUi.onCodeClick = {
-                if (otpNeedsPermission) {
+                val code = otpCode
+                if (code != null) {
+                    typeOtp(code)
+                } else if (otpNeedsPermission) {
                     otpNeedsPermission = false
                     service.startActivity(
                         android.content.Intent(service, SmsPermissionActivity::class.java)
                             .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                     )
                     evalIdleUiState()
-                } else {
-                    otpCode?.let { typeOtp(it) }
                 }
             }
             otpCodeUi.onDismiss = {
-                if (otpNeedsPermission) {
+                val code = otpCode
+                if (code != null) {
+                    OtpCodeManager.markHandled(code)
+                    showOtp(null)
+                } else if (otpNeedsPermission) {
                     otpPromptDismissed = true
                     otpNeedsPermission = false
                     evalIdleUiState()
-                } else {
-                    otpCode?.let { OtpCodeManager.markHandled(it) }
-                    showOtp(null)
                 }
             }
             aiSuggestionUi.onSuggestionClick = { text ->
@@ -666,11 +691,18 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             idleUi.privateMode(info.imeOptions.hasFlag(EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
         }
         isCapabilityFlagsPassword = toolbarNumRowOnPassword && capFlags.has(CapabilityFlag.Password)
-        // also keep AI 联想 out of verification-code fields
+        // also keep AI 联想 out of verification-code fields and account fields (email / URL)
+        val variation = info.inputType and InputType.TYPE_MASK_VARIATION
+        val isAccountField = (info.inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT &&
+                variation in setOf(
+                    InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+                    InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
+                    InputType.TYPE_TEXT_VARIATION_URI
+                )
         aiBlocked = capFlags.has(CapabilityFlag.Password) ||
                 (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                         info.imeOptions.hasFlag(EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING)) ||
-                OtpCodeManager.looksLikeCodeField(info)
+                OtpCodeManager.looksLikeCodeField(info) || isAccountField
         currentEditorInfo = info
         otpTypedThisSession = false
         aiJob?.cancel()
@@ -772,6 +804,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             idleUi.inlineSuggestionsBar.setScrollableViews(views)
         }
         isInlineSuggestionPresent = true
+        // a login form: drop AI 联想 so it neither hides the autofill chips nor sees the account
+        aiJob?.cancel()
+        isAiFresh = false
         evalIdleUiState()
         return true
     }

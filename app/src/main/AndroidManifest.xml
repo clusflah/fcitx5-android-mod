@@ -24,6 +24,8 @@
         <intent>
             <action android:name="android.view.InputMethod" />
         </intent>
+        <!-- Bitwarden: detect it and open it from the toolbar -->
+        <package android:name="com.x8bit.bitwarden" />
     </queries>
 
     <permission

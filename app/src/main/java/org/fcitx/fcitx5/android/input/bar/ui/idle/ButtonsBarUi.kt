@@ -11,6 +11,7 @@ import com.google.android.flexbox.AlignItems
 import com.google.android.flexbox.FlexboxLayout
 import com.google.android.flexbox.JustifyContent
 import org.fcitx.fcitx5.android.R
+import org.fcitx.fcitx5.android.data.password.PasswordManager
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.prefs.ManagedPreference
 import org.fcitx.fcitx5.android.data.theme.Theme
@@ -71,6 +72,13 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
     val translateButton = toolButton(R.drawable.ic_translate, prefs.showTranslateButton).apply {
         contentDescription = ctx.getString(R.string.ai_translate)
     }
+
+    /** opens Bitwarden; hidden when it isn't installed */
+    val passwordManagerButton =
+        toolButton(R.drawable.ic_password_key, prefs.showPasswordManagerButton).apply {
+            contentDescription = "Bitwarden"
+            if (!PasswordManager.isInstalled(ctx)) visibility = View.GONE
+        }
 
     val moreButton = toolButton(R.drawable.ic_baseline_more_horiz_24, prefs.showMoreButton).apply {
         contentDescription = ctx.getString(R.string.status_area)

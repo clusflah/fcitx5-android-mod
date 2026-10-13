@@ -31,6 +31,8 @@ import org.fcitx.fcitx5.android.daemon.FcitxDaemon
 import org.fcitx.fcitx5.android.data.ai.AiConfig
 import org.fcitx.fcitx5.android.data.ai.AiProvider
 import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
+import org.fcitx.fcitx5.android.data.password.PasswordManager
+import android.os.Build
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import splitties.dimensions.dp
 import java.net.HttpURLConnection
@@ -89,6 +91,7 @@ class SetupCheckActivity : AppCompatActivity() {
         checkPlugins()
         checkVoice()
         checkOtp()
+        checkPasswordManager()
         checkAi()
         checkLocalModel()
         checkRime()
@@ -206,6 +209,33 @@ class SetupCheckActivity : AppCompatActivity() {
             row(Status.Bad, "短信验证码", "已开启，但还没有读取短信的权限。", "允许读取短信") {
                 startActivity(Intent(this, SmsPermissionActivity::class.java))
             }
+        }
+    }
+
+    // ---------- Bitwarden 自动填充 ----------
+    private fun checkPasswordManager() {
+        if (!PasswordManager.isInstalled(this)) {
+            row(Status.Info, "Bitwarden", "未安装（不使用密码管理器可忽略）。")
+            return
+        }
+        val service = PasswordManager.autofillServicePackage(this)
+        if (service == PasswordManager.BITWARDEN) {
+            row(Status.Ok, "Bitwarden 自动填充", "已设为系统自动填充服务。")
+        } else {
+            row(Status.Warn, "Bitwarden 自动填充",
+                "系统自动填充服务" + (if (service == null) "未设置" else "不是 Bitwarden（当前：$service）") +
+                        "。在 Bitwarden → 设置 → 自动填充 中打开“自动填充服务”。", "打开 Bitwarden") {
+                PasswordManager.launch(this)
+            }
+        }
+        when {
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.R ->
+                row(Status.Info, "键盘内联建议", "需要 Android 11 及以上，这台手机只能用 Bitwarden 的弹出式自动填充。")
+            !AppPrefs.getInstance().keyboard.inlineSuggestions.getValue() ->
+                row(Status.Warn, "键盘内联建议", "已关闭，Bitwarden 的账号建议不会显示在工具栏上（设置 → 虚拟键盘 → 内联建议）。")
+            else ->
+                row(Status.Info, "键盘内联建议",
+                    "已开启。请同时在 Bitwarden → 设置 → 自动填充 中打开“使用内联自动填充”，账号建议才会出现在工具栏上。")
         }
     }
 
