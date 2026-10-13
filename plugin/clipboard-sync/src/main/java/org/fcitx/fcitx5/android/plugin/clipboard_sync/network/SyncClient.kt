@@ -26,7 +26,8 @@ object SyncClient {
         coerceInputValues = true 
     }
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
+        // short connect timeout: an unreachable server should fail fast so the next one can be tried
+        .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
@@ -200,6 +201,7 @@ object SyncClient {
         return null
     }
 
+    @Throws(IOException::class)
     fun putClipboard(
         context: Context,
         serverUrl: String, 
@@ -262,6 +264,13 @@ object SyncClient {
                 )
                 uploadJson(jsonUrl, credential, data)
             }
+        } catch (e: java.io.FileNotFoundException) {
+            // the local file is gone; not a server problem
+            Log.e(TAG, "[Push] Local file not readable", e)
+        } catch (e: IOException) {
+            // let the caller switch to another server
+            Log.e(TAG, "[Push] Error", e)
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "[Push] Error", e)
         }
@@ -279,6 +288,7 @@ object SyncClient {
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 Log.e(TAG, "[Push] Failed: ${response.code} ${response.message}")
+                throw IOException("Upload failed: HTTP ${response.code}")
             } else {
                 Log.d(TAG, "[Push] Success")
             }

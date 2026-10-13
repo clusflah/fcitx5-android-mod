@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import androidx.preference.PreferenceManager
 import kotlinx.coroutines.*
@@ -18,13 +19,18 @@ import org.fcitx.fcitx5.android.common.FcitxPluginService
 import org.fcitx.fcitx5.android.common.ipc.FcitxRemoteConnection
 import org.fcitx.fcitx5.android.common.ipc.IClipboardEntryTransformer
 import org.fcitx.fcitx5.android.common.ipc.bindFcitxRemoteService
+import org.fcitx.fcitx5.android.plugin.clipboard_sync.network.ServerStore
 import org.fcitx.fcitx5.android.plugin.clipboard_sync.network.SyncClient
+import org.fcitx.fcitx5.android.plugin.clipboard_sync.network.SyncServer
+import java.io.IOException
 
 class MainService : FcitxPluginService() {
 
     companion object {
         private const val TAG = "FcitxClipboardSync"
         private const val DEFAULT_INTERVAL = 3 // seconds
+        /** Retry higher-priority servers this often, e.g. to switch back to the LAN address at home. */
+        private const val PREFERRED_RECHECK_MS = 5 * 60 * 1000L
     }
 
     private lateinit var connection: FcitxRemoteConnection
@@ -33,7 +39,9 @@ class MainService : FcitxPluginService() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private var lastETag: String? = null
+    /** ETag per server id: each address may be a different HTTP endpoint */
+    private val etags = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private var lastPreferredCheck = 0L
     private val powerManager by lazy { getSystemService(Context.POWER_SERVICE) as PowerManager }
     
     private val screenReceiver = object : BroadcastReceiver() {
@@ -128,10 +136,44 @@ class MainService : FcitxPluginService() {
     }
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "quick_sync" || key == "sync_interval") {
+        if (key == ServerStore.KEY_SERVERS) {
+            // servers edited: start over from the top of the list
+            etags.clear()
+            lastPreferredCheck = 0L
+        }
+        if (key == "quick_sync" || key == "sync_interval" || key == ServerStore.KEY_SERVERS) {
             Log.d(TAG, "Preference changed: $key, restarting sync")
             startPeriodicSync()
         }
+    }
+
+    /**
+     * Run [block] against the server in use. If it fails with an IOException, try the other servers in
+     * priority order and keep using the first one that works. Every [PREFERRED_RECHECK_MS] the list is
+     * walked from the top again, so a higher-priority server is picked up once it is reachable again.
+     * Returns null when no server is configured; throws the last error when all of them fail.
+     */
+    private fun <T> withFailover(block: (SyncServer) -> T): T? {
+        val servers = ServerStore.load(prefs).filter { it.url.isNotBlank() }
+        if (servers.isEmpty()) return null
+        val active = servers.find { it.id == ServerStore.activeId(prefs) }
+        val now = SystemClock.elapsedRealtime()
+        val recheckPreferred = now - lastPreferredCheck >= PREFERRED_RECHECK_MS
+        if (recheckPreferred) lastPreferredCheck = now
+        val order = if (active == null || recheckPreferred) servers else listOf(active) + (servers - active)
+        var lastError: IOException? = null
+        for (server in order) {
+            try {
+                val result = block(server)
+                if (server.id != active?.id) Log.i(TAG, "[Failover] Now using ${server.label}")
+                ServerStore.setActive(prefs, server.id)
+                return result
+            } catch (e: IOException) {
+                Log.w(TAG, "[Failover] ${server.label} failed: ${e.message}")
+                lastError = e
+            }
+        }
+        throw lastError!!
     }
 
     private fun uploadToCloud(text: String) {
@@ -139,17 +181,13 @@ class MainService : FcitxPluginService() {
             Log.d(TAG, "[Push] Sync disabled, skipping upload")
             return
         }
-        val url = prefs.getString("server_address", "") ?: ""
-        val user = prefs.getString("username", "") ?: ""
-        val pass = prefs.getString("password", "") ?: ""
-
-        if (url.isBlank()) return
-        
         scope.launch {
             try {
-                SyncClient.putClipboard(this@MainService, url, user, pass, text)
+                withFailover { s ->
+                    SyncClient.putClipboard(this@MainService, s.url, s.username, s.password, text)
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "[Push] Failed to upload clipboard", e)
+                Log.e(TAG, "[Push] Failed to upload clipboard on every server", e)
             }
         }
     }
@@ -193,35 +231,24 @@ class MainService : FcitxPluginService() {
     }
 
     private suspend fun checkRemoteClipboard() {
-        val url = prefs.getString("server_address", "") ?: ""
-        val user = prefs.getString("username", "") ?: ""
-        val pass = prefs.getString("password", "") ?: ""
-
-        if (url.isBlank()) return
-
         val downloadPath = prefs.getString("download_path", null)
         val downloadUri = if (downloadPath != null) Uri.parse(downloadPath) else null
 
         try {
-            // 1. Fetch metadata (JSON) only
-            val (partialData, newETag) = SyncClient.fetchClipboardJson(url, user, pass, lastETag)
-            
-            if (newETag != null) {
-                lastETag = newETag
-            }
-            
-            if (partialData == null) {
+            // null: no server configured, not modified, or already seen
+            val data = withFailover { s ->
+                // 1. Fetch metadata (JSON) only
+                val (partialData, newETag) = SyncClient.fetchClipboardJson(s.url, s.username, s.password, etags[s.id])
+                if (newETag != null) etags[s.id] = newETag
                 // 304 Not Modified
-                return
-            }
+                if (partialData == null) return@withFailover null
 
-            // 2. Check if hash matches last known remote hash to avoid repeated downloads
-            if (partialData.hash.isNotEmpty() && partialData.hash == lastRemoteHash) {
-                return
-            }
+                // 2. Check if hash matches last known remote hash to avoid repeated downloads
+                if (partialData.hash.isNotEmpty() && partialData.hash == lastRemoteHash) return@withFailover null
 
-            // 3. Download full details (files) if changed
-            val data = SyncClient.downloadDetails(this, url, user, pass, partialData, downloadUri)
+                // 3. Download full details (files) if changed, from the same server
+                SyncClient.downloadDetails(this, s.url, s.username, s.password, partialData, downloadUri)
+            } ?: return
 
             // 4. Update hash cache
             if (data.hash.isNotEmpty()) {

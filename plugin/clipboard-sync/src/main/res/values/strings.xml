@@ -23,7 +23,10 @@
     <string name="download_path">下载目录</string>
     <string name="download_path_summary">点击选择文件下载保存位置</string>
     <string name="download_path_not_set">未设置</string>
-    <string name="clicktest">点击测试服务器可用性</string>
+    <string name="clicktest">依次测试所有服务器</string>
+    <string name="servers_title">服务器</string>
+    <string name="servers_summary">按优先级排列。当前服务器连不上时，会自动切换到下一个；每 5 分钟会重新尝试排在前面的服务器。</string>
+    <string name="other_settings">其他设置</string>
     
     <string name="quick_sync_tile_label">剪贴板同步</string>
 </resources>

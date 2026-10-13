@@ -2,13 +2,17 @@ package org.fcitx.fcitx5.android.plugin.clipboard_sync.ui
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
+import android.text.InputType
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -19,13 +23,17 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.preference.EditTextPreference
 import androidx.preference.Preference
+import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.fcitx.fcitx5.android.plugin.clipboard_sync.R
+import org.fcitx.fcitx5.android.plugin.clipboard_sync.network.ServerStore
 import org.fcitx.fcitx5.android.plugin.clipboard_sync.network.SyncClient
+import org.fcitx.fcitx5.android.plugin.clipboard_sync.network.SyncServer
+import java.util.UUID
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -84,31 +92,31 @@ class SettingsActivity : AppCompatActivity() {
                 val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 requireContext().contentResolver.takePersistableUriPermission(it, flags)
-                
-                preferenceManager.sharedPreferences?.edit()?.putString("download_path", it.toString())?.apply()
+
+                prefs.edit().putString("download_path", it.toString()).apply()
                 findPreference<Preference>("download_path")?.summary = readablePath(it.toString())
             }
         }
 
+        private val prefs get() = preferenceManager.sharedPreferences!!
+        private var servers = mutableListOf<SyncServer>()
+
+        /** MainService switches the active server; reflect it while the page is open */
+        private val activeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == ServerStore.KEY_ACTIVE) renderServers()
+        }
+
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.preferences, rootKey)
-
-            findPreference<EditTextPreference>("password")?.apply {
-                setOnBindEditTextListener { editText ->
-                    editText.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-                }
-                // mask the value, but still show whether one is set
-                summaryProvider = Preference.SummaryProvider<EditTextPreference> { p ->
-                    if (p.text.isNullOrEmpty()) getString(R.string.download_path_not_set) else "••••••"
-                }
-            }
+            servers = ServerStore.load(prefs).toMutableList()
+            renderServers()
 
             findPreference<EditTextPreference>("sync_interval")?.setOnBindEditTextListener { editText ->
-                editText.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                editText.inputType = InputType.TYPE_CLASS_NUMBER
             }
 
             val downloadPref = findPreference<Preference>("download_path")
-            val savedUri = preferenceManager.sharedPreferences?.getString("download_path", null)
+            val savedUri = prefs.getString("download_path", null)
             if (savedUri != null) {
                 downloadPref?.summary = readablePath(savedUri)
             }
@@ -118,33 +126,158 @@ class SettingsActivity : AppCompatActivity() {
             }
 
             findPreference<Preference>("test_connection")?.setOnPreferenceClickListener {
-                testConnection()
+                testAll()
                 true
             }
         }
 
-        private fun testConnection() {
-            val address = preferenceManager.sharedPreferences?.getString("server_address", "") ?: ""
-            val username = preferenceManager.sharedPreferences?.getString("username", "") ?: ""
-            val password = preferenceManager.sharedPreferences?.getString("password", "") ?: ""
+        override fun onResume() {
+            super.onResume()
+            prefs.registerOnSharedPreferenceChangeListener(activeListener)
+            renderServers()
+        }
 
-            if (address.isBlank()) {
+        override fun onPause() {
+            prefs.unregisterOnSharedPreferenceChangeListener(activeListener)
+            super.onPause()
+        }
+
+        private fun saveServers() {
+            ServerStore.save(prefs, servers)
+            renderServers()
+        }
+
+        private fun renderServers() {
+            val category = findPreference<PreferenceCategory>("servers") ?: return
+            category.removeAll()
+            val activeId = ServerStore.activeId(prefs)
+            servers.forEachIndexed { i, s ->
+                category.addPreference(Preference(requireContext()).apply {
+                    isPersistent = false
+                    isIconSpaceReserved = false
+                    isSingleLineTitle = false
+                    title = "${i + 1}. ${s.label}" + if (s.id == activeId) "　✅ 正在使用" else ""
+                    summary = s.url + if (s.username.isNotBlank()) "\n用户：${s.username}" else ""
+                    setOnPreferenceClickListener { editServer(s); true }
+                })
+            }
+            category.addPreference(Preference(requireContext()).apply {
+                isPersistent = false
+                isIconSpaceReserved = false
+                title = "＋ 添加服务器"
+                summary = if (servers.isEmpty()) getString(R.string.server_address_summary)
+                else "可以添加同一服务的其他地址（如局域网和公网），连不上时自动切换"
+                setOnPreferenceClickListener { editServer(null); true }
+            })
+        }
+
+        private fun editServer(server: SyncServer?) {
+            val ctx = requireContext()
+            val pad = (20 * resources.displayMetrics.density).toInt()
+            fun input(hint: String, value: String, type: Int = InputType.TYPE_CLASS_TEXT) = EditText(ctx).apply {
+                this.hint = hint
+                setText(value)
+                inputType = type
+            }
+            val name = input("名称（如：家里局域网）", server?.name.orEmpty())
+            val url = input(
+                getString(R.string.server_address_summary), server?.url.orEmpty(),
+                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            )
+            val user = input(getString(R.string.username), server?.username.orEmpty())
+            val pass = input(
+                getString(R.string.password), server?.password.orEmpty(),
+                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            )
+            val box = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(pad, pad / 2, pad, 0)
+                listOf(name, url, user, pass).forEach { addView(it) }
+            }
+            val dialog = AlertDialog.Builder(ctx)
+                .setTitle(if (server == null) "添加服务器" else "编辑服务器")
+                .setView(ScrollView(ctx).apply { addView(box) })
+                .setPositiveButton("保存", null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setNeutralButton(if (server == null) "测试" else "更多", null)
+                .create()
+
+            fun current() = SyncServer(
+                id = server?.id ?: UUID.randomUUID().toString(),
+                name = name.text.toString().trim(),
+                url = url.text.toString().trim(),
+                username = user.text.toString().trim(),
+                password = pass.text.toString()
+            )
+
+            dialog.setOnShowListener {
+                // replace the default listeners so the dialog stays open on validation errors / tests
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val s = current()
+                    if (s.url.isBlank()) {
+                        Toast.makeText(ctx, R.string.please_set_server_address, Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+                    val i = servers.indexOfFirst { it.id == s.id }
+                    if (i >= 0) servers[i] = s else servers.add(s)
+                    saveServers()
+                    dialog.dismiss()
+                }
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                    if (server == null) testOne(current())
+                    else serverMenu(server, dialog) { testOne(current()) }
+                }
+            }
+            dialog.show()
+        }
+
+        private fun serverMenu(server: SyncServer, editDialog: AlertDialog, test: () -> Unit) {
+            AlertDialog.Builder(requireContext())
+                .setItems(arrayOf("测试连接", "上移（优先使用）", "下移", "删除")) { _, which ->
+                    val i = servers.indexOfFirst { it.id == server.id }
+                    when (which) {
+                        0 -> {
+                            test()
+                            return@setItems
+                        }
+                        1 -> if (i > 0) servers.add(i - 1, servers.removeAt(i))
+                        2 -> if (i in 0 until servers.lastIndex) servers.add(i + 1, servers.removeAt(i))
+                        3 -> {
+                            AlertDialog.Builder(requireContext())
+                                .setMessage("删除服务器“${server.label}”？")
+                                .setPositiveButton(android.R.string.ok) { _, _ ->
+                                    servers.removeAll { it.id == server.id }
+                                    saveServers()
+                                    editDialog.dismiss()
+                                }
+                                .setNegativeButton(android.R.string.cancel, null)
+                                .show()
+                            return@setItems
+                        }
+                    }
+                    saveServers()
+                    editDialog.dismiss()
+                }
+                .show()
+        }
+
+        private fun testOne(server: SyncServer) {
+            if (server.url.isBlank()) {
                 Toast.makeText(context, R.string.please_set_server_address, Toast.LENGTH_SHORT).show()
                 return
             }
-
             val progressDialog = AlertDialog.Builder(context)
                 .setTitle(R.string.testing_connection)
-                .setMessage(getString(R.string.connecting_to, address))
+                .setMessage(getString(R.string.connecting_to, server.url))
                 .setCancelable(false)
                 .create()
             progressDialog.show()
 
             CoroutineScope(Dispatchers.IO).launch {
-                val result = SyncClient.testConnection(address, username, password)
-                
+                val result = SyncClient.testConnection(server.url, server.username, server.password)
                 withContext(Dispatchers.Main) {
                     progressDialog.dismiss()
+                    if (!isAdded) return@withContext
                     if (result.isSuccess) {
                         Toast.makeText(context, R.string.connection_success, Toast.LENGTH_SHORT).show()
                     } else {
@@ -154,6 +287,39 @@ class SettingsActivity : AppCompatActivity() {
                             .setPositiveButton(android.R.string.ok, null)
                             .show()
                     }
+                }
+            }
+        }
+
+        /** Test every server in priority order and list the results. */
+        private fun testAll() {
+            val list = servers.filter { it.url.isNotBlank() }
+            if (list.isEmpty()) {
+                Toast.makeText(context, R.string.please_set_server_address, Toast.LENGTH_SHORT).show()
+                return
+            }
+            val progressDialog = AlertDialog.Builder(context)
+                .setTitle(R.string.testing_connection)
+                .setMessage("共 ${list.size} 个服务器…")
+                .setCancelable(false)
+                .create()
+            progressDialog.show()
+
+            val unknown = getString(R.string.unknown_error)
+            CoroutineScope(Dispatchers.IO).launch {
+                val lines = list.mapIndexed { i, s ->
+                    val r = SyncClient.testConnection(s.url, s.username, s.password)
+                    "${i + 1}. ${s.label}：" +
+                            if (r.isSuccess) "✅ 连接成功" else "❌ " + (r.exceptionOrNull()?.message ?: unknown)
+                }
+                withContext(Dispatchers.Main) {
+                    progressDialog.dismiss()
+                    if (!isAdded) return@withContext
+                    AlertDialog.Builder(context)
+                        .setTitle(R.string.test_connection)
+                        .setMessage(lines.joinToString("\n\n"))
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
                 }
             }
         }
