@@ -35,6 +35,8 @@ import org.fcitx.fcitx5.android.data.ai.AiConfig
 import org.fcitx.fcitx5.android.data.ai.AiPendingCommit
 import org.fcitx.fcitx5.android.data.ai.AiPrompt
 import org.fcitx.fcitx5.android.data.ai.AiProvider
+import org.fcitx.fcitx5.android.data.ai.AiTranslate
+import org.fcitx.fcitx5.android.data.ai.TranslateEngine
 import org.fcitx.fcitx5.android.utils.clipboardManager
 import splitties.dimensions.dp
 
@@ -46,20 +48,10 @@ class AiAssistActivity : AppCompatActivity() {
         const val EXTRA_TEXT = "text"
         const val MODE_TRANSLATE = "translate"
 
-        /** Han characters without kana → treat as Chinese. */
-        fun looksChinese(text: String): Boolean {
-            var han = 0; var letters = 0; var kana = 0
-            text.forEach { c ->
-                when (Character.UnicodeScript.of(c.code)) {
-                    Character.UnicodeScript.HAN -> { han++; letters++ }
-                    Character.UnicodeScript.HIRAGANA, Character.UnicodeScript.KATAKANA -> { kana++; letters++ }
-                    else -> if (Character.isLetter(c)) letters++
-                }
-            }
-            if (letters == 0 || kana > 0) return false
-            return han * 3 >= letters
-        }
     }
+
+    /** translate mode: the spinner picks the translation engine instead of the assistant's provider */
+    private val translateEngines by lazy { TranslateEngine.all }
 
     private val translateMode by lazy { intent.getStringExtra(EXTRA_MODE) == MODE_TRANSLATE }
     private lateinit var directionLabel: TextView
@@ -96,12 +88,19 @@ class AiAssistActivity : AppCompatActivity() {
         val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         top.addView(TextView(this).apply { text = "模型"; setPadding(0, 0, dp(8), 0) })
         providerSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item,
-                AiProvider.entries.map { it.label })
-            setSelection(AiConfig.provider(context).ordinal)
+            if (translateMode) {
+                adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item,
+                    translateEngines.map { it.label })
+                setSelection(translateEngines.indexOfFirst { it.id == AiTranslate.engine(context).id }.coerceAtLeast(0))
+            } else {
+                adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item,
+                    AiProvider.entries.map { it.label })
+                setSelection(AiConfig.provider(context).ordinal)
+            }
             onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
-                    AiConfig.setProvider(context, AiProvider.entries[pos])
+                    if (translateMode) AiTranslate.setEngine(context, translateEngines[pos])
+                    else AiConfig.setProvider(context, AiProvider.entries[pos])
                 }
                 override fun onNothingSelected(p: AdapterView<*>?) {}
             }
@@ -119,7 +118,7 @@ class AiAssistActivity : AppCompatActivity() {
         if (translateMode) promptBar.visibility = View.GONE
         directionLabel = TextView(this).apply {
             textSize = 13f; setPadding(0, dp(6), 0, 0)
-            text = "自动识别：中文 → 英文，外文 → 中文"
+            text = AiTranslate.directionLabel(context, "")
             visibility = if (translateMode) View.VISIBLE else View.GONE
         }
         root.addView(directionLabel)
@@ -140,11 +139,7 @@ class AiAssistActivity : AppCompatActivity() {
                 override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                 override fun afterTextChanged(e: android.text.Editable?) {
                     val t = e?.toString().orEmpty()
-                    directionLabel.text = when {
-                        t.isBlank() -> "自动识别：中文 → 英文，外文 → 中文"
-                        looksChinese(t) -> "中文 → 英文"
-                        else -> "外文 → 中文"
-                    }
+                    directionLabel.text = AiTranslate.directionLabel(this@AiAssistActivity, t)
                     // translate automatically after the user stops typing
                     debounceJob?.cancel()
                     if (t.isBlank()) return
@@ -255,13 +250,7 @@ class AiAssistActivity : AppCompatActivity() {
             if (!auto) Toast.makeText(this@AiAssistActivity, "内容为空", Toast.LENGTH_SHORT).show()
             return
         }
-        val provider = AiProvider.entries[providerSpinner.selectedItemPosition]
-        val prompt = if (translateMode) {
-            val target = if (looksChinese(text)) "English" else "Simplified Chinese (简体中文)"
-            "You are a professional translator. Translate the user's text into $target. " +
-                    "Keep the meaning, tone and formatting; keep names, numbers, URLs and code unchanged. " +
-                    "Output only the translation, with no explanations, quotes or notes."
-        } else prompts.find { it.id == promptId }?.content.orEmpty()
+        val prompt = if (translateMode) "" else prompts.find { it.id == promptId }?.content.orEmpty()
         val system: String
         val user: String
         if (prompt.contains("{{input}}")) {
@@ -274,11 +263,16 @@ class AiAssistActivity : AppCompatActivity() {
         progress.visibility = View.VISIBLE
         job = lifecycleScope.launch {
             try {
-                val reply = AiClient.chat(
-                    provider, AiConfig.baseUrl(this@AiAssistActivity, provider),
-                    AiConfig.apiKey(this@AiAssistActivity, provider),
-                    AiConfig.model(this@AiAssistActivity, provider), system, user
-                )
+                val ctx = this@AiAssistActivity
+                val reply = if (translateMode) {
+                    AiTranslate.translate(ctx, text, translateEngines[providerSpinner.selectedItemPosition])
+                } else {
+                    val provider = AiProvider.entries[providerSpinner.selectedItemPosition]
+                    AiClient.chat(
+                        provider, AiConfig.baseUrl(ctx, provider), AiConfig.apiKey(ctx, provider),
+                        AiConfig.model(ctx, provider), system, user
+                    )
+                }
                 output.hint = ""
                 output.setText(reply)
                 resultBox.visibility = View.VISIBLE

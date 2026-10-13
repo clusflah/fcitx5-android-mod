@@ -24,12 +24,16 @@ import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.data.ai.AiConfig
 import org.fcitx.fcitx5.android.data.ai.AiPrompt
 import org.fcitx.fcitx5.android.data.ai.AiProvider
+import org.fcitx.fcitx5.android.data.ai.AiTranslate
+import org.fcitx.fcitx5.android.data.ai.TranslateEngine
 import splitties.dimensions.dp
 
 class AiSettingsActivity : AppCompatActivity() {
 
     private lateinit var providerSpinner: Spinner
     private lateinit var predictSpinner: Spinner
+    private lateinit var translateSpinner: Spinner
+    private lateinit var targetSpinner: Spinner
     private lateinit var fields: Map<AiProvider, Triple<EditText, EditText, EditText>>
     private lateinit var promptList: LinearLayout
     private var prompts = mutableListOf<AiPrompt>()
@@ -72,6 +76,28 @@ class AiSettingsActivity : AppCompatActivity() {
             textSize = 12f
             text = "联想要求快，留空时默认使用该服务最快的模型；助手默认使用最好的模型。" +
                     "本地模型留空时与下面填写的模型相同。"
+        })
+
+        // ---- 中外互译 ----
+        box.addView(header("中外互译"))
+        box.addView(TextView(this).apply { text = "翻译使用"; textSize = 13f })
+        translateSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item,
+                TranslateEngine.all.map { it.label })
+            setSelection(TranslateEngine.all.indexOfFirst { it.id == AiTranslate.engine(context).id }.coerceAtLeast(0))
+        }
+        box.addView(translateSpinner)
+        box.addView(TextView(this).apply { text = "中文翻译成"; textSize = 13f; setPadding(0, dp(8), 0, 0) })
+        targetSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, AiTranslate.TARGETS)
+            setSelection(AiTranslate.TARGETS.indexOf(AiTranslate.target(context)).coerceAtLeast(0))
+        }
+        box.addView(targetSpinner)
+        box.addView(TextView(this).apply {
+            textSize = 12f
+            text = "外文一律翻译成简体中文。Index-Translate 是 B 站开源的翻译模型，免费、不需要 API Key；" +
+                    "翻译时文字会发送到 B 站的服务器，不可用时自动改用默认模型。" +
+                    "工具栏“文A”：点按打开翻译窗口，长按把输入框里的文字（或选中的文字）直接替换成译文。"
         })
 
         fields = AiProvider.entries.associateWith { p ->
@@ -165,6 +191,8 @@ class AiSettingsActivity : AppCompatActivity() {
         }
         shownPredictProvider?.let { predictModels[it] = predictModelField.text.toString() }
         predictModels.forEach { (p, m) -> AiConfig.setPredictModel(this, p, m) }
+        AiTranslate.setEngine(this, TranslateEngine.all[translateSpinner.selectedItemPosition])
+        AiTranslate.setTarget(this, AiTranslate.TARGETS[targetSpinner.selectedItemPosition])
         AiConfig.savePrompts(this, prompts)
     }
 

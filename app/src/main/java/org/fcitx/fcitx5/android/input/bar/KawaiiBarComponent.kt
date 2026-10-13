@@ -61,6 +61,7 @@ import org.fcitx.fcitx5.android.input.phrase.AiPredictWindow
 import org.fcitx.fcitx5.android.ui.main.AiAssistActivity
 import org.fcitx.fcitx5.android.ui.main.SmsPermissionActivity
 import org.fcitx.fcitx5.android.data.ai.AiSuggest
+import org.fcitx.fcitx5.android.data.ai.AiTranslate
 import org.fcitx.fcitx5.android.data.otp.OtpCode
 import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
 import org.fcitx.fcitx5.android.data.password.PasswordManager
@@ -223,6 +224,65 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         refreshOtp(autoFill = false)
     }
 
+    // ---------- 就地翻译: long-press 文A ----------
+    private var translateStatus: String? = null
+    private var translateJob: Job? = null
+    private var isPasswordField = false
+
+    private fun showTranslateStatus(text: String?) {
+        translateStatus = text
+        if (text != null) idleUi.voiceStatus.text = text
+        evalIdleUiState()
+    }
+
+    /**
+     * Replace the selection, or the whole field when nothing is selected, with its translation
+     * (Chinese → the target language in settings, anything else → Chinese). Nothing is replaced if
+     * the field changed while waiting for the translation.
+     */
+    private fun translateInPlace() {
+        if (isPasswordField) { context.toast("密码框里不翻译"); return }
+        if (!preeditEmpty) { context.toast("请先完成正在输入的内容"); return }
+        val ic = service.currentInputConnection ?: return
+        val info = currentEditorInfo
+        val selected = runCatching { ic.getSelectedText(0)?.toString() }.getOrNull().orEmpty()
+        val before = if (selected.isEmpty())
+            runCatching { ic.getTextBeforeCursor(MAX_TRANSLATE, 0)?.toString() }.getOrNull().orEmpty() else ""
+        val after = if (selected.isEmpty())
+            runCatching { ic.getTextAfterCursor(MAX_TRANSLATE, 0)?.toString() }.getOrNull().orEmpty() else ""
+        val text = selected.ifEmpty { before + after }
+        if (text.isBlank()) { context.toast("输入框里没有要翻译的文字"); return }
+        translateJob?.cancel()
+        clearAiSuggestion()
+        val engine = AiTranslate.engine(context)
+        showTranslateStatus("翻译中… → ${AiTranslate.targetFor(context, text)}（${engine.label}）")
+        translateJob = service.lifecycleScope.launch {
+            try {
+                val result = AiTranslate.translate(context, text, engine)
+                val ic2 = service.currentInputConnection
+                val unchanged = ic2 != null && currentEditorInfo === info && runCatching {
+                    if (selected.isNotEmpty()) ic2.getSelectedText(0)?.toString() == selected
+                    else ic2.getTextBeforeCursor(MAX_TRANSLATE, 0)?.toString().orEmpty() == before &&
+                            ic2.getTextAfterCursor(MAX_TRANSLATE, 0)?.toString().orEmpty() == after
+                }.getOrDefault(false)
+                if (!unchanged) {
+                    context.toast("输入框内容已变化，没有替换")
+                    return@launch
+                }
+                ic2!!.beginBatchEdit()
+                if (selected.isEmpty()) ic2.deleteSurroundingText(before.length, after.length)
+                ic2.commitText(result, 1)
+                ic2.endBatchEdit()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                context.toast("翻译失败：" + (e.message ?: e.javaClass.simpleName))
+            } finally {
+                showTranslateStatus(null)
+            }
+        }
+    }
+
     /** Called whenever the editor settles (no composing text, no candidates). */
     private fun scheduleAiPredict() {
         if (!aiPredictAuto.getValue() || aiBlocked || otpTypedThisSession || isInlineSuggestionPresent ||
@@ -352,7 +412,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
 
     private fun evalIdleUiState(fromUser: Boolean = false) {
         val newState = when {
-            isVoiceStatus -> IdleUi.State.VoiceStatus
+            isVoiceStatus || translateStatus != null -> IdleUi.State.VoiceStatus
             numberRowState == NumberRowState.ForceShow -> IdleUi.State.NumberRow
             otpCode != null -> IdleUi.State.OtpCode
             // autofill (e.g. Bitwarden) on a login form beats AI 联想 and clipboard suggestions
@@ -498,6 +558,10 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 }
                 aiPredictButton.setOnLongClickListener {
                     windowManager.attachWindow(AiPredictWindow())
+                    true
+                }
+                translateButton.setOnLongClickListener {
+                    translateInPlace()
                     true
                 }
                 translateButton.setOnClickListener {
@@ -727,6 +791,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 OtpCodeManager.looksLikeCodeField(info) || isAccountField
         currentEditorInfo = info
         otpTypedThisSession = false
+        isPasswordField = capFlags.has(CapabilityFlag.Password)
         aiJob?.cancel()
         isAiFresh = false
         aiLastContext = null
@@ -845,6 +910,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
 
     companion object {
         const val HEIGHT = 40
+
+        /** longest text (each side of the cursor) that in-place translation reads from the field */
+        private const val MAX_TRANSLATE = 5000
     }
 
     fun onKeyboardLayoutSwitched(isNumber: Boolean) {

@@ -99,6 +99,19 @@ object AiClient {
         }
     }
 
+    /** A single user message to an OpenAI-compatible endpoint that needs no API key (Index-Translate). */
+    suspend fun chatKeyless(baseUrl: String, model: String, userText: String): String =
+        withContext(Dispatchers.IO) {
+            val body = JSONObject()
+                .put("model", model)
+                .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", userText)))
+                .put("stream", false)
+                .put("temperature", 0)
+            post("${baseUrl.trim().trimEnd('/')}/chat/completions", body, emptyMap())
+                .getJSONArray("choices").getJSONObject(0)
+                .getJSONObject("message").optString("content").trim()
+        }
+
     private fun post(url: String, body: JSONObject, headers: Map<String, String>): JSONObject {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
