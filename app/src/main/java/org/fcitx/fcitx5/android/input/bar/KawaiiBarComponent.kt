@@ -31,6 +31,7 @@ import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.core.CapabilityFlag
 import org.fcitx.fcitx5.android.core.CapabilityFlags
 import org.fcitx.fcitx5.android.core.FcitxEvent.CandidateListEvent
+import org.fcitx.fcitx5.android.data.clipboard.ClipboardLink
 import org.fcitx.fcitx5.android.data.clipboard.ClipboardManager
 import org.fcitx.fcitx5.android.data.clipboard.db.ClipboardEntry
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
@@ -123,6 +124,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     private var clipboardTimeoutJob: Job? = null
 
     private var isClipboardFresh: Boolean = false
+
+    /** http(s) link in the clipboard suggestion, opened by its "打开链接" button */
+    private var clipboardLink: String? = null
 
     // ---------- AI 联想 (auto mode) ----------
     private val aiPredictAuto = prefs.keyboard.aiPredictAuto
@@ -297,6 +301,12 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                         ClipboardEntry.BULLET.repeat(min(42, it.text.length))
                     } else {
                         it.text.take(42)
+                    }
+                    // "打开链接" for a copied http(s) link; never for sensitive entries (e.g. passwords)
+                    clipboardLink = if (it.sensitive) null else ClipboardLink.find(it.text)
+                    idleUi.clipboardUi.linkView.apply {
+                        text = clipboardLink?.let { url -> ClipboardLink.host(url) }
+                        visibility = if (clipboardLink != null) View.VISIBLE else View.GONE
                     }
                     isClipboardFresh = true
                     launchClipboardTimeoutJob()
@@ -568,6 +578,18 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                         AppUtil.launchClipboardEdit(context, it.id, true)
                     }
                     true
+                }
+            }
+            clipboardUi.linkView.setOnClickListener {
+                val url = clipboardLink ?: return@setOnClickListener
+                try {
+                    service.startActivity(
+                        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                            .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                } catch (e: android.content.ActivityNotFoundException) {
+                    context.toast("没有可以打开这个链接的应用")
                 }
             }
             numberRow.apply {

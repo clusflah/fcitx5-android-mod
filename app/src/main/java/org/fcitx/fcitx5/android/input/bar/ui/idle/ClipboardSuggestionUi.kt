@@ -65,8 +65,36 @@ class ClipboardSuggestionUi(override val ctx: Context, private val theme: Theme)
         background = rippleDrawable(theme.keyPressHighlightColor)
     }
 
+    /** "↗ github.com": opens an http(s) link found in the clipboard; hidden otherwise */
+    val linkView = textView {
+        isSingleLine = true
+        maxWidth = dp(140)
+        ellipsize = TextUtils.TruncateAt.END
+        gravity = android.view.Gravity.CENTER_VERTICAL
+        setTextColor(theme.altKeyTextColor)
+        setCompoundDrawablesRelativeWithIntrinsicBounds(
+            drawable(R.drawable.ic_open_in_new)!!.mutate().apply {
+                setTint(theme.altKeyTextColor)
+                setBounds(0, 0, dp(18), dp(18))
+            }, null, null, null
+        )
+        compoundDrawablePadding = dp(4)
+        setPadding(dp(8), 0, dp(8), 0)
+        background = rippleDrawable(theme.keyPressHighlightColor)
+        visibility = android.view.View.GONE
+    }
+
+    private val row = android.widget.LinearLayout(ctx).apply {
+        orientation = android.widget.LinearLayout.HORIZONTAL
+        gravity = android.view.Gravity.CENTER_VERTICAL
+        addView(suggestionView, android.widget.LinearLayout.LayoutParams(wrapContent, matchParent))
+        addView(linkView, android.widget.LinearLayout.LayoutParams(wrapContent, matchParent).apply {
+            marginStart = dp(4)
+        })
+    }
+
     override val root = constraintLayout {
-        add(suggestionView, lParams(wrapContent, matchConstraints) {
+        add(row, lParams(wrapContent, matchConstraints) {
             centerInParent()
             verticalMargin = dp(4)
         })

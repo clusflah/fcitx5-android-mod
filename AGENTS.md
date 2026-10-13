@@ -96,7 +96,8 @@ git submodule update --init --recursive   # 原版可能更新了子模块
 git push origin master
 ```
 
-- 冲突最常见的地方，是修改版和原版都改过的文件：`KawaiiBarComponent.kt`、`ButtonsBarUi.kt`、`AppPrefs.kt`、`FcitxInputMethodService.kt`、`CommonKeyActionListener.kt`、`settings.gradle.kts`、`build-logic/convention/...`。
+- 冲突最常见的地方，是修改版和原版都改过的文件：`KawaiiBarComponent.kt`、`ButtonsBarUi.kt`、`IdleUi.kt`、`ClipboardSuggestionUi.kt`、`TextKeyboard.kt`（只改了 `?123` 那一行）、`AppPrefs.kt`、`FcitxInputMethodService.kt`、`CommonKeyActionListener.kt`、`AndroidManifest.xml`、`settings.gradle.kts`、`build-logic/convention/...`。
+- 新功能尽量写在**新文件**里，原版文件里只留最少的调用代码（比如 `NumberSymbolSwitchKey.kt`、`data/otp/`、`data/password/`），这样合并时冲突少。
 - 原版改了 `.github/workflows/` 下的文件时，自动推送会被拒绝（GITHUB_TOKEN 没有 workflow 权限）。这种情况让用户在 GitHub 网页上点 **Sync fork**，或者在本地合并后推送。
 
 ## 隐私与安全规则（修改功能时要保持）
