@@ -7,7 +7,8 @@
 ## 这是什么项目
 
 - 原版小企鹅输入法 Android 版 [fcitx5-android/fcitx5-android](https://github.com/fcitx5-android/fcitx5-android) 的 **fork**：`clusflah/fcitx5-android-mod`（公开仓库）。
-- 新增的功能（常用语、Azure 语音、大模型助手、AI 联想、clipboard-sync 插件等）见 [MODIFICATIONS.md](MODIFICATIONS.md)。**改了功能，要同步更新 MODIFICATIONS.md。**
+- 新增的功能（常用语、语音、大模型助手、AI 联想、clipboard-sync 插件等）见 [`.github/README.md`](.github/README.md)，它就是 GitHub 仓库首页显示的说明（优先级高于原版的根目录 `README.md`，原版 README 不要改，免得合并冲突）。**改了功能，要同步更新 `.github/README.md`。** 根目录的 `MODIFICATIONS.md` 只是指向它的旧链接，不要再往里写内容。
+  - `.github/README.md` 里的相对链接是相对于 `.github/` 目录的：截图写 `../docs/screenshots/xxx.jpg`，根目录文件写 `../LICENSE`。
 - 用户的 Windows 本地仓库：`E:\fcitx5-android-mod`。`E:\fcitx5` 是早期不带 git 的旧副本，只作备份，**不要在那里改代码**。
 
 ## 目录结构
@@ -19,7 +20,7 @@
 | `lib/*` | 原生库封装和 `plugin-base`；`lib/*/src/main/cpp/*` 大多是 git 子模块 |
 | `build-logic/` | Gradle 约定插件（包名后缀、签名、原生编译参数） |
 | `tools/windows/` | Windows 本地编译用的 extra-cmake-modules；`gettext/bin/*.exe` 不在仓库里（被 `.gitignore` 的 `bin/` 排除） |
-| `docs/screenshots/` | MODIFICATIONS.md 引用的截图 |
+| `docs/screenshots/` | `.github/README.md` 引用的截图 |
 | `.github/workflows/mod-release.yml` | 修改版的自动同步 + 编译 + 发布工作流 |
 
 设置项定义在 `app/.../data/prefs/AppPrefs.kt`；新增界面文字在 `app/src/main/res/values{,-zh-rCN}/strings_ai.xml`、`strings_azure_voice.xml`、`strings_common_phrase.xml`。
