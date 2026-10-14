@@ -265,7 +265,10 @@ class AiAssistActivity : AppCompatActivity() {
             try {
                 val ctx = this@AiAssistActivity
                 val reply = if (translateMode) {
-                    AiTranslate.translate(ctx, text, translateEngines[providerSpinner.selectedItemPosition])
+                    val r = AiTranslate.translateDetailed(ctx, text, translateEngines[providerSpinner.selectedItemPosition])
+                    // say so when another engine than the selected one translated
+                    directionLabel.text = AiTranslate.directionLabel(ctx, text) + (r.note?.let { "（$it）" } ?: "")
+                    r.text
                 } else {
                     val provider = AiProvider.entries[providerSpinner.selectedItemPosition]
                     AiClient.chat(

@@ -262,7 +262,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         showTranslateStatus("翻译中… → ${AiTranslate.targetFor(context, text)}（${engine.label}）")
         translateJob = service.lifecycleScope.launch {
             try {
-                val result = AiTranslate.translate(context, text, engine)
+                val detailed = AiTranslate.translateDetailed(context, text, engine)
+                val result = detailed.text
+                detailed.note?.let { context.toast(it) }
                 val ic2 = service.currentInputConnection
                 val unchanged = ic2 != null && currentEditorInfo === info && runCatching {
                     if (selected.isNotEmpty()) ic2.getSelectedText(0)?.toString() == selected

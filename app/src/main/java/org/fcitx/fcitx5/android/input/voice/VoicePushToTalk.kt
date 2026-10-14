@@ -117,8 +117,19 @@ object VoicePushToTalk {
         listener?.invoke("识别中…")
         recognizeJob = svc.lifecycleScope.launch {
             try {
+                var fellBack = false
                 val text = when (engine()) {
-                    VoiceEngine.Azure -> AzureSpeech.recognize(config(), wav)
+                    VoiceEngine.Azure -> try {
+                        AzureSpeech.recognize(config(), wav)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // Azure unreachable (or misconfigured): recognize the same recording offline
+                        if (!AppPrefs.getInstance().voice.offlineFallback.getValue() || !OfflineVoice.isReady(svc)) throw e
+                        listener?.invoke("Azure 不可用，改用离线识别…")
+                        fellBack = true
+                        OfflineVoice.recognize(svc, wav)
+                    }
                     VoiceEngine.SenseVoice -> OfflineVoice.recognize(svc, wav)
                 }
                 if (text.isEmpty()) {
@@ -127,7 +138,12 @@ object VoicePushToTalk {
                     return@launch
                 }
                 svc.commitText(text)
-                listener?.invoke(null)
+                if (fellBack) {
+                    listener?.invoke("Azure 不可用，已用离线识别")
+                    hideLater(svc, 2000)
+                } else {
+                    listener?.invoke(null)
+                }
                 if (AppPrefs.getInstance().voice.azureTtsEnabled.getValue()) {
                     runCatching { AzureSpeech.play(AzureSpeech.synthesize(config(), text, svc.cacheDir)) }
                 }

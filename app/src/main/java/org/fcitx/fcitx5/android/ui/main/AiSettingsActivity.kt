@@ -93,6 +93,13 @@ class AiSettingsActivity : AppCompatActivity() {
             setSelection(AiTranslate.TARGETS.indexOf(AiTranslate.target(context)).coerceAtLeast(0))
         }
         box.addView(targetSpinner)
+        // same setting as on the 语音模型 page; covers both voice and translation
+        box.addView(android.widget.CheckBox(this).apply {
+            text = "在线翻译不可用时改用离线翻译（需要已安装 Offline Translator）"
+            val pref = org.fcitx.fcitx5.android.data.prefs.AppPrefs.getInstance().voice.offlineFallback
+            isChecked = pref.getValue()
+            setOnCheckedChangeListener { _, checked -> pref.setValue(checked) }
+        })
         box.addView(TextView(this).apply {
             textSize = 12f
             text = "外文一律翻译成简体中文。Index-Translate 是 B 站开源的翻译模型，免费、不需要 API Key；" +

@@ -78,22 +78,56 @@ object AiTranslate {
      * Translate [text] with [engine] (default: the one chosen in settings). If Index-Translate fails
      * (it is a free service that may be rate limited or change), fall back to the default provider.
      */
-    suspend fun translate(ctx: Context, text: String, engine: TranslateEngine = engine(ctx)): String {
+    suspend fun translate(ctx: Context, text: String, engine: TranslateEngine = engine(ctx)): String =
+        translateDetailed(ctx, text, engine).text
+
+    /** [note]: set when another engine than the chosen one produced the translation */
+    class Result(val text: String, val note: String? = null)
+
+    /**
+     * Like [translate], but tells which fallback was used. Fallbacks only go from online to offline
+     * (Offline Translator, if installed and "在线服务不可用时改用离线模型" is on); for Index-Translate
+     * the default provider is tried after that, as before.
+     */
+    suspend fun translateDetailed(ctx: Context, text: String, engine: TranslateEngine = engine(ctx)): Result {
         val userText = prompt(targetFor(ctx, text), text)
         return when (engine) {
             TranslateEngine.IndexTranslate -> try {
-                AiClient.chatKeyless(INDEX_BASE_URL, INDEX_MODEL, userText)
+                Result(AiClient.chatKeyless(INDEX_BASE_URL, INDEX_MODEL, userText))
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                val fallback = AiConfig.provider(ctx)
-                if (AiConfig.apiKey(ctx, fallback).isBlank()) throw AiException("Index-Translate 不可用：${e.message}")
-                withProvider(ctx, fallback, userText)
+                offlineOr(ctx, text, e) {
+                    val fallback = AiConfig.provider(ctx)
+                    if (AiConfig.apiKey(ctx, fallback).isBlank()) throw AiException("Index-Translate 不可用：${e.message}")
+                    Result(withProvider(ctx, fallback, userText), "Index-Translate 不可用，已改用 ${fallback.label}")
+                }
             }
             // no fallback to a cloud service: offline was chosen so the text stays on the phone
-            TranslateEngine.Offline ->
-                OfflineTranslator.translate(ctx, text, targetFor(ctx, text), fromChinese = looksChinese(text))
-            is TranslateEngine.Provider -> withProvider(ctx, engine.provider, userText)
+            TranslateEngine.Offline -> Result(offline(ctx, text))
+            is TranslateEngine.Provider -> try {
+                Result(withProvider(ctx, engine.provider, userText))
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                offlineOr(ctx, text, e) { throw e }
+            }
         }
+    }
+
+    private suspend fun offline(ctx: Context, text: String) =
+        OfflineTranslator.translate(ctx, text, targetFor(ctx, text), fromChinese = looksChinese(text))
+
+    /** after [error] from an online engine: offline translation if allowed and installed, else [otherwise] */
+    private suspend fun offlineOr(ctx: Context, text: String, error: Exception, otherwise: suspend () -> Result): Result {
+        val allowed = org.fcitx.fcitx5.android.data.prefs.AppPrefs.getInstance().voice.offlineFallback.getValue()
+        if (allowed && OfflineTranslator.isInstalled(ctx)) {
+            try {
+                return Result(offline(ctx, text), "在线翻译不可用，已改用离线翻译")
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                throw AiException("在线翻译不可用（${error.message}），离线翻译也失败了：${e.message}")
+            }
+        }
+        return otherwise()
     }
 
     // fast = true: translation needs no deep thinking, keep it quick

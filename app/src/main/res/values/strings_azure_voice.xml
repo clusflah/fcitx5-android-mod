@@ -8,6 +8,8 @@
     <string name="voice_engine_azure">Azure (cloud, needs a key)</string>
     <string name="voice_engine_sensevoice">SenseVoice (offline, free)</string>
     <string name="offline_voice">Voice models</string>
+    <string name="offline_fallback">Fall back to offline models</string>
+    <string name="offline_fallback_summary">If Azure recognition fails, recognize the same recording with offline SenseVoice (model must be downloaded); if online translation fails, use offline translation (Offline Translator must be installed). Only ever falls back from online to offline</string>
     <string name="azure_speech_key">Azure Speech key</string>
     <string name="azure_speech_region">Azure region (e.g. eastasia)</string>
     <string name="azure_stt_language">Recognition language (e.g. zh-CN)</string>
