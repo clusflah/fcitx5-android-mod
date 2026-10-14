@@ -732,7 +732,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
      * The keyboard is often not re-shown at that point, so this runs from onStartInput as well.
      */
     private val aiHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private var aiText: String? = null
+    private var aiText: CharSequence? = null
     private var aiDeadline = 0L
     private var aiCommittedTo: android.view.inputmethod.InputConnection? = null
 
@@ -764,7 +764,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
             aiText = null; return@Runnable
         }
         val before = runCatching { ic.getTextBeforeCursor(text.length + 4, 0)?.toString() }.getOrNull().orEmpty()
-        if (before.endsWith(text)) {
+        if (before.endsWith(text.toString())) {
             aiText = null
         } else {
             aiCommittedTo = null

@@ -97,6 +97,10 @@ object AiConfig {
     fun lastPrompt(ctx: Context) = sp(ctx).getString("last_prompt", null)
     fun setLastPrompt(ctx: Context, id: String?) = sp(ctx).edit().putString("last_prompt", id).apply()
 
+    /** How the assistant shows replies: 0 = plain text, 1 = rich text, 2 = raw Markdown */
+    fun outputFormat(ctx: Context) = sp(ctx).getInt("output_format", 0)
+    fun setOutputFormat(ctx: Context, f: Int) = sp(ctx).edit().putInt("output_format", f).apply()
+
     private val defaults = listOf(
         AiPrompt(name = "润色", content = "请润色下面的文字，使其通顺自然，保持原意和语言，只输出润色后的结果。"),
         AiPrompt(name = "翻译成英文", content = "把下面的内容翻译成地道的英文，只输出译文。"),
@@ -129,12 +133,13 @@ object AiConfig {
  * The assistant runs in its own Activity, so the text is committed when that app's editor regains focus.
  */
 object AiPendingCommit {
-    private var text: String? = null
+    private var text: CharSequence? = null
     private var time = 0L
 
-    fun set(t: String) { text = t; time = SystemClock.elapsedRealtime() }
+    /** May be styled (rich text mode); apps that support it keep bold etc. */
+    fun set(t: CharSequence) { text = t; time = SystemClock.elapsedRealtime() }
 
-    fun take(): String? {
+    fun take(): CharSequence? {
         val t = text ?: return null
         text = null
         return if (SystemClock.elapsedRealtime() - time < 60_000) t else null
