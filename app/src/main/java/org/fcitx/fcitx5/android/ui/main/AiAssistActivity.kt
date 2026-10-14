@@ -3,11 +3,19 @@
  * LLM assistant (大模型) dialog. Opened from the keyboard toolbar.
  * Input is prefilled from the clipboard; both input and reply are editable;
  * "输入" types the reply into the app the user came from.
+ * Replies are usually Markdown; they can be shown as plain text, rich text or raw Markdown.
  */
 package org.fcitx.fcitx5.android.ui.main
 
 import android.content.ClipData
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
+import android.text.style.StrikethroughSpan
+import android.text.style.StyleSpan
+import android.text.style.TypefaceSpan
+import android.text.style.URLSpan
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
@@ -26,6 +34,7 @@ import android.widget.Toast
 import android.widget.AdapterView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.text.HtmlCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -36,6 +45,7 @@ import org.fcitx.fcitx5.android.data.ai.AiPendingCommit
 import org.fcitx.fcitx5.android.data.ai.AiPrompt
 import org.fcitx.fcitx5.android.data.ai.AiProvider
 import org.fcitx.fcitx5.android.data.ai.AiTranslate
+import org.fcitx.fcitx5.android.data.ai.MarkdownText
 import org.fcitx.fcitx5.android.data.ai.TranslateEngine
 import org.fcitx.fcitx5.android.utils.clipboardManager
 import splitties.dimensions.dp
@@ -48,6 +58,10 @@ class AiAssistActivity : AppCompatActivity() {
         const val EXTRA_TEXT = "text"
         const val MODE_TRANSLATE = "translate"
 
+        private const val FORMAT_PLAIN = 0
+        private const val FORMAT_RICH = 1
+        private const val FORMAT_MARKDOWN = 2
+        private val FORMAT_LABELS = listOf("纯文本", "富文本", "Markdown")
     }
 
     /** translate mode: the spinner picks the translation engine instead of the assistant's provider */
@@ -64,6 +78,11 @@ class AiAssistActivity : AppCompatActivity() {
     private lateinit var sendBtn: Button
     private lateinit var progress: ProgressBar
     private lateinit var resultBox: LinearLayout
+    private lateinit var formatBar: LinearLayout
+
+    /** the model's reply as received (Markdown); [output] shows it in [format] */
+    private var rawReply = ""
+    private var format = FORMAT_PLAIN
 
     private var prompts = mutableListOf<AiPrompt>()
     private var promptId: String? = null
@@ -75,6 +94,8 @@ class AiAssistActivity : AppCompatActivity() {
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         prompts = AiConfig.prompts(this)
+        // translations are plain sentences; converting them could eat literal * or _
+        format = if (translateMode) FORMAT_MARKDOWN else AiConfig.outputFormat(this)
         promptId = AiConfig.lastPrompt(this)?.takeIf { id -> prompts.any { it.id == id } }
             ?: prompts.firstOrNull()?.id
 
@@ -166,9 +187,17 @@ class AiAssistActivity : AppCompatActivity() {
 
         // result
         resultBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
-        resultBox.addView(TextView(this).apply {
-            text = "模型回复（可修改）"; setPadding(0, dp(8), 0, 0)
-        })
+        val resultHeader = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, 0)
+        }
+        resultHeader.addView(TextView(this).apply { text = "模型回复（可修改）" },
+            LinearLayout.LayoutParams(0, -2, 1f))
+        formatBar = LinearLayout(this).apply {
+            visibility = if (translateMode) View.GONE else View.VISIBLE
+        }
+        resultHeader.addView(formatBar)
+        resultBox.addView(resultHeader)
+        renderFormats()
         output = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             minLines = 2; maxLines = 10; gravity = Gravity.TOP
@@ -177,16 +206,16 @@ class AiAssistActivity : AppCompatActivity() {
         val outActions = LinearLayout(this).apply { gravity = Gravity.END }
         outActions.addView(smallButton("重新生成") { send() })
         outActions.addView(smallButton("复制") {
-            clipboardManager.setPrimaryClip(ClipData.newPlainText("ai", output.text))
+            clipboardManager.setPrimaryClip(clipOf(output.text))
             Toast.makeText(this@AiAssistActivity, "已复制", Toast.LENGTH_SHORT).show()
         })
         outActions.addView(Button(this).apply {
             text = "输入"
             setOnClickListener {
-                val t = output.text.toString()
+                val t: CharSequence = if (format == FORMAT_RICH) styledCopy(output.text) else output.text.toString()
                 if (t.isNotEmpty()) {
                     // backup: also put it on the clipboard in case the target app ignores it
-                    runCatching { clipboardManager.setPrimaryClip(ClipData.newPlainText("ai", t)) }
+                    runCatching { clipboardManager.setPrimaryClip(clipOf(t)) }
                     if (intent.hasExtra(EXTRA_CLIPBOARD) || intent.hasExtra(EXTRA_TEXT)) {
                         AiPendingCommit.set(t)
                     } else {
@@ -230,6 +259,56 @@ class AiAssistActivity : AppCompatActivity() {
             text = label; isAllCaps = false
             setOnClickListener { onClick() }
         }
+
+    private fun renderFormats() {
+        formatBar.removeAllViews()
+        FORMAT_LABELS.forEachIndexed { f, label ->
+            formatBar.addView(smallButton(label) { setFormat(f) }.apply {
+                alpha = if (f == format) 1f else 0.5f
+            })
+        }
+    }
+
+    private fun setFormat(f: Int) {
+        if (f == format) return
+        // edits made to the raw Markdown carry over; edits to converted text can't be mapped back
+        if (format == FORMAT_MARKDOWN) rawReply = output.text.toString()
+        format = f
+        AiConfig.setOutputFormat(this, f)
+        renderFormats()
+        showReply()
+    }
+
+    private fun showReply() {
+        output.setText(
+            when (format) {
+                FORMAT_PLAIN -> MarkdownText.toPlain(rawReply)
+                FORMAT_RICH -> MarkdownText.render(rawReply)
+                else -> rawReply
+            }
+        )
+    }
+
+    /** Only the styles the Markdown renderer adds, without the EditText's own spans. */
+    private fun styledCopy(text: CharSequence): CharSequence {
+        val copy = SpannableStringBuilder(text.toString())
+        if (text is Spanned) {
+            text.getSpans(0, text.length, Any::class.java).forEach { sp ->
+                if (sp is StyleSpan || sp is RelativeSizeSpan || sp is TypefaceSpan ||
+                    sp is StrikethroughSpan || sp is URLSpan
+                ) copy.setSpan(sp, text.getSpanStart(sp), text.getSpanEnd(sp), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
+        return copy
+    }
+
+    /** Rich text mode also puts HTML on the clipboard, so pasting into notes / mail keeps the formatting. */
+    private fun clipOf(text: CharSequence): ClipData {
+        val plain = text.toString()
+        if (format != FORMAT_RICH) return ClipData.newPlainText("ai", plain)
+        val html = HtmlCompat.toHtml(styledCopy(text) as Spanned, HtmlCompat.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE)
+        return ClipData.newHtmlText("ai", plain, html)
+    }
 
     private fun renderPrompts() {
         promptBar.removeAllViews()
@@ -277,7 +356,8 @@ class AiAssistActivity : AppCompatActivity() {
                     )
                 }
                 output.hint = ""
-                output.setText(reply)
+                rawReply = reply
+                showReply()
                 resultBox.visibility = View.VISIBLE
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
