@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- mod: container of the 语音模型 settings page -->
+    <item name="voice_model_container" type="id" />
+</resources>

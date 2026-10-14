@@ -37,7 +37,7 @@ class AzureVoiceInputWindow : InputWindow.ExtendedInputWindow<AzureVoiceInputWin
     private val service: FcitxInputMethodService by manager.inputMethodService()
     private val windowManager: InputWindowManager by manager.must()
     private val theme by manager.theme()
-    private val prefs = AppPrefs.getInstance().keyboard
+    private val prefs = AppPrefs.getInstance().voice
 
     override val title: String by lazy { context.getString(R.string.azure_voice_input) }
 

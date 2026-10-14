@@ -184,40 +184,18 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             false
         )
 
-        val showVoiceInputButton =
-            switch(R.string.show_voice_input_button, "show_voice_input_button", false)
-        val preferredVoiceInput = voiceInputPreference(
-            R.string.preferred_voice_input, "preferred_voice_input", ""
-        ) { showVoiceInputButton.getValue() }
+        // mod: the toolbar mic records with the mod's own voice input (see 设置 → 语音模型)
+        val showVoiceInputButton = switch(
+            R.string.show_voice_input_button, "show_voice_input_button", false,
+            R.string.show_voice_input_button_summary
+        )
+        // mod: only meaningful for switching to a system voice IME, which the mic no longer does;
+        // keep the value but don't show it in settings
+        val preferredVoiceInput =
+            ManagedPreference.PString(sharedPreferences, "preferred_voice_input", "").apply { register() }
 
         val azureVoiceEnabled =
             switch(R.string.azure_voice_enabled, "azure_voice_enabled", false, R.string.azure_voice_enabled_summary)
-        /** Azure (cloud) or SenseVoice (offline, model managed in 设置 → 离线语音模型) */
-        val voiceEngine = enumList(
-            R.string.voice_engine, "voice_engine",
-            org.fcitx.fcitx5.android.input.voice.VoiceEngine.Azure
-        ) { azureVoiceEnabled.getValue() }
-        val azureSpeechKey = string(R.string.azure_speech_key, "azure_speech_key", "", true) {
-            azureVoiceEnabled.getValue()
-        }
-        val azureSpeechRegion = string(R.string.azure_speech_region, "azure_speech_region", "eastasia") {
-            azureVoiceEnabled.getValue()
-        }
-        val azureSttLanguage = string(R.string.azure_stt_language, "azure_stt_language", "zh-CN") {
-            azureVoiceEnabled.getValue()
-        }
-        val azureSttEndpoint = string(R.string.azure_stt_endpoint, "azure_stt_endpoint", "") {
-            azureVoiceEnabled.getValue()
-        }
-        val azureTtsEnabled = switch(
-            R.string.azure_tts_enabled, "azure_tts_enabled", false, R.string.azure_tts_enabled_summary
-        ) { azureVoiceEnabled.getValue() }
-        val azureTtsVoice = string(R.string.azure_tts_voice, "azure_tts_voice", "zh-CN-XiaoxiaoNeural") {
-            azureVoiceEnabled.getValue()
-        }
-        val azureTtsEndpoint = string(R.string.azure_tts_endpoint, "azure_tts_endpoint", "") {
-            azureVoiceEnabled.getValue()
-        }
 
         val expandKeypressArea =
             switch(R.string.expand_keypress_area, "expand_keypress_area", false)
@@ -441,6 +419,27 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         )
     }
 
+    /**
+     * mod: 语音模型 page — recognition engine and Azure settings (keys unchanged from when they were
+     * in [Keyboard], so existing values carry over). SenseVoice download items are added by the page.
+     */
+    inner class Voice : ManagedPreferenceCategory(R.string.offline_voice, sharedPreferences) {
+        /** Azure (cloud) or SenseVoice (offline) */
+        val voiceEngine = enumList(
+            R.string.voice_engine, "voice_engine",
+            org.fcitx.fcitx5.android.input.voice.VoiceEngine.Azure
+        )
+        val azureSpeechKey = string(R.string.azure_speech_key, "azure_speech_key", "", true)
+        val azureSpeechRegion = string(R.string.azure_speech_region, "azure_speech_region", "eastasia")
+        val azureSttLanguage = string(R.string.azure_stt_language, "azure_stt_language", "zh-CN")
+        val azureSttEndpoint = string(R.string.azure_stt_endpoint, "azure_stt_endpoint", "")
+        val azureTtsEnabled = switch(
+            R.string.azure_tts_enabled, "azure_tts_enabled", false, R.string.azure_tts_enabled_summary
+        )
+        val azureTtsVoice = string(R.string.azure_tts_voice, "azure_tts_voice", "zh-CN-XiaoxiaoNeural")
+        val azureTtsEndpoint = string(R.string.azure_tts_endpoint, "azure_tts_endpoint", "")
+    }
+
     private val providers = mutableListOf<ManagedPreferenceProvider>()
 
     fun <T : ManagedPreferenceProvider> registerProvider(
@@ -457,6 +456,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
 
     val internal = Internal().register()
     val keyboard = Keyboard().register()
+    val voice = Voice().register()
     val candidates = Candidates().register()
     val clipboard = Clipboard().register()
     val symbols = Symbols().register()

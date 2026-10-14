@@ -58,11 +58,20 @@ class CommonKeyActionListener :
     private val preeditState: PreeditEmptyStateComponent by manager.must()
     private val horizontalCandidate: HorizontalCandidateComponent by manager.must()
 
-    private fun isSpaceOverPrediction(action: SymAction) =
-        action.sym.sym == FcitxKeyMapping.FcitxKey_space &&
-                AppPrefs.getInstance().keyboard.spaceClearsPrediction.getValue() &&
+    /** mod: nothing is being typed but candidates are shown = prediction words after a commit */
+    private fun isPredictionShown() =
+        AppPrefs.getInstance().keyboard.spaceClearsPrediction.getValue() &&
                 preeditState.isEmpty &&
                 horizontalCandidate.adapter.total > 0
+
+    private fun isSpaceOverPrediction(action: SymAction) =
+        action.sym.sym == FcitxKeyMapping.FcitxKey_space && isPredictionShown()
+
+    /** a symbol / punctuation / digit key (one non-letter character) while predictions are shown */
+    private fun isSymbolOverPrediction(action: FcitxKeyAction) =
+        action.act.codePointCount(0, action.act.length) == 1 &&
+                !Character.isLetter(action.act.codePointAt(0)) &&
+                isPredictionShown()
     private val windowManager: InputWindowManager by manager.must()
 
     private var lastPickerType by AppPrefs.getInstance().internal.lastPickerType
@@ -100,8 +109,13 @@ class CommonKeyActionListener :
     val listener by lazy {
         KeyActionListener { action, _ ->
             when (action) {
-                is FcitxKeyAction -> service.postFcitxJob {
-                    sendKey(action.act, action.states.states, action.code)
+                is FcitxKeyAction -> {
+                    // mod: drop prediction words first, or the engine picks the first one before the symbol
+                    val clearPrediction = isSymbolOverPrediction(action)
+                    service.postFcitxJob {
+                        if (clearPrediction) reset()
+                        sendKey(action.act, action.states.states, action.code)
+                    }
                 }
                 is SymAction -> if (isSpaceOverPrediction(action)) {
                     // mod: nothing is being typed but candidates are shown = prediction words after a

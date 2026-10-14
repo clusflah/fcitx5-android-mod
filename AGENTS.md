@@ -59,7 +59,7 @@ Gradle 的代理和阿里云 Maven 镜像已经配置好：阿里云镜像只在
 - release 版包名带 `.mod` 后缀（主程序是 `org.fcitx.fcitx5.android.mod`，插件是 `...plugin.xxx.mod`），可以和原版共存。插件通过 `lib/plugin-base` 中的 `.mod` 包名找到主程序。
 - 本地编译版本号固定为 `0.1.3-mod`（写在 `gradle.properties` 里）；CI 编译时用环境变量覆盖成 `0.1.3-mod.<运行次数>`。
 - **sherpa-onnx AAR**（离线语音识别）：`app/build.gradle.kts` 末尾的 mod 代码块在配置阶段把 AAR 下载到 `app/libs/`（不提交），并校验 SHA-256。升级时同时改 `sherpaOnnxVersion` 和 `sherpaOnnxSha256`，再用 `javap` 确认 `OfflineRecognizer` 等类的接口没有变化。R8 规则 `-keep class com.k2fsa.sherpa.onnx.** { *; }` 不能删（JNI 会按名字读取这些类的字段）。
-- 离线语音模型（约 227 MB）**不打包**进 APK，由用户在 App 里下载或导入（`input/voice/OfflineVoice.kt`）。
+- 离线语音模型（约 227 MB）**不打包**进 APK，由用户在 设置 → 语音模型 里下载或导入；引擎和 Azure 设置在 `AppPrefs.voice` 分类（`input/voice/OfflineVoice.kt`）。
 
 ## Git 约定
 

@@ -2,11 +2,12 @@
 <resources>
     <string name="azure_voice_input">语音输入</string>
     <string name="azure_voice_enabled">按住空格语音输入</string>
-    <string name="azure_voice_enabled_summary">按住空格键说话，松开即识别并输入（开启后替代空格长按行为）</string>
+    <string name="azure_voice_enabled_summary">按住空格键说话，松开即识别并输入（开启后替代空格长按行为）。识别引擎在 设置 → 语音模型 中选择</string>
+    <string name="show_voice_input_button_summary">把工具栏最右边的收起键盘按钮换成 🎤：点一下开始说话，再点一下结束并识别（引擎在 设置 → 语音模型 中选择）；长按 🎤 收起键盘</string>
     <string name="voice_engine">语音识别引擎</string>
     <string name="voice_engine_azure">Azure（云端，需要密钥）</string>
     <string name="voice_engine_sensevoice">SenseVoice（离线，免费）</string>
-    <string name="offline_voice">离线语音模型</string>
+    <string name="offline_voice">语音模型</string>
     <string name="azure_speech_key">Azure 语音密钥</string>
     <string name="azure_speech_region">Azure 区域（如 eastasia）</string>
     <string name="azure_stt_language">识别语言（如 zh-CN）</string>

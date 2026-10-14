@@ -35,10 +35,10 @@ object VoicePushToTalk {
 
     val isRecording get() = recorder != null
 
-    private fun engine() = AppPrefs.getInstance().keyboard.voiceEngine.getValue()
+    private fun engine() = AppPrefs.getInstance().voice.voiceEngine.getValue()
 
     fun config(): AzureConfig {
-        val p = AppPrefs.getInstance().keyboard
+        val p = AppPrefs.getInstance().voice
         return AzureConfig(
             p.azureSpeechKey.getValue(), p.azureSpeechRegion.getValue(),
             p.azureSttLanguage.getValue(), p.azureSttEndpoint.getValue(),
@@ -68,7 +68,7 @@ object VoicePushToTalk {
         }
         val offline = engine() == VoiceEngine.SenseVoice
         if (offline && !OfflineVoice.isReady(svc)) {
-            listener?.invoke("离线语音模型还没有下载，请在设置 → 离线语音模型中下载")
+            listener?.invoke("离线语音模型还没有下载，请在设置 → 语音模型中下载")
             svc.startActivity(Intent(svc, OfflineVoiceActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
@@ -128,7 +128,7 @@ object VoicePushToTalk {
                 }
                 svc.commitText(text)
                 listener?.invoke(null)
-                if (AppPrefs.getInstance().keyboard.azureTtsEnabled.getValue()) {
+                if (AppPrefs.getInstance().voice.azureTtsEnabled.getValue()) {
                     runCatching { AzureSpeech.play(AzureSpeech.synthesize(config(), text, svc.cacheDir)) }
                 }
             } catch (e: CancellationException) {

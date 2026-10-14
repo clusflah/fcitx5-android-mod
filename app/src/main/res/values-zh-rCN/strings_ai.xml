@@ -16,7 +16,7 @@
     <string name="show_more_button_summary">隐藏后将无法从工具栏打开状态面板（输入法开关、Rime 的简繁 / 预测等选项）</string>
     <string name="ai_predict_delay">AI 联想延迟（上屏后多久发起请求）</string>
     <string name="setup_check">新手机检查</string>
-    <string name="space_clears_prediction">有联想词时空格输入空格</string>
-    <string name="space_clears_prediction_summary">上屏后出现联想词时，按空格清空联想并输入空格，而不是选第一个联想词。打拼音时按空格仍然选词</string>
+    <string name="space_clears_prediction">有联想词时空格、符号不选词</string>
+    <string name="space_clears_prediction_summary">上屏后出现联想词时，按空格清空联想并输入空格；按符号、标点、数字键清空联想并输入该符号，而不是先选第一个联想词。打拼音时按空格仍然选词</string>
     <string name="ai_predict_chain_limit">AI 联想连续次数（点选联想词后最多再自动联想几次，0 为不限制）</string>
 </resources>

@@ -181,11 +181,12 @@ class SetupCheckActivity : AppCompatActivity() {
     // ---------- 3. 语音 ----------
     private fun checkVoice() {
         val kb = AppPrefs.getInstance().keyboard
-        if (!kb.azureVoiceEnabled.getValue()) {
-            row(Status.Info, "语音输入", "未开启（设置 → 虚拟键盘 → 按住空格语音输入）。")
+        val voice = AppPrefs.getInstance().voice
+        if (!kb.azureVoiceEnabled.getValue() && !kb.showVoiceInputButton.getValue()) {
+            row(Status.Info, "语音输入", "未开启（设置 → 虚拟键盘 → 按住空格语音输入 / 显示语音输入按钮）。")
             return
         }
-        if (kb.voiceEngine.getValue() == VoiceEngine.SenseVoice) {
+        if (voice.voiceEngine.getValue() == VoiceEngine.SenseVoice) {
             if (OfflineVoice.isReady(this)) {
                 row(Status.Ok, "离线语音模型", "已安装（${OfflineVoice.sizeMb(this)} MB）。")
             } else {
@@ -193,8 +194,10 @@ class SetupCheckActivity : AppCompatActivity() {
                     startActivity(Intent(this, OfflineVoiceActivity::class.java))
                 }
             }
-        } else if (kb.azureSpeechKey.getValue().isBlank()) {
-            row(Status.Bad, "语音输入", "已开启，但没有填写 Azure 语音密钥（设置 → 虚拟键盘）。")
+        } else if (voice.azureSpeechKey.getValue().isBlank()) {
+            row(Status.Bad, "语音输入", "已开启，但没有填写 Azure 语音密钥（设置 → 语音模型）。", "打开语音模型") {
+                startActivity(Intent(this, OfflineVoiceActivity::class.java))
+            }
         }
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED
