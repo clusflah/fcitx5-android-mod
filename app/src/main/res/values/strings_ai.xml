@@ -16,5 +16,7 @@
     <string name="show_more_button_summary">If hidden, the status area (input method switches, Rime options such as simplified/traditional and prediction) can no longer be opened from the toolbar</string>
     <string name="ai_predict_delay">AI suggestion delay after commit</string>
     <string name="setup_check">New phone checklist</string>
+    <string name="space_clears_prediction">Space types a space over predictions</string>
+    <string name="space_clears_prediction_summary">When prediction words are shown after a commit, space clears them and types a space instead of picking the first one. While typing pinyin, space still picks the candidate</string>
     <string name="ai_predict_chain_limit">AI suggestions in a row (after tapping one, how many more follow automatically; 0 = no limit)</string>
 </resources>

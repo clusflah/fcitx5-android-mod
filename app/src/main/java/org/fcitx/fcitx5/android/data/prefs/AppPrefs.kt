@@ -242,6 +242,11 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         )
         val spaceSwipeMoveCursor =
             switch(R.string.space_swipe_move_cursor, "space_swipe_move_cursor", true)
+        // mod: while only prediction words are shown, space clears them and types a space
+        val spaceClearsPrediction = switch(
+            R.string.space_clears_prediction, "space_clears_prediction", true,
+            R.string.space_clears_prediction_summary
+        )
         val showLangSwitchKey =
             switch(R.string.show_lang_switch_key, "show_lang_switch_key", true)
         val langSwitchKeyBehavior = enumList(

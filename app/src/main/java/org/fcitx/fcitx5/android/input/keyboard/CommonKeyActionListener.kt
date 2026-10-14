@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import org.fcitx.fcitx5.android.core.CapabilityFlag
 import org.fcitx.fcitx5.android.core.CapabilityFlags
 import org.fcitx.fcitx5.android.core.FcitxAPI
+import org.fcitx.fcitx5.android.core.FcitxKeyMapping
 import org.fcitx.fcitx5.android.daemon.launchOnReady
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.input.broadcast.PreeditEmptyStateComponent
@@ -56,6 +57,12 @@ class CommonKeyActionListener :
     private val service by manager.inputMethodService()
     private val preeditState: PreeditEmptyStateComponent by manager.must()
     private val horizontalCandidate: HorizontalCandidateComponent by manager.must()
+
+    private fun isSpaceOverPrediction(action: SymAction) =
+        action.sym.sym == FcitxKeyMapping.FcitxKey_space &&
+                AppPrefs.getInstance().keyboard.spaceClearsPrediction.getValue() &&
+                preeditState.isEmpty &&
+                horizontalCandidate.adapter.total > 0
     private val windowManager: InputWindowManager by manager.must()
 
     private var lastPickerType by AppPrefs.getInstance().internal.lastPickerType
@@ -96,7 +103,14 @@ class CommonKeyActionListener :
                 is FcitxKeyAction -> service.postFcitxJob {
                     sendKey(action.act, action.states.states, action.code)
                 }
-                is SymAction -> service.postFcitxJob {
+                is SymAction -> if (isSpaceOverPrediction(action)) {
+                    // mod: nothing is being typed but candidates are shown = prediction words after a
+                    // commit; clear them and type a space instead of picking the first one
+                    service.postFcitxJob {
+                        reset()
+                        service.lifecycleScope.launch { service.commitText(" ") }
+                    }
+                } else service.postFcitxJob {
                     sendKey(action.sym, action.states)
                 }
                 is CommitAction -> service.postFcitxJob {
