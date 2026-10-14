@@ -12,6 +12,8 @@ import org.fcitx.fcitx5.android.core.CapabilityFlag
 import org.fcitx.fcitx5.android.core.CapabilityFlags
 import org.fcitx.fcitx5.android.core.FcitxAPI
 import org.fcitx.fcitx5.android.core.FcitxKeyMapping
+import org.fcitx.fcitx5.android.core.KeyStates
+import org.fcitx.fcitx5.android.core.KeySym
 import org.fcitx.fcitx5.android.daemon.launchOnReady
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.input.broadcast.PreeditEmptyStateComponent
@@ -57,6 +59,17 @@ class CommonKeyActionListener :
     private val service by manager.inputMethodService()
     private val preeditState: PreeditEmptyStateComponent by manager.must()
     private val horizontalCandidate: HorizontalCandidateComponent by manager.must()
+
+    /**
+     * mod: dismiss prediction words. Not reset(): Rime's predictor re-predicts from the last commit as
+     * soon as the composition is cleared, so the next symbol would commit the first prediction again.
+     * Escape is what the predictor itself handles as "dismiss" (clears and stops predicting); the
+     * built-in pinyin also drops its predictions on Escape. Only sent while predictions are shown, so
+     * the engine consumes it and it never reaches the app.
+     */
+    private suspend fun FcitxAPI.dismissPrediction() {
+        sendKey(KeySym(FcitxKeyMapping.FcitxKey_Escape), KeyStates.Virtual)
+    }
 
     /** mod: nothing is being typed but candidates are shown = prediction words after a commit */
     private fun isPredictionShown() =
@@ -113,7 +126,7 @@ class CommonKeyActionListener :
                     // mod: drop prediction words first, or the engine picks the first one before the symbol
                     val clearPrediction = isSymbolOverPrediction(action)
                     service.postFcitxJob {
-                        if (clearPrediction) reset()
+                        if (clearPrediction) dismissPrediction()
                         sendKey(action.act, action.states.states, action.code)
                     }
                 }
@@ -121,7 +134,7 @@ class CommonKeyActionListener :
                     // mod: nothing is being typed but candidates are shown = prediction words after a
                     // commit; clear them and type a space instead of picking the first one
                     service.postFcitxJob {
-                        reset()
+                        dismissPrediction()
                         service.lifecycleScope.launch { service.commitText(" ") }
                     }
                 } else service.postFcitxJob {
