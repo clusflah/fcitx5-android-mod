@@ -513,6 +513,22 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         InputMethodUtil.switchInputMethod(service, id, subtype)
     }
 
+    /**
+     * mod: the toolbar 🎤 uses the mod's own voice input (engine from Settings → 语音识别引擎, e.g.
+     * offline SenseVoice) instead of switching to a system voice IME: tap to start, tap again to stop.
+     */
+    private val modVoiceInputCallback = View.OnClickListener {
+        if (VoicePushToTalk.isRecording) VoicePushToTalk.release()
+        else VoicePushToTalk.start(service, tapMode = true)
+    }
+
+    /** the 🎤 replaces the hide-keyboard button, so long-press it to hide the keyboard */
+    private val hideKeyboardLongClick = View.OnLongClickListener {
+        if (VoicePushToTalk.isRecording) VoicePushToTalk.cancel()
+        service.requestHideSelf(0)
+        true
+    }
+
     private val idleUi: IdleUi by lazy {
         IdleUi(context, theme, popup, commonKeyActionListener).apply {
             menuButton.setOnClickListener {
@@ -814,12 +830,13 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             idleUi.inlineSuggestionsBar.clear()
         }
         voiceInputSubtype = InputMethodUtil.findVoiceSubtype(preferredVoiceInput)
-        val shouldShowVoiceInput =
-            showVoiceInputButton && voiceInputSubtype != null && !capFlags.has(CapabilityFlag.Password)
+        // mod: no system voice IME needed; the button records with the mod's own voice input
+        val shouldShowVoiceInput = showVoiceInputButton && !capFlags.has(CapabilityFlag.Password)
         idleUi.setHideKeyboardIsVoiceInput(
             shouldShowVoiceInput,
-            if (shouldShowVoiceInput) switchToVoiceInputCallback else hideKeyboardCallback
+            if (shouldShowVoiceInput) modVoiceInputCallback else hideKeyboardCallback
         )
+        idleUi.hideKeyboardButton.setOnLongClickListener(if (shouldShowVoiceInput) hideKeyboardLongClick else null)
         evalIdleUiState()
         refreshOtp(autoFill = true)
     }

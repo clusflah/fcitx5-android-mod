@@ -46,13 +46,20 @@ object VoicePushToTalk {
         )
     }
 
-    /** Called on space long-press. */
-    fun start(svc: FcitxInputMethodService) {
+    /** how to finish, shown while listening: release space, or tap the toolbar 🎤 again */
+    private var stopHint = "松开发送"
+
+    /**
+     * Called on space long-press ([tapMode] = false: release the key to finish), or by the toolbar
+     * 🎤 button ([tapMode] = true: tap it again to finish).
+     */
+    fun start(svc: FcitxInputMethodService, tapMode: Boolean = false) {
+        stopHint = if (tapMode) "再点 🎤 结束" else "松开发送"
         if (recorder != null) return
         if (ContextCompat.checkSelfPermission(svc, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            listener?.invoke("需要麦克风权限，授权后再长按空格")
+            listener?.invoke("需要麦克风权限，授权后再试一次")
             svc.startActivity(Intent(svc, VoicePermissionActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
@@ -82,7 +89,7 @@ object VoicePushToTalk {
         service = svc
         recorder = r
         startedAt = SystemClock.elapsedRealtime()
-        listener?.invoke("🎤 正在聆听… 松开发送")
+        listener?.invoke("🎤 正在聆听… $stopHint")
         // reflect volume, and stop automatically at the 60 s limit
         watchJob = svc.lifecycleScope.launch {
             val bars = arrayOf("▁", "▂", "▃", "▄", "▅", "▆", "▇")
@@ -90,7 +97,7 @@ object VoicePushToTalk {
                 val rec = recorder ?: break
                 if (!rec.isRunning) { release(); break }
                 val i = (rec.level * 3f * bars.size).toInt().coerceIn(0, bars.size - 1)
-                listener?.invoke("🎤 ${bars[i]} 正在聆听… 松开发送")
+                listener?.invoke("🎤 ${bars[i]} 正在聆听… $stopHint")
                 delay(120)
             }
         }
