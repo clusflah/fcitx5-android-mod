@@ -20,6 +20,7 @@ on:
 
 permissions:
   contents: write
+  actions: write # start Mod Bundle after a release
 
 concurrency:
   group: mod-release
@@ -129,3 +130,9 @@ jobs:
             --title "v${VERSION}" --notes "$notes" \
             app/build/outputs/apk/release/*.apk \
             plugin/*/build/outputs/apk/release/*.apk
+
+      - name: Start the all-in-one build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Mod Bundle merges master into the all-in-one branch and publishes v<version>-all
+        run: gh workflow run mod-bundle.yml --repo "$GITHUB_REPOSITORY" --ref all-in-one || echo "::warning::Could not start Mod Bundle"
