@@ -1,3 +1,5 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import java.net.URI
 import javax.inject.Inject
 import java.security.MessageDigest
@@ -244,7 +246,7 @@ abstract class BundlePluginsTask : DefaultTask() {
     private fun addRimeData(rime: File) {
         val descriptorFile = rime.resolve("descriptor.json")
         @Suppress("UNCHECKED_CAST")
-        val old = groovy.json.JsonSlurper().parse(descriptorFile) as Map<String, Any?>
+        val old = JsonSlurper().parse(descriptorFile) as Map<String, Any?>
         val added = rimeData.files.flatMap { it.list()?.toList().orEmpty() }.toSet()
         // drop symlinks the new data replaces with real files (rime-data/opencc -> usr/share/opencc)
         @Suppress("UNCHECKED_CAST")
@@ -263,7 +265,7 @@ abstract class BundlePluginsTask : DefaultTask() {
         }
         val sha = sha256((files + symlinks).entries.joinToString { it.key + it.value }.toByteArray())
         descriptorFile.writeText(
-            groovy.json.JsonOutput.toJson(mapOf("sha256" to sha, "files" to files, "symlinks" to symlinks))
+            JsonOutput.toJson(mapOf("sha256" to sha, "files" to files, "symlinks" to symlinks))
         )
     }
 
