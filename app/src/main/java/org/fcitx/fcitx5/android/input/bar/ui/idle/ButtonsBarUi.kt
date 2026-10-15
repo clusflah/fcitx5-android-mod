@@ -73,6 +73,11 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
         contentDescription = ctx.getString(R.string.ai_translate)
     }
 
+    /** mod: switches between the 九宫格 and the 26-key layout */
+    val t9Button = toolButton(R.drawable.ic_t9, prefs.showT9Button).apply {
+        contentDescription = ctx.getString(R.string.t9_keyboard)
+    }
+
     /** opens Bitwarden; hidden when it isn't installed */
     val passwordManagerButton =
         toolButton(R.drawable.ic_password_key, prefs.showPasswordManagerButton).apply {

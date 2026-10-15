@@ -32,6 +32,8 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         val firstRun = bool("first_run", true)
         val lastSymbolLayout = string("last_symbol_layout", PickerWindow.Key.Symbol.name)
         val lastPickerType = string("last_picker_type", PickerWindow.Key.Emoji.name)
+        // mod: Rime schema to restore when leaving the 九宫格 (blank = not switched)
+        val t9PreviousSchema = string("t9_previous_schema", "")
         val verboseLog = bool("verbose_log", false)
         val pid = int("pid", 0)
         val editorInfoInspector = bool("editor_info_inspector", false)
@@ -167,6 +169,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             switch(R.string.show_ai_predict_button, "show_ai_predict_button", true)
         val showTranslateButton =
             switch(R.string.show_translate_button, "show_translate_button", true)
+        val showT9Button = switch(R.string.show_t9_button, "show_t9_button", true)
         val showPasswordManagerButton = switch(
             R.string.show_password_manager_button, "show_password_manager_button", true,
             R.string.show_password_manager_button_summary
@@ -225,6 +228,8 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             R.string.space_clears_prediction, "space_clears_prediction", true,
             R.string.space_clears_prediction_summary
         )
+        // mod: 九宫格 (T9Keyboard)
+        val t9Keyboard = switch(R.string.t9_keyboard, "t9_keyboard", false, R.string.t9_keyboard_summary)
         val showLangSwitchKey =
             switch(R.string.show_lang_switch_key, "show_lang_switch_key", true)
         val langSwitchKeyBehavior = enumList(
