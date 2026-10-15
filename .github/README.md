@@ -326,6 +326,17 @@
   - **白霜拼音**自带九键方案 `rime_frost_t9`（名为“中文九键”），默认已在方案列表里，装好就能用。它复用白霜全拼的词库和设置。
   - 其他方案需要自己准备九键方案；没有九键方案时，九宫格按键只会输入数字。
   - 这些九键方案原本为仓输入法编写，里面的 `t9_processor` 组件在这里没有，Rime 会跳过它，不影响用数字打拼音。
+- **配合万象语法模型**（见上一节）：九宫格也能用，而且数字输入歧义更多（`64` 可能是 ni / mi / mo），整句选词更依赖模型。但 `rime_frost.custom.yaml` 只对全拼方案生效，九键方案 `rime_frost_t9` 要在同一个文件夹里**再建一个 `rime_frost_t9.custom.yaml`**，内容相同，然后重新部署：
+  ```yaml
+  patch:
+    grammar/language: wanxiang-lts-zh-hans
+    grammar/collocation_max_length: 5
+    grammar/collocation_min_length: 2
+    grammar/collocation_penalty: -14
+    grammar/non_collocation_penalty: -4
+    translator/contextual_suggestions: true
+  ```
+  模型文件不用再下载，两个方案共用同一个 `.gram`。如果加了之后九宫格出不来字，删掉 `rime_frost_t9.custom.yaml` 重新部署即可恢复。
 - 切到英文等其他输入法（🌐 键）时自动换回全键盘，切回 Rime 又变回九宫格。密码、邮箱、网址输入框始终用全键盘。
 - 暂不支持左侧的“拼音选择”列（按 64 后点选 ni / mi / mo），只能通过候选词选字。
 
