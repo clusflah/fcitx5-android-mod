@@ -84,6 +84,7 @@ Gradle 的代理和阿里云 Maven 镜像已经配置好：阿里云镜像只在
 - 编译完成后签名，并发布 GitHub Release `v0.1.3-mod.<run_number>`，附带主程序和全部插件的 APK。
 - 签名用的 Secrets：`SIGN_KEY_BASE64`、`SIGN_KEY_PWD`、`SIGN_KEY_ALIAS`（已经设置好，只能覆盖、不能读出）。
 - 原版自带的 `Nix`、`Publish` 工作流在这个 fork 中已停用。
+- **全家桶**（所有插件编进主程序，包名 `.mod.all`）的代码在 `all-in-one` 分支（`bundle/`、`BundledPlugins.kt`、`app/build.gradle.kts` 末尾）。Mod Release 发布后会启动 `mod-bundle.yml`：把 master 合并进 `all-in-one`，编译并发布 `v<版本>-all`。合并冲突时在本地 `git checkout all-in-one && git merge master` 解决后推送。`mod-bundle.yml` 在 master 和 `all-in-one` 上要保持一致。
 - 查看运行情况：`gh run list --repo clusflah/fcitx5-android-mod`，失败日志：`gh run view <id> --log-failed`。
 
 ## 和原版合并冲突时
