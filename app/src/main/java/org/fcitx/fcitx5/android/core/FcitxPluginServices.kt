@@ -62,7 +62,8 @@ object FcitxPluginServices {
         }
         try {
             val result = appContext.bindService(
-                Intent(PLUGIN_SERVICE_ACTION).apply { setPackage(descriptor.packageName) },
+                descriptor.serviceClass?.let { Intent().setClassName(appContext, it) }
+                    ?: Intent(PLUGIN_SERVICE_ACTION).apply { setPackage(descriptor.packageName) },
                 connection,
                 Context.BIND_AUTO_CREATE
             )

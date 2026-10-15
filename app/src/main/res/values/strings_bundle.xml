@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- all-in-one build (branch all-in-one): app name and the built-in plugins' descriptions -->
+<resources>
+    <string name="app_name_all">Fcitx5 All-in-One</string>
+    <string name="bundled_plugin">Built in</string>
+    <string name="bundled_anthy">Japanese (Anthy)</string>
+    <string name="bundled_chewing">Chinese Zhuyin (Chewing)</string>
+    <string name="bundled_hangul">Korean (Hangul)</string>
+    <string name="bundled_jyutping">Cantonese (Jyutping)</string>
+    <string name="bundled_rime">Rime</string>
+    <string name="bundled_sayura">Sinhala (Sayura)</string>
+    <string name="bundled_thai">Thai (libthai)</string>
+    <string name="bundled_unikey">Vietnamese (Unikey)</string>
+    <string name="bundled_clipboard_filter">Clipboard filter: remove tracking parameters from copied links (ClearURLs)</string>
+    <string name="bundled_clipboard_sync">Clipboard sync (SyncClipboard / WebDAV); tap to set up</string>
+</resources>

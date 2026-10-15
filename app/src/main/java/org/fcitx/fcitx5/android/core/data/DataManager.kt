@@ -61,8 +61,8 @@ object DataManager {
         File(appContext.applicationInfo.dataDir)
     }
 
-    private fun AssetManager.getDataDescriptor(): DataDescriptor {
-        return open(BuildConfig.DATA_DESCRIPTOR_NAME)
+    private fun AssetManager.getDataDescriptor(prefix: String = ""): DataDescriptor {
+        return open(prefix + BuildConfig.DATA_DESCRIPTOR_NAME)
             .bufferedReader()
             .use { it.readText() }
             .let { deserializeDataDescriptor(it) }
@@ -175,7 +175,8 @@ object DataManager {
                 preloadFailed[packageName] = PluginLoadFailed.PluginDescriptorParseError
             }
         }
-        return PluginSet(toLoad, preloadFailed)
+        // all-in-one build: the plugins built into the app
+        return PluginSet(toLoad + BundledPlugins.descriptors(), preloadFailed)
     }
 
     fun sync() = lock.withLock {
@@ -203,13 +204,19 @@ object DataManager {
         // Always add app's first
         newHierarchy.install(mainDescriptor, FileSource.Main)
 
-        val pluginAssets = mutableMapOf<String, AssetManager>()
+        // plugin name -> where its files are read from: assets and path prefix
+        val pluginAssets = mutableMapOf<String, Pair<AssetManager, String>>()
 
-        // Add plugin's one by one
+        // Add plugin's one by one (all-in-one: the built-in ones too)
         for (plugin in parsedDescriptors) {
-            val pluginContext = appContext.createPackageContext(plugin.packageName, 0)
-            val assets = pluginContext.assets
-            val descriptor = runCatching { assets.getDataDescriptor() }.onFailure {
+            if (plugin.bundled && !plugin.hasData) {
+                loadedPlugins.add(plugin)
+                continue
+            }
+            val assets = if (plugin.bundled) appContext.assets
+            else appContext.createPackageContext(plugin.packageName, 0).assets
+            val prefix = if (plugin.bundled) BundledPlugins.assetPrefix(plugin.name) else ""
+            val descriptor = runCatching { assets.getDataDescriptor(prefix) }.onFailure {
                 Timber.w("Failed to get or decode data descriptor of '${plugin.name}'")
                 Timber.w(it)
             }.getOrNull() ?: continue
@@ -226,7 +233,7 @@ object DataManager {
                     PluginLoadFailed.PathConflict(plugin, e.path, e.src)
                 continue
             }
-            pluginAssets[plugin.name] = assets
+            pluginAssets[plugin.name] = assets to prefix
             loadedPlugins.add(plugin)
             Timber.d("Merged data hierarchy of ${plugin.name}")
         }
@@ -239,10 +246,10 @@ object DataManager {
             Timber.d("Action: $it")
             when (it) {
                 is FileAction.CreateFile -> {
-                    val assets = if (it.src is FileSource.Plugin)
+                    val (assets, prefix) = if (it.src is FileSource.Plugin)
                         pluginAssets.getValue(it.src.descriptor.name)
-                    else appContext.assets
-                    assets.copyFile(it.path)
+                    else appContext.assets to ""
+                    assets.copyFile(it.path, prefix)
                 }
                 is FileAction.DeleteDir -> {
                     removePath(it.path).getOrThrow()
@@ -251,10 +258,10 @@ object DataManager {
                     removePath(it.path).getOrThrow()
                 }
                 is FileAction.UpdateFile -> {
-                    val assets = if (it.src is FileSource.Plugin)
+                    val (assets, prefix) = if (it.src is FileSource.Plugin)
                         pluginAssets.getValue(it.src.descriptor.name)
-                    else appContext.assets
-                    assets.copyFile(it.path)
+                    else appContext.assets to ""
+                    assets.copyFile(it.path, prefix)
                 }
                 is FileAction.CreateSymlink -> {
                     removePath(it.path).getOrThrow()
@@ -288,8 +295,8 @@ object DataManager {
     private fun symlink(source: String, target: String) =
         FileUtil.symlink(dataDir.resolve(source), dataDir.resolve(target))
 
-    private fun AssetManager.copyFile(filename: String) {
-        open(filename).use { i ->
+    private fun AssetManager.copyFile(filename: String, prefix: String = "") {
+        open(prefix + filename).use { i ->
             File(dataDir, filename)
                 .also { it.parentFile?.mkdirs() }
                 .outputStream()

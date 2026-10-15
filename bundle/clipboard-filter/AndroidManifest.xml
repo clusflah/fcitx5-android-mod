@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <service
+            android:name="org.fcitx.fcitx5.android.plugin.clipboard_filter.MainService"
+            android:directBootAware="true"
+            android:exported="false"
+            tools:targetApi="24" />
+    </application>
+</manifest>

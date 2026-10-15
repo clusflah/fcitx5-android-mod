@@ -1,4 +1,5 @@
 import java.net.URI
+import javax.inject.Inject
 import java.security.MessageDigest
 
 plugins {
@@ -45,7 +46,10 @@ android {
         release {
             resValue("mipmap", "app_icon", "@mipmap/ic_launcher")
             resValue("mipmap", "app_icon_round", "@mipmap/ic_launcher_round")
-            resValue("string", "app_name", "@string/app_name_release")
+            // all-in-one: own package and name, so it installs next to the normal build
+            applicationIdSuffix = ".mod.all"
+            versionNameSuffix = "-all"
+            resValue("string", "app_name", "@string/app_name_all")
             proguardFile("proguard-rules.pro")
         }
         debug {
@@ -171,4 +175,97 @@ configurations {
         exclude(group = "com.louiscad.splitties", module = "splitties-appctx")
         exclude(group = "com.louiscad.splitties", module = "splitties-systemservices")
     }
+}
+
+// ---- all-in-one: every plugin built into the app (branch all-in-one, see BundledPlugins.kt) ----
+// Native plugins (input method engines) are built as usual; their libraries and data files are
+// taken from the plugin APKs: lib/<abi>/*.so go into the app's native libraries, assets/** into
+// assets/bundled/<plugin>/ (with the plugin's descriptor.json), from where DataManager installs them.
+// The Kotlin plugins are libraries (:bundle:*). Release builds only; debug builds stay plain.
+val bundledNativePlugins = listOf("anthy", "chewing", "hangul", "jyutping", "rime", "sayura", "thai", "unikey")
+
+abstract class BundlePluginsTask : DefaultTask() {
+    /** plugin name -> its build/outputs/apk/release directory */
+    @get:Input
+    abstract val apkDirs: MapProperty<String, File>
+
+    @get:InputFiles
+    abstract val apkFiles: ConfigurableFileCollection
+
+    @get:InputFiles
+    abstract val rootAssets: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val libsDir: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val assetsDir: DirectoryProperty
+
+    @get:Inject
+    abstract val fs: FileSystemOperations
+
+    @get:Inject
+    abstract val archives: ArchiveOperations
+
+    @TaskAction
+    fun run() {
+        fs.delete { delete(libsDir, assetsDir) }
+        apkDirs.get().forEach { (name, dir) ->
+            val apk = dir.listFiles { f -> f.extension == "apk" }?.maxByOrNull { it.lastModified() }
+                ?: throw GradleException("No APK of plugin $name in $dir")
+            fs.copy {
+                from(archives.zipTree(apk)) { include("lib/**/*.so") }
+                eachFile { relativePath = RelativePath(true, *relativePath.segments.drop(1).toTypedArray()) }
+                includeEmptyDirs = false
+                duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+                into(libsDir)
+            }
+            fs.copy {
+                from(archives.zipTree(apk)) { include("assets/**") }
+                eachFile {
+                    relativePath = RelativePath(true, "bundled", name, *relativePath.segments.drop(1).toTypedArray())
+                }
+                includeEmptyDirs = false
+                into(assetsDir)
+            }
+        }
+        fs.copy {
+            from(rootAssets)
+            into(assetsDir)
+        }
+    }
+}
+
+val bundlePlugins = tasks.register<BundlePluginsTask>("bundlePlugins") {
+    bundledNativePlugins.forEach { p ->
+        dependsOn(":plugin:$p:assembleRelease")
+        val dir = rootDir.resolve("plugin/$p/build/outputs/apk/release")
+        apkDirs.put(p, dir)
+        apkFiles.from(fileTree(dir) { include("*.apk") })
+    }
+    // ClearURLs rules read by the clipboard filter from the app's assets
+    rootAssets.from(rootDir.resolve("plugin/clipboard-filter/ClearURLsRules/data.min.json"))
+    libsDir.set(layout.buildDirectory.dir("generated/bundled/jniLibs"))
+    assetsDir.set(layout.buildDirectory.dir("generated/bundled/assets"))
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.sources.jniLibs?.addGeneratedSourceDirectory(bundlePlugins, BundlePluginsTask::libsDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(bundlePlugins, BundlePluginsTask::assetsDir)
+    }
+}
+
+android {
+    packaging {
+        jniLibs {
+            // a library some plugins share (or share with the app) is packaged once
+            pickFirsts += "lib/**/*.so"
+        }
+    }
+}
+
+dependencies {
+    implementation(project(":bundle:clipboard-filter"))
+    implementation(project(":bundle:clipboard-sync"))
 }

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application>
+        <service
+            android:name="org.fcitx.fcitx5.android.plugin.clipboard_sync.MainService"
+            android:exported="false" />
+        <activity
+            android:name="org.fcitx.fcitx5.android.plugin.clipboard_sync.ui.SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_title"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
+        <service
+            android:name="org.fcitx.fcitx5.android.plugin.clipboard_sync.service.QuickSyncTileService"
+            android:exported="true"
+            android:icon="@drawable/syncclip"
+            android:label="@string/quick_sync_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            tools:targetApi="24">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>
