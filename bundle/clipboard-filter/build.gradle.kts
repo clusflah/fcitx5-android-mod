@@ -25,13 +25,17 @@ android {
         }
     }
 
-    sourceSets["main"].apply {
-        java.srcDir("../../plugin/clipboard-filter/src/main/java")
-        manifest.srcFile("AndroidManifest.xml")
-    }
 }
 
 dependencies {
     implementation(project(":lib:common"))
     implementation(libs.kotlinx.serialization.json)
+}
+
+// the android {} accessor exposes the legacy source set type, which AGP 9 no longer implements
+extensions.configure<com.android.build.api.dsl.LibraryExtension> {
+    sourceSets.getByName("main").apply {
+        java.srcDir("../../plugin/clipboard-filter/src/main/java")
+        manifest.srcFile("AndroidManifest.xml")
+    }
 }

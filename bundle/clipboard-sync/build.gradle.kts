@@ -28,12 +28,6 @@ android {
         }
     }
 
-    sourceSets["main"].apply {
-        java.srcDir("../../plugin/clipboard-sync/src/main/java")
-        res.srcDir("../../plugin/clipboard-sync/src/main/res")
-        manifest.srcFile("AndroidManifest.xml")
-    }
-
     lint {
         // the quick settings tile (API 24) is declared with tools:targetApi; the app's minSdk is 23
         disable += "NewApi"
@@ -48,4 +42,13 @@ dependencies {
     implementation(libs.androidx.preference)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.documentfile:documentfile:1.1.0")
+}
+
+// the android {} accessor exposes the legacy source set type, which AGP 9 no longer implements
+extensions.configure<com.android.build.api.dsl.LibraryExtension> {
+    sourceSets.getByName("main").apply {
+        java.srcDir("../../plugin/clipboard-sync/src/main/java")
+        res.srcDir("../../plugin/clipboard-sync/src/main/res")
+        manifest.srcFile("AndroidManifest.xml")
+    }
 }
