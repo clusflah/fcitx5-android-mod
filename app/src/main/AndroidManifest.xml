@@ -145,6 +145,12 @@
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
 
         <activity
+            android:name=".ui.main.RimeGrammarActivity"
+            android:exported="false"
+            android:label="@string/rime_grammar"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
+
+        <activity
             android:name=".ui.main.SmsPermissionActivity"
             android:excludeFromRecents="true"
             android:exported="false"
