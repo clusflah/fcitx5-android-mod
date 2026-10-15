@@ -437,6 +437,9 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         /** when an online service fails, use the offline one (voice: SenseVoice, translation: Offline Translator) */
         val offlineFallback =
             switch(R.string.offline_fallback, "offline_fallback", true, R.string.offline_fallback_summary)
+        /** mod: fix the recognized text with the default LLM before typing it (AiVoiceCorrect) */
+        val aiCorrect =
+            switch(R.string.voice_ai_correct, "voice_ai_correct", false, R.string.voice_ai_correct_summary)
         val azureSpeechKey = string(R.string.azure_speech_key, "azure_speech_key", "", true)
         val azureSpeechRegion = string(R.string.azure_speech_region, "azure_speech_region", "eastasia")
         val azureSttLanguage = string(R.string.azure_stt_language, "azure_stt_language", "zh-CN")

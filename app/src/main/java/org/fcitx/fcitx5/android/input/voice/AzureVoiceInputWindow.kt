@@ -20,6 +20,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.fcitx.fcitx5.android.data.ai.AiVoiceCorrect
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.input.FcitxInputMethodService
@@ -150,9 +151,13 @@ class AzureVoiceInputWindow : InputWindow.ExtendedInputWindow<AzureVoiceInputWin
                 if (text.isEmpty()) {
                     showError(context.getString(R.string.azure_voice_no_match)); return@launch
                 }
-                service.commitText(text)
+                val corrected = if (AiVoiceCorrect.enabled(service.currentInputEditorInfo)) {
+                    status.text = "纠错中…"
+                    AiVoiceCorrect.correct(service, text)
+                } else text
+                service.commitText(corrected)
                 if (prefs.azureTtsEnabled.getValue()) {
-                    runCatching { AzureSpeech.play(AzureSpeech.synthesize(config(), text, context.cacheDir)) }
+                    runCatching { AzureSpeech.play(AzureSpeech.synthesize(config(), corrected, context.cacheDir)) }
                 }
                 windowManager.attachWindow(KeyboardWindow)
             } catch (e: Exception) {
