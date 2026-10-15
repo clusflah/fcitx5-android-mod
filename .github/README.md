@@ -318,6 +318,10 @@
 ### 14. Rime 语法模型（万象 LTS）：打整句更准，不需要改代码
 修改版自带的 Rime 引擎**已经编译进了语法模型插件（librime-octagram）**，另外还有 Lua 脚本和联想（predict）插件。只要放一个语法模型文件、改一行配置，整句输入的选词就会参考上下文。这里以**白霜拼音**为例，使用 [万象 LTS 语法模型](https://github.com/amzxyz/RIME-LMDG)，它的官方说明里也列出了 Fcitx5-Android。
 
+**最简单的办法：设置 → Rime 语法模型（万象）**。在这个页面点“下载模型”（或在电脑上下载后“从文件导入”），下载完会自动启用：把下面第 3 步的设置写进白霜**全拼、九键（九宫格）和各种双拼**的 `custom.yaml`，然后重新部署 Rime。点“停用”只删除它加的那几行，你自己的其他设置保留；“删除模型”释放空间。全家桶也一样。
+
+想手动设置的话：
+
 1. **下载模型**：[RIME-LMDG 的 LTS 发布页](https://github.com/amzxyz/RIME-LMDG/releases/tag/LTS)上的 `wanxiang-lts-zh-hans.gram`（简体，约 **379 MB**；繁体用 `wanxiang-lts-zh-hant.gram`）。
 2. **放进 Rime 用户目录**：修改版的目录是 `Android/data/org.fcitx.fcitx5.android.mod/files/data/rime/`（注意包名带 `.mod`，和原版不同）。Android 11 起，大多数文件管理器进不去 `Android/data`，可以用系统自带的**“文件”App**：在侧边栏找到“小企鹅输入法”，进入 `rime` 文件夹，把 `.gram` 文件复制进去。也可以用电脑通过 USB 复制。
 3. **改配置**：在同一个文件夹里，新建或编辑 `rime_frost.custom.yaml`（白霜的方案名是 `rime_frost`；其他方案就是 `方案名.custom.yaml`）。如果文件已经有 `patch:`，把下面几行合并进去：
@@ -331,6 +335,7 @@
      translator/contextual_suggestions: true
    ```
    白霜默认用的是一个很小的 `zh-moqi` 模型，几乎不起作用；上面的配置把它换成万象模型，惩罚参数用白霜文档推荐的值。
+   **九键方案 `rime_frost_t9` 不会继承 `rime_frost.custom.yaml`**（它直接引用白霜的原始方案文件），九宫格也要用的话，把同样几行再写进 `rime_frost_t9.custom.yaml`；双拼方案同理（`rime_frost_double_pinyin_flypy.custom.yaml` 等）。
 4. **重新部署**：切换到中州韵，在输入法菜单里点“重新部署”，或者在 新手机检查 页面点“重启输入法引擎”。
 
 注意：
