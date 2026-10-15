@@ -27,6 +27,7 @@ import org.fcitx.fcitx5.android.input.candidates.expanded.decoration.FlexboxVert
 import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateMode.AlwaysFillWidth
 import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateMode.AutoFillWidth
 import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateMode.NeverFillWidth
+import org.fcitx.fcitx5.android.input.keyboard.T9Pinyin
 import org.fcitx.fcitx5.android.input.dependency.UniqueViewComponent
 import org.fcitx.fcitx5.android.input.dependency.context
 import org.fcitx.fcitx5.android.input.dependency.fcitx
@@ -35,6 +36,8 @@ import org.fcitx.fcitx5.android.input.dependency.theme
 import org.mechdancer.dependency.manager.must
 import splitties.dimensions.dp
 import kotlin.math.max
+
+private const val T9_CANDIDATES_PER_ROW = 5
 
 class HorizontalCandidateComponent :
     UniqueViewComponent<HorizontalCandidateComponent, RecyclerView>(), InputBroadcastReceiver {
@@ -45,7 +48,10 @@ class HorizontalCandidateComponent :
     private val inputView by manager.inputView()
     private val bar: KawaiiBarComponent by manager.must()
 
-    private val fillStyle by AppPrefs.getInstance().keyboard.horizontalCandidateStyle
+    private val fillStylePref by AppPrefs.getInstance().keyboard.horizontalCandidateStyle
+
+    // mod: the 九宫格 shows five candidates per row, like other nine-key keypads
+    private val fillStyle get() = if (T9Pinyin.active) AutoFillWidth else fillStylePref
     private val maxSpanCountPref by lazy {
         AppPrefs.getInstance().keyboard.run {
             if (context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT)
@@ -54,6 +60,8 @@ class HorizontalCandidateComponent :
                 expandedCandidateGridSpanCountLandscape
         }
     }
+
+    private fun maxSpanCount() = if (T9Pinyin.active) T9_CANDIDATES_PER_ROW else maxSpanCountPref.getValue()
 
     private var layoutMinWidth = 0
     private var layoutFlexGrow = 1f
@@ -153,7 +161,7 @@ class HorizontalCandidateComponent :
             override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
                 super.onSizeChanged(w, h, oldw, oldh)
                 if (fillStyle == AutoFillWidth) {
-                    val maxSpanCount = maxSpanCountPref.getValue()
+                    val maxSpanCount = maxSpanCount()
                     layoutMinWidth = w / maxSpanCount - dividerDrawable.intrinsicWidth
                 }
             }
@@ -169,7 +177,7 @@ class HorizontalCandidateComponent :
     override fun onCandidateUpdate(data: FcitxEvent.CandidateListEvent.Data) {
         val candidates = data.candidates
         val total = data.total
-        val maxSpanCount = maxSpanCountPref.getValue()
+        val maxSpanCount = maxSpanCount()
         when (fillStyle) {
             NeverFillWidth -> {
                 layoutMinWidth = 0
