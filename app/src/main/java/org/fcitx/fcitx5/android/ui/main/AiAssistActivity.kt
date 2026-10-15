@@ -50,6 +50,7 @@ import org.fcitx.fcitx5.android.data.ai.AiImage
 import org.fcitx.fcitx5.android.data.ai.AiImageStore
 import org.fcitx.fcitx5.android.data.ai.AiPendingCommit
 import org.fcitx.fcitx5.android.data.ai.AiPrompt
+import org.fcitx.fcitx5.android.data.ai.AiPromptRunner
 import org.fcitx.fcitx5.android.data.ai.AiProvider
 import org.fcitx.fcitx5.android.data.ai.AiTranslate
 import org.fcitx.fcitx5.android.data.ai.MarkdownText
@@ -366,13 +367,7 @@ class AiAssistActivity : AppCompatActivity() {
             return
         }
         val prompt = if (translateMode) "" else prompts.find { it.id == promptId }?.content.orEmpty()
-        val system: String
-        val user: String
-        if (prompt.contains("{{input}}")) {
-            system = ""; user = prompt.replace("{{input}}", text)
-        } else {
-            system = prompt; user = text
-        }
+        val (system, user) = AiPromptRunner.messages(prompt, text)
         job?.cancel()
         sendBtn.isEnabled = false
         imageBtn.isEnabled = false
