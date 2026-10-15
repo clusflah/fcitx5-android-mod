@@ -401,11 +401,12 @@ class AiAssistActivity : AppCompatActivity() {
                     resultBox.visibility = View.VISIBLE
                     return@launch
                 }
+                val msg = e.message ?: e.toString()
                 AlertDialog.Builder(this@AiAssistActivity)
-                    .setTitle("请求失败").setMessage(e.message ?: e.toString())
+                    .setTitle("请求失败").setMessage(msg)
                     .setPositiveButton(android.R.string.ok, null)
                     .setNeutralButton("设置") { _, _ -> openSettings() }
-                    .show()
+                    .showIfAlive(this@AiAssistActivity, "大模型请求失败：$msg")
             } finally {
                 sendBtn.isEnabled = true
                 imageBtn.isEnabled = true
@@ -463,13 +464,14 @@ class AiAssistActivity : AppCompatActivity() {
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
+                val msg = e.message ?: e.toString()
                 AlertDialog.Builder(this@AiAssistActivity)
-                    .setTitle("生成图片失败").setMessage(e.message ?: e.toString())
+                    .setTitle("生成图片失败").setMessage(msg)
                     .setPositiveButton(android.R.string.ok, null)
                     .setNeutralButton("设置") { _, _ ->
                         startActivity(Intent(this@AiAssistActivity, AiSettingsActivity::class.java))
                     }
-                    .show()
+                    .showIfAlive(this@AiAssistActivity, "生成图片失败：$msg")
             } finally {
                 sendBtn.isEnabled = true
                 imageBtn.isEnabled = true
