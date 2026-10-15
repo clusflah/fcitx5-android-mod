@@ -47,7 +47,8 @@ dependencies {
 // the android {} accessor exposes the legacy source set type, which AGP 9 no longer implements
 extensions.configure<com.android.build.api.dsl.LibraryExtension> {
     sourceSets.getByName("main").apply {
-        java.srcDir("../../plugin/clipboard-sync/src/main/java")
+        // built-in Kotlin only compiles extra directories added as Kotlin sources
+        kotlin.srcDir("../../plugin/clipboard-sync/src/main/java")
         res.srcDir("../../plugin/clipboard-sync/src/main/res")
         manifest.srcFile("AndroidManifest.xml")
     }

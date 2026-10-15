@@ -256,15 +256,6 @@ androidComponents {
     }
 }
 
-android {
-    packaging {
-        jniLibs {
-            // a library some plugins share (or share with the app) is packaged once
-            pickFirsts += "lib/**/*.so"
-        }
-    }
-}
-
 dependencies {
     implementation(project(":bundle:clipboard-filter"))
     implementation(project(":bundle:clipboard-sync"))

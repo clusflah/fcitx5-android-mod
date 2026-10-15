@@ -24,7 +24,6 @@ android {
             buildConfigField("String", "MAIN_APPLICATION_ID", "\"org.fcitx.fcitx5.android.debug\"")
         }
     }
-
 }
 
 dependencies {
@@ -35,7 +34,8 @@ dependencies {
 // the android {} accessor exposes the legacy source set type, which AGP 9 no longer implements
 extensions.configure<com.android.build.api.dsl.LibraryExtension> {
     sourceSets.getByName("main").apply {
-        java.srcDir("../../plugin/clipboard-filter/src/main/java")
+        // built-in Kotlin only compiles extra directories added as Kotlin sources
+        kotlin.srcDir("../../plugin/clipboard-filter/src/main/java")
         manifest.srcFile("AndroidManifest.xml")
     }
 }
