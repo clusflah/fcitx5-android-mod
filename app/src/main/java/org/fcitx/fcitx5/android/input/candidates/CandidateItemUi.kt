@@ -10,6 +10,7 @@ import androidx.core.text.buildSpannedString
 import androidx.core.text.color
 import org.fcitx.fcitx5.android.core.CandidateWord
 import org.fcitx.fcitx5.android.data.theme.Theme
+import org.fcitx.fcitx5.android.input.keyboard.T9Pinyin
 import org.fcitx.fcitx5.android.input.AutoScaleTextView
 import org.fcitx.fcitx5.android.input.keyboard.CustomGestureView
 import org.fcitx.fcitx5.android.utils.pressHighlightDrawable
@@ -51,7 +52,8 @@ class CandidateItemUi(override val ctx: Context, val theme: Theme) : Ui {
             color(fg) {
                 append(candidate.text)
             }
-            if (candidate.comment.isNotBlank()) {
+            // mod: on the 九宫格 the pinyin hints are shown in the preedit line, not next to each word
+            if (candidate.comment.isNotBlank() && !T9Pinyin.hidesComment(candidate.comment)) {
                 if (candidate.spaceBetweenComment) {
                     append(" ")
                 }

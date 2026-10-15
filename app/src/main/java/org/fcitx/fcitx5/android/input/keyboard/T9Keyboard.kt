@@ -4,22 +4,24 @@
  * pinyin; 1 separates syllables. Shown instead of the 26-key layout when Settings → Virtual Keyboard
  * → 九宫格 is on and Rime is the current input method.
  * While typing, the left column lists the pinyin the digits can stand for (see T9Pinyin); tapping
- * one replaces those digits with its letters in Rime's input.
+ * one replaces those digits with its letters in Rime's input. The preedit line shows the first
+ * candidate's pinyin instead of digits, and candidates don't repeat it (PreeditComponent,
+ * CandidateItemUi).
  */
 package org.fcitx.fcitx5.android.input.keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
-import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.core.FcitxKeyMapping
 import org.fcitx.fcitx5.android.core.KeySym
+import org.fcitx.fcitx5.android.data.InputFeedbacks
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.input.keyboard.KeyDef.Appearance.Variant
 import org.fcitx.fcitx5.android.input.picker.PickerWindow
@@ -29,10 +31,9 @@ import splitties.views.dsl.core.add
 import splitties.views.imageResource
 
 /** A letter group key: tap sends the digit; swipe types the digit itself. */
-class T9Key(letters: String, digit: Int) : KeyDef(
-    Appearance.AltText(
-        displayText = letters,
-        altText = digit.toString(),
+class T9Key(letters: String, digit: Int, display: String = letters) : KeyDef(
+    Appearance.Text(
+        displayText = display,
         textSize = 20f,
         percentWidth = T9Keyboard.KEY_WIDTH
     ),
@@ -40,33 +41,47 @@ class T9Key(letters: String, digit: Int) : KeyDef(
         Behavior.Press(KeyAction.FcitxKeyAction(digit.toString())),
         Behavior.Swipe(KeyAction.SymAction(KeySym(FcitxKeyMapping.FcitxKey_KP_0 + digit), NumLockState))
     ),
-    arrayOf(Popup.AltPreview(letters, digit.toString()))
+    arrayOf(Popup.AltPreview(display, digit.toString()))
 )
 
-/** Left column: shows the Chinese mark, sends the ASCII one so Rime commits the input and converts it. */
-class T9PunctKey(display: String, send: String) : KeyDef(
-    Appearance.Text(
-        displayText = display,
-        textSize = 20f,
-        percentWidth = T9Keyboard.SIDE_WIDTH,
-        variant = Variant.Alternative
-    ),
-    setOf(Behavior.Press(KeyAction.FcitxKeyAction(send))),
-    arrayOf(Popup.Preview(display))
-)
-
-/** Text key on the right column running an arbitrary action. */
-class T9ActionKey(display: String, action: KeyAction) : KeyDef(
+/** Text key running an arbitrary action. */
+class T9ActionKey(
+    display: String, action: KeyAction, longPress: KeyAction? = null, width: Float = T9Keyboard.SIDE_WIDTH,
+    variant: Variant = Variant.Alternative
+) : KeyDef(
     Appearance.Text(
         displayText = display,
         textSize = 16f,
-        textStyle = Typeface.BOLD,
-        percentWidth = T9Keyboard.SIDE_WIDTH,
-        variant = Variant.Alternative
+        percentWidth = width,
+        variant = variant
     ),
-    setOf(Behavior.Press(action))
+    setOfNotNull(Behavior.Press(action), longPress?.let { Behavior.LongPress(it) })
 )
 
+/** Empty cell under one of the views that span several rows (left column, return key). */
+class T9Placeholder(viewId: Int) : KeyDef(
+    Appearance.Text(
+        displayText = "",
+        textSize = 16f,
+        percentWidth = T9Keyboard.SIDE_WIDTH,
+        variant = Variant.Alternative,
+        viewId = viewId
+    ),
+    emptySet()
+)
+
+/**
+ * Laid out like the common Chinese nine-key keypads:
+ * ```
+ *  ，  | @#   | ABC  | DEF  | ⌫
+ *  。  | GHI  | JKL  | MNO  | 重输
+ *  ？  | PQRS | TUV  | WXYZ | ⏎
+ *  ！  |      |      |      | ⏎
+ * 符号 | 123  | space       | 中/英 | ⏎
+ * ```
+ * The left column (four marks over three rows, or the pinyin list while typing) and the return key
+ * (two rows) span rows, which BaseKeyboard can't do: they are views laid over placeholder keys.
+ */
 @SuppressLint("ViewConstructor")
 class T9Keyboard(
     context: Context,
@@ -76,23 +91,29 @@ class T9Keyboard(
     companion object {
         const val Name = "T9"
 
-        /** LayoutSwitchAction target of the "全键" key: turns the 九宫格 setting off */
+        /** LayoutSwitchAction target that turns the 九宫格 setting off (the toolbar button does the same) */
         const val ToFullKeyboard = "T9:full"
 
         const val SIDE_WIDTH = 0.15f
         const val KEY_WIDTH = 0.23333f
 
+        /** left column marks: shown Chinese, sent ASCII so Rime commits the input and converts them */
+        private val MARKS = listOf("，" to ",", "。" to ".", "？" to "?", "！" to "!")
+
+        private val LEFT_IDS = IntArray(3) { View.generateViewId() }
+        private val RIGHT_IDS = IntArray(2) { View.generateViewId() }
+
         val Layout: List<List<KeyDef>> = listOf(
             listOf(
-                T9PunctKey("，", ","),
-                // 1 = syllable separator while typing (the schema maps it to '), punctuation otherwise
-                T9Key("分词", 1),
+                T9Placeholder(LEFT_IDS[0]),
+                // 1: syllable separator while typing (the schema maps it to '), symbols otherwise
+                T9Key("@#", 1),
                 T9Key("ABC", 2),
                 T9Key("DEF", 3),
                 BackspaceKey(SIDE_WIDTH)
             ),
             listOf(
-                T9PunctKey("。", "."),
+                T9Placeholder(LEFT_IDS[1]),
                 T9Key("GHI", 4),
                 T9Key("JKL", 5),
                 T9Key("MNO", 6),
@@ -100,32 +121,44 @@ class T9Keyboard(
                 T9ActionKey("重输", KeyAction.SymAction(KeySym(FcitxKeyMapping.FcitxKey_Escape)))
             ),
             listOf(
-                T9PunctKey("？", "?"),
+                T9Placeholder(LEFT_IDS[2]),
                 T9Key("PQRS", 7),
                 T9Key("TUV", 8),
                 T9Key("WXYZ", 9),
-                T9ActionKey("全键", KeyAction.LayoutSwitchAction(ToFullKeyboard))
+                T9Placeholder(RIGHT_IDS[0])
             ),
             listOf(
-                LayoutSwitchKey("!?#", PickerWindow.Key.Symbol.name, SIDE_WIDTH, Variant.AltForeground),
-                LayoutSwitchKey("123", NumberKeyboard.Name, SIDE_WIDTH),
-                LanguageKey(),
+                LayoutSwitchKey("符号", PickerWindow.Key.Symbol.name, SIDE_WIDTH),
+                LayoutSwitchKey("123", NumberKeyboard.Name, SIDE_WIDTH, Variant.Normal),
                 SpaceKey(),
-                ReturnKey(SIDE_WIDTH)
+                // 中/英: next input method (e.g. English, which brings back the 26-key layout)
+                T9ActionKey(
+                    "中/英", KeyAction.LangSwitchAction, KeyAction.ShowInputMethodPickerAction,
+                    variant = Variant.Normal
+                ),
+                T9Placeholder(RIGHT_IDS[1])
             )
         )
     }
 
-    val `return`: ImageKeyView by lazy { findViewById(R.id.button_return) }
+    private val columnList = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
 
-    private val pinyinList = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-
-    /** covers the punctuation column (rows 1–3) while there are pinyin to choose from */
-    private val pinyinColumn = ScrollView(context).apply {
-        visibility = View.GONE
+    /** left column over rows 1–3: the marks ，。？！, or while typing the pinyin to choose from */
+    private val leftColumn = ScrollView(context).apply {
         isVerticalScrollBarEnabled = false
+        isFillViewport = true
         setBackgroundColor(theme.altKeyBackgroundColor)
-        addView(pinyinList)
+        addView(columnList)
+    }
+
+    /** return key spanning the last two rows */
+    val `return` = ImageKeyView(context, theme, ReturnKey(SIDE_WIDTH).appearance as KeyDef.Appearance.Image).apply {
+        soundEffect = InputFeedbacks.SoundEffect.Return
+        setOnClickListener {
+            keyActionListener?.onKeyAction(
+                KeyAction.SymAction(KeySym(FcitxKeyMapping.FcitxKey_Return)), KeyActionListener.Source.Keyboard
+            )
+        }
     }
 
     /** Rime input not converted yet, as last read from the preedit */
@@ -135,13 +168,46 @@ class T9Keyboard(
         // the key rows are the children added by BaseKeyboard; constraints need ids
         val rows = (0 until childCount).map { getChildAt(it) }
         rows.forEach { if (it.id == View.NO_ID) it.id = View.generateViewId() }
-        add(pinyinColumn, lParams(0, 0) {
+        (LEFT_IDS + RIGHT_IDS).forEach { findViewById<View>(it)?.visibility = View.INVISIBLE }
+        add(leftColumn, lParams(0, 0) {
             topToTop = rows[0].id
             bottomToBottom = rows[2].id
             startToStart = ConstraintLayout.LayoutParams.PARENT_ID
             matchConstraintDefaultWidth = ConstraintLayout.LayoutParams.MATCH_CONSTRAINT_PERCENT
             matchConstraintPercentWidth = SIDE_WIDTH
         })
+        add(`return`, lParams(0, 0) {
+            topToTop = rows[2].id
+            bottomToBottom = rows[3].id
+            endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+            matchConstraintDefaultWidth = ConstraintLayout.LayoutParams.MATCH_CONSTRAINT_PERCENT
+            matchConstraintPercentWidth = SIDE_WIDTH
+        })
+        showMarks()
+    }
+
+    private fun columnItem(label: String, onClick: () -> Unit) = TextView(context).apply {
+        text = label
+        textSize = 18f
+        gravity = Gravity.CENTER
+        setTextColor(theme.altKeyTextColor)
+        setOnClickListener {
+            InputFeedbacks.hapticFeedback(it)
+            InputFeedbacks.soundEffect(InputFeedbacks.SoundEffect.Standard)
+            onClick()
+        }
+    }
+
+    private fun sendKey(key: String) =
+        keyActionListener?.onKeyAction(KeyAction.FcitxKeyAction(key), KeyActionListener.Source.Keyboard)
+
+    /** ，。？！ filling the column */
+    private fun showMarks() {
+        columnList.removeAllViews()
+        MARKS.forEach { (shown, sent) ->
+            columnList.addView(columnItem(shown) { sendKey(sent) }, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
+        }
+        leftColumn.scrollTo(0, 0)
     }
 
     /** Called with Rime's preedit (the code being typed) whenever it changes. */
@@ -150,19 +216,16 @@ class T9Keyboard(
         if (raw == pendingRaw) return
         pendingRaw = raw
         val options = raw?.let { T9Pinyin.options(it) }.orEmpty()
-        pinyinList.removeAllViews()
-        options.forEach { syllable ->
-            pinyinList.addView(TextView(context).apply {
-                text = syllable
-                textSize = 17f
-                gravity = Gravity.CENTER
-                setTextColor(theme.altKeyTextColor)
-                minHeight = dp(42)
-                setOnClickListener { choose(syllable) }
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        if (options.isEmpty()) {
+            showMarks()
+            return
         }
-        pinyinColumn.scrollTo(0, 0)
-        pinyinColumn.visibility = if (options.isEmpty()) View.GONE else View.VISIBLE
+        columnList.removeAllViews()
+        options.forEach { syllable ->
+            columnList.addView(columnItem(syllable) { choose(syllable) }.apply { minHeight = dp(42) },
+                LinearLayout.LayoutParams(MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
+        leftColumn.scrollTo(0, 0)
     }
 
     /** Replace the digits the syllable covers with its letters: delete from the end, retype. */
@@ -175,9 +238,7 @@ class T9Keyboard(
                 KeyAction.SymAction(KeySym(FcitxKeyMapping.FcitxKey_BackSpace)), KeyActionListener.Source.Keyboard
             )
         }
-        type.forEach {
-            listener.onKeyAction(KeyAction.FcitxKeyAction(it.toString()), KeyActionListener.Source.Keyboard)
-        }
+        type.forEach { sendKey(it.toString()) }
     }
 
     override fun onAttach() {

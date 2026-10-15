@@ -84,6 +84,9 @@ object T9Pinyin {
 
     private val PINYIN_HINT = Regex("""[a-zü]+(?:[ '][a-zü]+)*""")
 
+    /** On the 九宫格, a candidate's pinyin hint is shown in the preedit line instead of beside it. */
+    fun hidesComment(comment: String) = active && PINYIN_HINT.matches(comment.trim().lowercase())
+
     /**
      * The preedit line for the 九宫格: the digits still to be converted are replaced by the pinyin of
      * the first candidate (Rime's spelling hint in its comment, e.g. "ni hao"), so "你64426" shows as
