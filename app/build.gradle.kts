@@ -299,7 +299,7 @@ abstract class FetchRimeFrostTask : DefaultTask() {
         val archive = temporaryDir.resolve("rime-frost.tar.gz")
         val url = "https://github.com/gaboolic/rime-frost/archive/${commit.get()}.tar.gz"
         logger.lifecycle("Downloading $url")
-        java.net.URI(url).toURL().openStream().use { i -> archive.outputStream().use { o -> i.copyTo(o) } }
+        URI(url).toURL().openStream().use { i -> archive.outputStream().use { o -> i.copyTo(o) } }
         val out = outputDir.get().asFile
         fs.delete { delete(out) }
         fs.copy {
