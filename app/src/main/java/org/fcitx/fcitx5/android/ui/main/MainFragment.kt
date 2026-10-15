@@ -116,6 +116,9 @@ class MainFragment : PaddingPreferenceFragment() {
                 addPreference(R.string.offline_voice, icon = R.drawable.ic_baseline_keyboard_voice_24) {
                     startActivity(Intent(requireContext(), OfflineVoiceActivity::class.java))
                 }
+                addPreference(R.string.rime_grammar, icon = R.drawable.ic_baseline_auto_awesome_24) {
+                    startActivity(Intent(requireContext(), RimeGrammarActivity::class.java))
+                }
                 addDestinationPreference(
                     R.string.emoji_and_symbols,
                     R.drawable.ic_baseline_emoji_symbols_24,
