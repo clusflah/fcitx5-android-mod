@@ -1,9 +1,11 @@
 /*
  * SPDX-License-Identifier: LGPL-2.1-or-later
- * Minimal chat clients for Gemini and OpenAI-compatible APIs (DeepSeek, Kimi/Moonshot).
+ * Minimal chat clients for Gemini and OpenAI-compatible APIs (DeepSeek, Kimi/Moonshot),
+ * plus model listing and image generation.
  */
 package org.fcitx.fcitx5.android.data.ai
 
+import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -12,6 +14,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class AiException(msg: String) : Exception(msg)
+
+/** A generated image: raw bytes and their MIME type (image/png, image/jpeg ...) */
+class AiImage(val bytes: ByteArray, val mime: String, val text: String = "")
 
 object AiClient {
 
@@ -99,6 +104,109 @@ object AiClient {
         }
     }
 
+    /**
+     * Models the provider offers, sorted by name. Gemini: only models that support generateContent
+     * (without the "models/" prefix); OpenAI-compatible: the ids from GET /models.
+     */
+    suspend fun listModels(provider: AiProvider, baseUrl: String, apiKey: String): List<String> =
+        withContext(Dispatchers.IO) {
+            if (apiKey.isBlank() && provider != AiProvider.Local)
+                throw AiException("请先填写 ${provider.label} 的 API Key")
+            val base = baseUrl.trim().trimEnd('/')
+            val ids = mutableListOf<String>()
+            if (provider == AiProvider.Gemini) {
+                var page = ""
+                do {
+                    val q = "pageSize=1000" + if (page.isNotEmpty()) "&pageToken=$page" else ""
+                    val resp = request("GET", "$base/models?$q", null, mapOf("x-goog-api-key" to apiKey))
+                    val arr = resp.optJSONArray("models") ?: JSONArray()
+                    for (i in 0 until arr.length()) {
+                        val m = arr.getJSONObject(i)
+                        val methods = m.optJSONArray("supportedGenerationMethods")?.toString().orEmpty()
+                        if (methods.contains("generateContent"))
+                            ids.add(m.optString("name").removePrefix("models/"))
+                    }
+                    page = resp.optString("nextPageToken")
+                } while (page.isNotEmpty())
+            } else {
+                val headers = if (apiKey.isBlank()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
+                val arr = request("GET", "$base/models", null, headers).optJSONArray("data") ?: JSONArray()
+                for (i in 0 until arr.length()) arr.getJSONObject(i).optString("id").takeIf { it.isNotBlank() }?.let(ids::add)
+            }
+            if (ids.isEmpty()) throw AiException("没有获取到模型")
+            ids.distinct().sorted()
+        }
+
+    /**
+     * Text-to-image. Gemini: an image model through generateContent; others: the OpenAI-compatible
+     * /images/generations endpoint (OpenAI, relay services, local servers). DeepSeek / Kimi have none.
+     */
+    suspend fun generateImage(provider: AiProvider, baseUrl: String, apiKey: String, model: String, prompt: String): AiImage =
+        withContext(Dispatchers.IO) {
+            if (apiKey.isBlank() && provider != AiProvider.Local)
+                throw AiException("请先在设置中填写 ${provider.label} 的 API Key")
+            if (model.isBlank()) throw AiException("请先在大模型设置 → 图片生成 里填写或选择图片模型")
+            val base = baseUrl.trim().trimEnd('/')
+            if (provider == AiProvider.Gemini) {
+                val body = JSONObject()
+                    .put("contents", JSONArray().put(
+                        JSONObject().put("role", "user")
+                            .put("parts", JSONArray().put(JSONObject().put("text", prompt)))
+                    ))
+                    .put("generationConfig", JSONObject().put("responseModalities", JSONArray().put("TEXT").put("IMAGE")))
+                val resp = request("POST", "$base/models/$model:generateContent", body, mapOf("x-goog-api-key" to apiKey))
+                val parts = resp.optJSONArray("candidates")?.optJSONObject(0)
+                    ?.optJSONObject("content")?.optJSONArray("parts")
+                    ?: throw AiException("没有生成图片（可能被安全策略拦截）：" + (resp.optJSONObject("promptFeedback") ?: ""))
+                var image: AiImage? = null
+                val text = StringBuilder()
+                for (i in 0 until parts.length()) {
+                    val part = parts.getJSONObject(i)
+                    if (part.optBoolean("thought")) continue
+                    val data = part.optJSONObject("inlineData") ?: part.optJSONObject("inline_data")
+                    if (data != null && image == null) {
+                        image = AiImage(
+                            Base64.decode(data.optString("data"), Base64.DEFAULT),
+                            data.optString("mimeType", data.optString("mime_type", "image/png"))
+                        )
+                    } else text.append(part.optString("text"))
+                }
+                image?.let { AiImage(it.bytes, it.mime, text.toString().trim()) }
+                    ?: throw AiException("模型没有返回图片" + text.toString().trim().let { if (it.isEmpty()) "，请确认选的是图片模型" else "：$it" })
+            } else {
+                val body = JSONObject().put("model", model).put("prompt", prompt).put("n", 1)
+                val headers = if (apiKey.isBlank()) emptyMap() else mapOf("Authorization" to "Bearer $apiKey")
+                val item = request("POST", "$base/images/generations", body, headers)
+                    .optJSONArray("data")?.optJSONObject(0)
+                    ?: throw AiException("模型没有返回图片")
+                val b64 = item.optString("b64_json")
+                val bytes = if (b64.isNotBlank()) Base64.decode(b64, Base64.DEFAULT)
+                else item.optString("url").takeIf { it.isNotBlank() }?.let { download(it) }
+                    ?: throw AiException("模型没有返回图片")
+                AiImage(bytes, sniffMime(bytes), item.optString("revised_prompt"))
+            }
+        }
+
+    private fun download(url: String): ByteArray {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        try {
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 60_000
+            if (conn.responseCode !in 200..299) throw AiException("下载图片失败 ${conn.responseCode}")
+            return conn.inputStream.use { it.readBytes() }
+        } catch (e: java.io.IOException) {
+            throw AiException("网络错误：${e.message}")
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    private fun sniffMime(b: ByteArray) = when {
+        b.size > 3 && b[0] == 0xFF.toByte() && b[1] == 0xD8.toByte() -> "image/jpeg"
+        b.size > 12 && String(b, 8, 4, Charsets.US_ASCII) == "WEBP" -> "image/webp"
+        else -> "image/png"
+    }
+
     /** A single user message to an OpenAI-compatible endpoint that needs no API key (Index-Translate). */
     suspend fun chatKeyless(baseUrl: String, model: String, userText: String): String =
         withContext(Dispatchers.IO) {
@@ -112,16 +220,21 @@ object AiClient {
                 .getJSONObject("message").optString("content").trim()
         }
 
-    private fun post(url: String, body: JSONObject, headers: Map<String, String>): JSONObject {
+    private fun post(url: String, body: JSONObject, headers: Map<String, String>) =
+        request("POST", url, body, headers)
+
+    private fun request(method: String, url: String, body: JSONObject?, headers: Map<String, String>): JSONObject {
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
-            conn.requestMethod = "POST"
+            conn.requestMethod = method
             conn.connectTimeout = 15_000
             conn.readTimeout = 120_000
-            conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             headers.forEach { (k, v) -> conn.setRequestProperty(k, v) }
-            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            if (body != null) {
+                conn.doOutput = true
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            }
             val code = conn.responseCode
             val text = (if (code in 200..299) conn.inputStream else conn.errorStream)
                 ?.bufferedReader()?.readText().orEmpty()

@@ -733,20 +733,27 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
      */
     private val aiHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var aiText: CharSequence? = null
+    private var aiImage: Pair<android.net.Uri, String>? = null
     private var aiDeadline = 0L
     private var aiCommittedTo: android.view.inputmethod.InputConnection? = null
 
     private val aiCommitTask: Runnable = object : Runnable {
         override fun run() {
-            val text = aiText ?: return
+            if (aiText == null && aiImage == null) return
             if (android.os.SystemClock.elapsedRealtime() > aiDeadline) {
-                aiText = null; return
+                aiText = null; aiImage = null; return
             }
             val ic = currentInputConnection
             val info = currentInputEditorInfo
             if (ic == null || info == null || info.packageName == packageName || info.isTypeNull()) {
                 aiHandler.postDelayed(this, 150); return
             }
+            aiImage?.let { (uri, mime) ->
+                aiImage = null
+                commitAiImage(ic, info, uri, mime)
+                return
+            }
+            val text = aiText ?: return
             if (ic.commitText(text, 1)) {
                 aiCommittedTo = ic
                 aiHandler.postDelayed(aiVerifyTask, 500)
@@ -783,10 +790,42 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
             aiText = it
             aiDeadline = android.os.SystemClock.elapsedRealtime() + 4000
         }
-        if (aiText == null) return
+        AiPendingCommit.takeImage()?.let {
+            aiImage = it
+            aiDeadline = android.os.SystemClock.elapsedRealtime() + 4000
+        }
+        if (aiText == null && aiImage == null) return
         aiHandler.removeCallbacks(aiCommitTask)
         aiHandler.removeCallbacks(aiVerifyTask)
         aiHandler.postDelayed(aiCommitTask, 250)
+    }
+
+    /**
+     * Inserts a generated image the way image keyboards do (commitContent). Only works in editors that
+     * declare image support (Telegram, WhatsApp, Google Messages ...); elsewhere it stays on the clipboard.
+     */
+    private fun commitAiImage(
+        ic: android.view.inputmethod.InputConnection, info: EditorInfo, uri: android.net.Uri, mime: String
+    ) {
+        val supported = androidx.core.view.inputmethod.EditorInfoCompat.getContentMimeTypes(info)
+            .any { android.content.ClipDescription.compareMimeTypes(mime, it) }
+        val ok = supported && runCatching {
+            // older Android has no FLAG_GRANT_READ_URI_PERMISSION for commitContent; grant directly
+            grantUriPermission(info.packageName, uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            androidx.core.view.inputmethod.InputConnectionCompat.commitContent(
+                ic, info,
+                androidx.core.view.inputmethod.InputContentInfoCompat(
+                    uri, android.content.ClipDescription("ai", arrayOf(mime)), null
+                ),
+                if (android.os.Build.VERSION.SDK_INT >= 25)
+                    androidx.core.view.inputmethod.InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION
+                else 0,
+                null
+            )
+        }.getOrDefault(false)
+        if (!ok) android.widget.Toast.makeText(
+            this, "这个输入框不支持直接插入图片，图片已复制到剪贴板，可长按粘贴", android.widget.Toast.LENGTH_LONG
+        ).show()
     }
 
     override fun onStartInput(attribute: EditorInfo, restarting: Boolean) {

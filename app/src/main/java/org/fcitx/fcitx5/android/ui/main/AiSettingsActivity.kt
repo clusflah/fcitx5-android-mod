@@ -1,6 +1,7 @@
 /*
  * SPDX-License-Identifier: LGPL-2.1-or-later
- * Settings page for the LLM assistant (大模型): API keys / models / endpoints and custom prompts.
+ * Settings page for the LLM assistant (大模型): API keys / models / endpoints, image generation
+ * and custom prompts. Model names can be picked from the provider's model list.
  */
 package org.fcitx.fcitx5.android.ui.main
 
@@ -43,6 +44,12 @@ class AiSettingsActivity : AppCompatActivity() {
     private val predictModels = mutableMapOf<AiProvider, String>()
     private var shownPredictProvider: AiProvider? = null
 
+    /** image generation model per provider, edited the same way as the AI 联想 model */
+    private lateinit var imageSpinner: Spinner
+    private lateinit var imageModelField: EditText
+    private val imageModels = mutableMapOf<AiProvider, String>()
+    private var shownImageProvider: AiProvider? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prompts = AiConfig.prompts(this)
@@ -72,10 +79,37 @@ class AiSettingsActivity : AppCompatActivity() {
         }
         predictModelField = field("", "")
         box.addView(predictModelField)
+        box.addView(listButton {
+            val p = selectedPredictProvider()
+            pickModel(p, image = false) { predictModelField.setText(it) }
+        })
         box.addView(TextView(this).apply {
             textSize = 12f
             text = "联想要求快，留空时默认使用该服务最快的模型；助手默认使用最好的模型。" +
                     "本地模型留空时与下面填写的模型相同。"
+        })
+
+        // ---- 图片生成 ----
+        box.addView(header("图片生成"))
+        imageSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item,
+                AiProvider.entries.map { it.label })
+            setSelection(AiConfig.imageProvider(context).ordinal)
+        }
+        box.addView(imageSpinner)
+        AiProvider.entries.forEach { p -> imageModels[p] = AiConfig.rawImageModel(this, p) }
+        imageModelField = field("", "")
+        box.addView(imageModelField)
+        box.addView(listButton {
+            val p = AiProvider.entries[imageSpinner.selectedItemPosition]
+            pickModel(p, image = true) { imageModelField.setText(it) }
+        })
+        box.addView(TextView(this).apply {
+            textSize = 12f
+            text = "在大模型对话框里点“画图”，按输入的描述生成图片，使用下面填写的 API Key 和接口地址。" +
+                    "Gemini 用图片模型（Nano Banana 系列，按张收费）；其他服务走 OpenAI 兼容的 /images/generations 接口，" +
+                    "DeepSeek 和 Kimi 官方没有图片接口，把它们的接口地址改成支持生图的中转服务才能用。" +
+                    "模型名经常更新，建议点“获取模型列表”选择。"
         })
 
         // ---- 中外互译 ----
@@ -123,7 +157,9 @@ class AiSettingsActivity : AppCompatActivity() {
                 AiConfig.rawModel(this, p).takeUnless { AiConfig.isRetired(it.trim()) } ?: ""
             )
             val url = field("接口地址（默认 ${p.defaultBaseUrl}）", AiConfig.rawBaseUrl(this, p))
-            box.addView(key); box.addView(model); box.addView(url)
+            box.addView(key); box.addView(model)
+            box.addView(listButton { pickModel(p, image = false) { model.setText(it) } })
+            box.addView(url)
             Triple(key, model, url)
         }
 
@@ -151,6 +187,34 @@ class AiSettingsActivity : AppCompatActivity() {
         providerSpinner.onItemSelectedListener = onSelect
         predictSpinner.onItemSelectedListener = onSelect
         refreshPredictModelField()
+        imageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) =
+                refreshImageModelField()
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+        refreshImageModelField()
+    }
+
+    private fun refreshImageModelField() {
+        shownImageProvider?.let { imageModels[it] = imageModelField.text.toString() }
+        val p = AiProvider.entries[imageSpinner.selectedItemPosition]
+        if (p == shownImageProvider) return
+        shownImageProvider = p
+        imageModelField.hint = if (p == AiProvider.Gemini) "${p.label} 图片模型（默认 ${AiConfig.DEFAULT_GEMINI_IMAGE_MODEL}）"
+        else "${p.label} 图片模型（必填，如 gpt-image-1）"
+        imageModelField.setText(imageModels[p].orEmpty())
+    }
+
+    private fun listButton(onClick: () -> Unit) =
+        Button(this, null, android.R.attr.buttonStyleSmall).apply {
+            text = "获取模型列表"; isAllCaps = false
+            setOnClickListener { onClick() }
+        }
+
+    /** Fetches with the key / URL currently typed in, so it works before saving. */
+    private fun pickModel(p: AiProvider, image: Boolean, onPick: (String) -> Unit) {
+        val f = fields[p] ?: return
+        AiModelPicker.show(this, p, f.third.text.toString(), f.first.text.toString(), image, onPick)
     }
 
     private fun selectedPredictProvider(): AiProvider =
@@ -200,6 +264,9 @@ class AiSettingsActivity : AppCompatActivity() {
         }
         shownPredictProvider?.let { predictModels[it] = predictModelField.text.toString() }
         predictModels.forEach { (p, m) -> AiConfig.setPredictModel(this, p, m) }
+        AiConfig.setImageProvider(this, AiProvider.entries[imageSpinner.selectedItemPosition])
+        shownImageProvider?.let { imageModels[it] = imageModelField.text.toString() }
+        imageModels.forEach { (p, m) -> AiConfig.setImageModel(this, p, m) }
         AiTranslate.setEngine(this, TranslateEngine.all[translateSpinner.selectedItemPosition])
         AiTranslate.setTarget(this, AiTranslate.TARGETS[targetSpinner.selectedItemPosition])
         AiConfig.savePrompts(this, prompts)

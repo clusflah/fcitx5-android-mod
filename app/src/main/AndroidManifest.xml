@@ -161,6 +161,17 @@
             android:theme="@style/Theme.AppCompat.DayNight.Dialog"
             android:windowSoftInputMode="stateHidden|adjustResize" />
 
+        <!-- images made by the AI assistant, for inserting / sharing -->
+        <provider
+            android:name=".data.ai.AiImageFileProvider"
+            android:authorities="${applicationId}.ai.images"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/ai_image_paths" />
+        </provider>
+
         <activity
             android:name=".ui.main.SetupCheckActivity"
             android:exported="false"

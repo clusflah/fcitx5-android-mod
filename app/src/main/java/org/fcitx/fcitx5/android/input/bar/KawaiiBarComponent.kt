@@ -61,6 +61,8 @@ import org.fcitx.fcitx5.android.input.phrase.AiPredictWindow
 import org.fcitx.fcitx5.android.ui.main.AiAssistActivity
 import org.fcitx.fcitx5.android.ui.main.SmsPermissionActivity
 import org.fcitx.fcitx5.android.data.ai.AiSuggest
+import org.fcitx.fcitx5.android.data.ai.AiConfig
+import org.fcitx.fcitx5.android.data.ai.AiPromptRunner
 import org.fcitx.fcitx5.android.data.ai.AiTranslate
 import org.fcitx.fcitx5.android.data.otp.OtpCode
 import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
@@ -246,6 +248,53 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
      */
     private fun translateInPlace() {
         if (isPasswordField) { context.toast("密码框里不翻译"); return }
+        val engine = AiTranslate.engine(context)
+        replaceInPlace(
+            emptyMessage = "输入框里没有要翻译的文字",
+            status = { "翻译中… → ${AiTranslate.targetFor(context, it)}（${engine.label}）" },
+            failure = "翻译失败"
+        ) { text ->
+            val detailed = AiTranslate.translateDetailed(context, text, engine)
+            detailed.note?.let { context.toast(it) }
+            detailed.text
+        }
+    }
+
+    /**
+     * Long-press on the 大模型 button: pick a prompt, run it on the selection (or the whole field)
+     * with the default model and replace the text with the reply. Never in password / incognito fields.
+     */
+    private fun aiPromptInPlace(anchor: View) {
+        if (aiBlocked) { context.toast("密码框和无痕模式下不使用大模型"); return }
+        val prompts = AiConfig.prompts(context)
+        if (prompts.isEmpty()) { context.toast("还没有提示词，请在大模型设置里添加"); return }
+        val last = AiConfig.lastPrompt(context)
+        val menu = android.widget.PopupMenu(context, anchor)
+        prompts.forEachIndexed { i, p ->
+            menu.menu.add(0, i, i, if (p.id == last) "✓ ${p.name}" else p.name)
+        }
+        menu.setOnMenuItemClickListener { item ->
+            val prompt = prompts[item.itemId]
+            AiConfig.setLastPrompt(context, prompt.id)
+            val provider = AiConfig.provider(context)
+            replaceInPlace(
+                emptyMessage = "输入框里没有文字",
+                status = { "${prompt.name}中…（${provider.label}）" },
+                failure = "${prompt.name}失败"
+            ) { text -> AiPromptRunner.run(context, prompt, text) }
+            true
+        }
+        menu.show()
+    }
+
+    /**
+     * Sends the selection, or the whole field when nothing is selected, through [transform] and puts
+     * the result in its place. Nothing is replaced if the field changed while waiting.
+     */
+    private fun replaceInPlace(
+        emptyMessage: String, status: (String) -> String, failure: String,
+        transform: suspend (String) -> CharSequence
+    ) {
         if (!preeditEmpty) { context.toast("请先完成正在输入的内容"); return }
         val ic = service.currentInputConnection ?: return
         val info = currentEditorInfo
@@ -255,16 +304,13 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         val after = if (selected.isEmpty())
             runCatching { ic.getTextAfterCursor(MAX_TRANSLATE, 0)?.toString() }.getOrNull().orEmpty() else ""
         val text = selected.ifEmpty { before + after }
-        if (text.isBlank()) { context.toast("输入框里没有要翻译的文字"); return }
+        if (text.isBlank()) { context.toast(emptyMessage); return }
         translateJob?.cancel()
         clearAiSuggestion()
-        val engine = AiTranslate.engine(context)
-        showTranslateStatus("翻译中… → ${AiTranslate.targetFor(context, text)}（${engine.label}）")
+        showTranslateStatus(status(text))
         translateJob = service.lifecycleScope.launch {
             try {
-                val detailed = AiTranslate.translateDetailed(context, text, engine)
-                val result = detailed.text
-                detailed.note?.let { context.toast(it) }
+                val result = transform(text)
                 val ic2 = service.currentInputConnection
                 val unchanged = ic2 != null && currentEditorInfo === info && runCatching {
                     if (selected.isNotEmpty()) ic2.getSelectedText(0)?.toString() == selected
@@ -282,7 +328,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                context.toast("翻译失败：" + (e.message ?: e.javaClass.simpleName))
+                context.toast("$failure：" + (e.message ?: e.javaClass.simpleName))
             } finally {
                 showTranslateStatus(null)
             }
@@ -604,6 +650,10 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                             putExtra(AiAssistActivity.EXTRA_TEXT, selected ?: "")
                         }
                     )
+                }
+                aiAssistButton.setOnLongClickListener {
+                    aiPromptInPlace(it)
+                    true
                 }
                 aiAssistButton.setOnClickListener {
                     val clip = runCatching {
