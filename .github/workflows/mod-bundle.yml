@@ -1,0 +1,120 @@
+name: Mod Bundle
+
+# Builds the all-in-one APK (every plugin built into the app, branch all-in-one) and publishes it
+# as a GitHub Release v<version>-all next to the normal release of the same version.
+# - push to all-in-one: build that branch
+# - manual run / started by Mod Release after each release: merge master into all-in-one first
+# This file must also exist on master, otherwise it can't be started from there.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [all-in-one]
+    paths-ignore:
+      - "**.md"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mod-bundle
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: all-in-one
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Merge master
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin master
+          if git merge-base --is-ancestor origin/master HEAD; then
+            echo "all-in-one already contains master"
+            exit 0
+          fi
+          if ! git merge --no-edit origin/master; then
+            git merge --abort
+            echo "::error::Merge conflict between master and all-in-one. Merge master into all-in-one locally, resolve, then push."
+            exit 1
+          fi
+          git submodule update --init --recursive
+          # Pushing changes under .github/workflows needs a PAT; then only this build uses the merge
+          git push origin HEAD:all-in-one || echo "::warning::Could not push the merge to all-in-one; building it anyway"
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Android environment
+        uses: android-actions/setup-android@v4
+
+      - name: Install CMake
+        run: sdkmanager --install "cmake;3.31.6"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install extra-cmake-modules gettext
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Compute version
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base=$(sed -n 's/.*baseVersionName = "\(.*\)".*/\1/p' build-logic/convention/src/main/kotlin/Versions.kt)
+          # same number as the latest normal release, whose code this build is based on
+          n=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 50 --json tagName -q '.[].tagName' \
+            | sed -n "s/^v${base//./\\.}-mod\.\([0-9]*\)$/\1/p" | sort -n | tail -1)
+          echo "name=${base}-mod.${n:-0}" >> "$GITHUB_OUTPUT"
+
+      - name: Build all-in-one APK
+        env:
+          SIGN_KEY_BASE64: ${{ secrets.SIGN_KEY_BASE64 }}
+          SIGN_KEY_PWD: ${{ secrets.SIGN_KEY_PWD }}
+          SIGN_KEY_ALIAS: ${{ secrets.SIGN_KEY_ALIAS }}
+          BUILD_VERSION_NAME: ${{ steps.ver.outputs.name }}
+          BUILD_COMMIT_HASH: ${{ github.sha }}
+        run: |
+          if [ -z "$SIGN_KEY_BASE64" ]; then
+            echo "::error::Secret SIGN_KEY_BASE64 is not set"
+            exit 1
+          fi
+          ./gradlew :app:assembleRelease
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.name }}
+        run: |
+          tag="v${VERSION}-all"
+          mkdir out
+          for f in app/build/outputs/apk/release/*.apk; do
+            abi=$(basename "$f" | sed -n 's/.*-\(arm64-v8a\|armeabi-v7a\|x86_64\|x86\|universal\)-release.*\.apk$/\1/p')
+            cp "$f" "out/fcitx5-all-in-one-${VERSION}-${abi:-universal}.apk"
+          done
+          notes="全家桶：所有插件都已内置，装这一个 APK 就能用。代码在 all-in-one 分支，自动编译：$(git log -1 --format='%h %s')
+
+          说明见 [项目说明 · 全家桶](https://github.com/${GITHUB_REPOSITORY}#全家桶all-in-one-分支)
+
+          - 只支持 arm64-v8a
+          - 包名 org.fcitx.fcitx5.android.mod.all，可与修改版、原版共存
+          - 不需要也不会使用单独安装的插件"
+          # a rebuild of the same version replaces the earlier one
+          gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+          # the merge commit only exists on GitHub if it could be pushed
+          if git merge-base --is-ancestor HEAD origin/all-in-one; then target=$(git rev-parse HEAD)
+          else target=$(git rev-parse origin/all-in-one); fi
+          gh release create "$tag" --target "$target" --latest=false \
+            --title "$tag（全家桶）" --notes "$notes" out/*.apk
