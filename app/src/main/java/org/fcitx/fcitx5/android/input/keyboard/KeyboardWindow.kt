@@ -9,10 +9,13 @@ import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
+import androidx.annotation.Keep
 import androidx.core.content.ContextCompat
 import androidx.transition.Slide
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.core.CapabilityFlags
+import org.fcitx.fcitx5.android.core.FcitxEvent
+import org.fcitx.fcitx5.android.core.FormattedText
 import org.fcitx.fcitx5.android.core.InputMethodEntry
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.prefs.ManagedPreference
@@ -82,7 +85,9 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     /** false in password / e-mail / URL fields, which keep the 26-key layout */
     private var t9Allowed = true
 
-    // ManagedPreference holds listeners weakly
+    // ManagedPreference holds listeners weakly, and R8 drops a field only used in the constructor:
+    // without @Keep the listener is collected and the toolbar button only takes effect next time
+    @Keep
     private val t9Listener = ManagedPreference.OnChangeListener<Boolean> { _, _ -> refreshTextLayout() }
 
     init {
@@ -162,6 +167,7 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
             it.onReturnDrawableUpdate(returnKeyDrawable.resourceId)
             it.onInputMethodUpdate(fcitx.runImmediately { inputMethodEntryCached })
         }
+        updateT9Preedit()
     }
 
     fun switchLayout(to: String, remember: Boolean = true) {
@@ -214,6 +220,25 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
         currentKeyboard?.onInputMethodUpdate(ime)
         // 九宫格 only works with Rime: switching to e.g. English brings back the 26-key layout
         if (t9Pref.getValue()) refreshTextLayout()
+    }
+
+    // mod: the 九宫格's pinyin column follows Rime's preedit. With "commit preview" the code is in the
+    // input panel and the client preedit holds Chinese text; otherwise only the client one is set.
+    private var panelPreedit = ""
+    private var clientPreedit = ""
+
+    override fun onInputPanelUpdate(data: FcitxEvent.InputPanelEvent.Data) {
+        panelPreedit = data.preedit.toString()
+        updateT9Preedit()
+    }
+
+    override fun onClientPreeditUpdate(data: FormattedText) {
+        clientPreedit = data.toString()
+        updateT9Preedit()
+    }
+
+    private fun updateT9Preedit() {
+        (currentKeyboard as? T9Keyboard)?.onPreeditUpdate(panelPreedit.ifEmpty { clientPreedit })
     }
 
     override fun onPunctuationUpdate(mapping: Map<String, String>) {
