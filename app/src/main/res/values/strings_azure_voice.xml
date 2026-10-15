@@ -26,4 +26,6 @@
     <string name="azure_voice_need_permission">Microphone permission required</string>
     <string name="azure_voice_permission_granted">Microphone allowed, long-press space again</string>
     <string name="azure_voice_permission_denied">Microphone permission denied</string>
+    <string name="voice_ai_correct">Correct voice input with the LLM</string>
+    <string name="voice_ai_correct_summary">After recognition, the default LLM (its fast model) fixes homophones, typos and punctuation before the text is typed. Sends the recognized text to the model service; not used in password or incognito fields. Falls back to the original text if it fails or takes longer than 8 s</string>
 </resources>

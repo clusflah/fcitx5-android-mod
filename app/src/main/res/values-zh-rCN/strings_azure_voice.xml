@@ -26,4 +26,6 @@
     <string name="azure_voice_need_permission">需要麦克风权限</string>
     <string name="azure_voice_permission_granted">已允许麦克风，请再次长按空格</string>
     <string name="azure_voice_permission_denied">麦克风权限被拒绝</string>
+    <string name="voice_ai_correct">语音输入后用大模型纠错</string>
+    <string name="voice_ai_correct_summary">识别出文字后，先交给默认大模型（用它的快速模型）修正同音字、错别字和标点，再输入。识别出的文字会发给大模型服务；密码框和无痕模式下不使用。失败或超过 8 秒就直接输入原来的识别结果</string>
 </resources>

@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.fcitx.fcitx5.android.data.ai.AiVoiceCorrect
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.input.FcitxInputMethodService
 import org.fcitx.fcitx5.android.ui.main.OfflineVoiceActivity
@@ -137,7 +138,12 @@ object VoicePushToTalk {
                     hideLater(svc, 1800)
                     return@launch
                 }
-                svc.commitText(text)
+                // mod: optional LLM correction (homophones, typos, punctuation); keeps the original on failure
+                val corrected = if (AiVoiceCorrect.enabled(svc.currentInputEditorInfo)) {
+                    listener?.invoke("纠错中…")
+                    AiVoiceCorrect.correct(svc, text)
+                } else text
+                svc.commitText(corrected)
                 if (fellBack) {
                     listener?.invoke("Azure 不可用，已用离线识别")
                     hideLater(svc, 2000)
@@ -145,7 +151,7 @@ object VoicePushToTalk {
                     listener?.invoke(null)
                 }
                 if (AppPrefs.getInstance().voice.azureTtsEnabled.getValue()) {
-                    runCatching { AzureSpeech.play(AzureSpeech.synthesize(config(), text, svc.cacheDir)) }
+                    runCatching { AzureSpeech.play(AzureSpeech.synthesize(config(), corrected, svc.cacheDir)) }
                 }
             } catch (e: CancellationException) {
                 throw e

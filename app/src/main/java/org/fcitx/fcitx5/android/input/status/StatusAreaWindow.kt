@@ -22,6 +22,7 @@ import org.fcitx.fcitx5.android.data.theme.ThemeManager
 import org.fcitx.fcitx5.android.input.FcitxInputMethodService
 import org.fcitx.fcitx5.android.input.bar.ui.ToolButton
 import org.fcitx.fcitx5.android.input.broadcast.InputBroadcastReceiver
+import org.fcitx.fcitx5.android.input.keyboard.RimeT9
 import org.fcitx.fcitx5.android.input.dependency.fcitx
 import org.fcitx.fcitx5.android.input.dependency.inputMethodService
 import org.fcitx.fcitx5.android.input.dependency.theme
@@ -122,6 +123,9 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
                                         isEnabled = false
                                     }
                                 }
+                            } else if (entry.action.name == "fcitx-rime-im" && RimeT9.isT9Schema(it.shortText)) {
+                                // mod: the nine-key schema is picked by the 九宫格 itself; listing it next to
+                                // the full-pinyin schema it is based on only looks like a duplicate
                             } else {
                                 menu.add(groupId, 0, 0, it.shortText).apply {
                                     setOnMenuItemClickListener { _ ->
