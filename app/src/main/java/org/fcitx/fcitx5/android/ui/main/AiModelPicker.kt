@@ -4,11 +4,13 @@
  */
 package org.fcitx.fcitx5.android.ui.main
 
+import android.app.Activity
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.view.WindowManager
 import android.widget.ListView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -18,6 +20,21 @@ import kotlinx.coroutines.launch
 import org.fcitx.fcitx5.android.data.ai.AiClient
 import org.fcitx.fcitx5.android.data.ai.AiProvider
 import splitties.dimensions.dp
+
+/**
+ * For dialogs shown after a network request: the user may have closed the dialog activity meanwhile,
+ * and showing a dialog on a dead window crashes the app. Falls back to a toast with [fallback].
+ */
+internal fun AlertDialog.Builder.showIfAlive(activity: Activity, fallback: String) {
+    if (!activity.isFinishing && !activity.isDestroyed) {
+        try {
+            show(); return
+        } catch (e: WindowManager.BadTokenException) {
+            // window went away between the check and show()
+        }
+    }
+    Toast.makeText(activity.applicationContext, fallback, Toast.LENGTH_LONG).show()
+}
 
 object AiModelPicker {
 
@@ -42,9 +59,11 @@ object AiModelPicker {
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
+                val msg = e.message ?: e.toString()
                 AlertDialog.Builder(activity).setTitle("获取模型列表失败")
-                    .setMessage(e.message ?: e.toString())
-                    .setPositiveButton(android.R.string.ok, null).show()
+                    .setMessage(msg)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .showIfAlive(activity, "获取模型列表失败：$msg")
                 return@launch
             }
             val wanted = if (image) all.filter(::isImageModel) else all.filter(::isChatOnly)
@@ -54,6 +73,7 @@ object AiModelPicker {
                 provider == AiProvider.Gemini -> wanted
                 else -> wanted + (all - wanted.toSet())
             }
+            if (activity.isFinishing || activity.isDestroyed) return@launch
             pick(activity, provider, models, onPick)
         }
     }

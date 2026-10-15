@@ -15,6 +15,9 @@ import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.core.CapabilityFlags
 import org.fcitx.fcitx5.android.core.InputMethodEntry
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
+import org.fcitx.fcitx5.android.data.prefs.ManagedPreference
+import org.fcitx.fcitx5.android.input.keyboard.RimeT9.enterT9
+import org.fcitx.fcitx5.android.input.keyboard.RimeT9.leaveT9
 import org.fcitx.fcitx5.android.input.bar.KawaiiBarComponent
 import org.fcitx.fcitx5.android.input.broadcast.InputBroadcastReceiver
 import org.fcitx.fcitx5.android.input.broadcast.ReturnKeyDrawableComponent
@@ -68,8 +71,53 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     private val keyboards: HashMap<String, BaseKeyboard> by lazy {
         hashMapOf(
             TextKeyboard.Name to TextKeyboard(context, theme),
-            NumberKeyboard.Name to NumberKeyboard(context, theme)
+            NumberKeyboard.Name to NumberKeyboard(context, theme),
+            T9Keyboard.Name to T9Keyboard(context, theme)
         )
+    }
+
+    // mod: 九宫格 replaces the 26-key layout while Rime is active (see T9Keyboard / RimeT9)
+    private val t9Pref = AppPrefs.getInstance().keyboard.t9Keyboard
+
+    /** false in password / e-mail / URL fields, which keep the 26-key layout */
+    private var t9Allowed = true
+
+    // ManagedPreference holds listeners weakly
+    private val t9Listener = ManagedPreference.OnChangeListener<Boolean> { _, _ -> refreshTextLayout() }
+
+    init {
+        t9Pref.registerOnChangeListener(t9Listener)
+    }
+
+    private fun useT9() = t9Pref.getValue() && t9Allowed &&
+            fcitx.runImmediately { inputMethodEntryCached }.uniqueName == RimeT9.RIME
+
+    /** re-pick 26-key / 九宫格 when the setting or the input method changed */
+    private fun refreshTextLayout() {
+        if (currentKeyboardName == TextKeyboard.Name || currentKeyboardName == T9Keyboard.Name) {
+            switchLayout(TextKeyboard.Name, remember = false)
+        }
+    }
+
+    /** the "no nine-key schema" hint is shown once per process */
+    private var t9MissingWarned = false
+
+    /** select Rime's nine-key schema for 九宫格, and the previous one again for the 26-key layout */
+    private fun syncRimeSchema(layout: String) {
+        when (layout) {
+            T9Keyboard.Name -> service.postFcitxJob {
+                if (!enterT9() && !t9MissingWarned) {
+                    t9MissingWarned = true
+                    ContextCompat.getMainExecutor(service).execute {
+                        android.widget.Toast.makeText(
+                            service, "没有找到 Rime 的九键方案（如白霜拼音的“中文九键”），九宫格只能输入数字",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+            TextKeyboard.Name -> service.postFcitxJob { leaveT9() }
+        }
     }
     private var currentKeyboardName = ""
     private var lastSymbolType: String by AppPrefs.getInstance().internal.lastSymbolLayout
@@ -117,12 +165,19 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     }
 
     fun switchLayout(to: String, remember: Boolean = true) {
-        val target = to.ifEmpty { lastSymbolType }
+        val requested = to.ifEmpty { lastSymbolType }
+        if (requested == T9Keyboard.ToFullKeyboard) {
+            // "全键" on the 九宫格: turn the setting off; the listener switches the layout
+            t9Pref.setValue(false)
+            return
+        }
         ContextCompat.getMainExecutor(service).execute {
+            val target = if (requested == TextKeyboard.Name && useT9()) T9Keyboard.Name else requested
             if (keyboards.containsKey(target)) {
-                if (remember && target != TextKeyboard.Name) {
+                if (remember && target != TextKeyboard.Name && target != T9Keyboard.Name) {
                     lastSymbolType = target
                 }
+                syncRimeSchema(target)
                 if (target == currentKeyboardName) return@execute
                 detachCurrentLayout()
                 attachLayout(target)
@@ -139,6 +194,14 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     }
 
     override fun onStartInput(info: EditorInfo, capFlags: CapabilityFlags) {
+        val variation = info.inputType and InputType.TYPE_MASK_VARIATION
+        t9Allowed = (info.inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT &&
+                variation != InputType.TYPE_TEXT_VARIATION_PASSWORD &&
+                variation != InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD &&
+                variation != InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD &&
+                variation != InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS &&
+                variation != InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS &&
+                variation != InputType.TYPE_TEXT_VARIATION_URI
         val targetLayout = when (info.inputType and InputType.TYPE_MASK_CLASS) {
             InputType.TYPE_CLASS_NUMBER -> NumberKeyboard.Name
             InputType.TYPE_CLASS_PHONE -> NumberKeyboard.Name
@@ -149,6 +212,8 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
 
     override fun onImeUpdate(ime: InputMethodEntry) {
         currentKeyboard?.onInputMethodUpdate(ime)
+        // 九宫格 only works with Rime: switching to e.g. English brings back the 26-key layout
+        if (t9Pref.getValue()) refreshTextLayout()
     }
 
     override fun onPunctuationUpdate(mapping: Map<String, String>) {
