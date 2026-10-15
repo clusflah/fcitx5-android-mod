@@ -78,6 +78,37 @@ object T9Pinyin {
         return (full + letters).distinct().take(limit)
     }
 
+    /** set while the 九宫格 is shown: the preedit line then shows pinyin instead of digits */
+    @Volatile
+    var active = false
+
+    private val PINYIN_HINT = Regex("""[a-zü]+(?:[ '][a-zü]+)*""")
+
+    /**
+     * The preedit line for the 九宫格: the digits still to be converted are replaced by the pinyin of
+     * the first candidate (Rime's spelling hint in its comment, e.g. "ni hao"), so "你64426" shows as
+     * "你ni'hao". Digits the candidate doesn't cover stay as they are. Null = show [preedit] unchanged.
+     */
+    fun displayPreedit(preedit: String, firstComment: String?): String? {
+        val hint = firstComment?.trim()?.lowercase()?.takeIf { PINYIN_HINT.matches(it) } ?: return null
+        val raw = pendingInput(preedit) ?: return null
+        val tail = preedit.takeLastWhile { it == ' ' || it == '\'' || it in 'a'..'z' || it in '0'..'9' }
+        val head = preedit.dropLast(tail.length)
+        // walk the input syllable by syllable; letters already chosen encode to themselves
+        val code = encode(raw.replace("'", ""))
+        var pos = 0
+        val shown = mutableListOf<String>()
+        for (syllable in hint.split(' ', '\'')) {
+            val c = encode(syllable.replace('ü', 'v'))
+            if (!code.startsWith(c, pos)) break
+            shown.add(syllable)
+            pos += c.length
+        }
+        if (shown.isEmpty()) return null
+        val rest = code.substring(pos)
+        return head + shown.joinToString("'") + if (rest.isEmpty()) "" else "'$rest"
+    }
+
     /**
      * Edit that puts [syllable] in place of the digits it covers:
      * how many characters to delete from the end of the input, then what to type.

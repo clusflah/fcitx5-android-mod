@@ -180,7 +180,13 @@ class T9Keyboard(
         }
     }
 
+    override fun onAttach() {
+        super.onAttach()
+        T9Pinyin.active = true
+    }
+
     override fun onDetach() {
+        T9Pinyin.active = false
         onPreeditUpdate("")
         super.onDetach()
     }
