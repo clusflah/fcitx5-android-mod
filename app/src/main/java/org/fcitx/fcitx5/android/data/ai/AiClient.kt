@@ -188,6 +188,7 @@ object AiClient {
         }
 
     private fun download(url: String): ByteArray {
+        if (!CleartextGuard.allowed(url)) throw AiException(CleartextGuard.MESSAGE)
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
             conn.connectTimeout = 15_000
@@ -224,6 +225,7 @@ object AiClient {
         request("POST", url, body, headers)
 
     private fun request(method: String, url: String, body: JSONObject?, headers: Map<String, String>): JSONObject {
+        if (!CleartextGuard.allowed(url)) throw AiException(CleartextGuard.MESSAGE)
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = method

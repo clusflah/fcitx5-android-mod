@@ -29,6 +29,7 @@ import org.fcitx.fcitx5.android.BuildConfig
 import org.fcitx.fcitx5.android.core.data.DataManager
 import org.fcitx.fcitx5.android.daemon.FcitxDaemon
 import org.fcitx.fcitx5.android.data.ai.AiConfig
+import org.fcitx.fcitx5.android.data.ai.CleartextGuard
 import org.fcitx.fcitx5.android.data.ai.AiProvider
 import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
 import org.fcitx.fcitx5.android.data.password.PasswordManager
@@ -285,6 +286,7 @@ class SetupCheckActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
+                    if (!CleartextGuard.allowed(base)) throw java.io.IOException(CleartextGuard.MESSAGE)
                     val conn = URL("$base/models").openConnection() as HttpURLConnection
                     conn.connectTimeout = 3000
                     conn.readTimeout = 5000

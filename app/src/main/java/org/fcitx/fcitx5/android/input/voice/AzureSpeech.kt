@@ -10,6 +10,7 @@ import android.media.MediaPlayer
 import android.media.MediaRecorder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.fcitx.fcitx5.android.data.ai.CleartextGuard
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -111,6 +112,7 @@ object AzureSpeech {
     }
 
     private fun http(url: String, key: String, contentType: String, body: ByteArray, extra: Map<String, String> = emptyMap()): ByteArray {
+        if (!CleartextGuard.allowed(url)) throw AzureException(CleartextGuard.MESSAGE)
         val conn = URL(url).openConnection() as HttpURLConnection
         try {
             conn.requestMethod = "POST"

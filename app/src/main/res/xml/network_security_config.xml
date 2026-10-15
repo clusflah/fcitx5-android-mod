@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Allow plain HTTP only to this phone itself, for local OpenAI-compatible servers (e.g. Pocket LLM). -->
+<!--
+  All-in-one build: plain HTTP is allowed, so the built-in clipboard sync can reach a SyncClipboard
+  server on the LAN (http://192.168.x.x). Requests that carry an API key (AI services, Azure speech)
+  still use plain HTTP only to this phone itself, see CleartextGuard.
+-->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">127.0.0.1</domain>
-        <domain includeSubdomains="false">localhost</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>
