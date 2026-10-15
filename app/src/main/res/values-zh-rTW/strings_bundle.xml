@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name_all">小企鵝輸入法 全家桶</string>
+    <string name="bundled_plugin">內建</string>
+    <string name="bundled_anthy">日語（Anthy）</string>
+    <string name="bundled_chewing">注音（新酷音）</string>
+    <string name="bundled_hangul">韓語（Hangul）</string>
+    <string name="bundled_jyutping">粵拼</string>
+    <string name="bundled_rime">中州韻（Rime）</string>
+    <string name="bundled_sayura">僧伽羅語（Sayura）</string>
+    <string name="bundled_thai">泰語（libthai）</string>
+    <string name="bundled_unikey">越南語（Unikey）</string>
+    <string name="bundled_clipboard_filter">剪貼簿過濾：去掉複製連結裡的追蹤參數（ClearURLs）</string>
+    <string name="bundled_clipboard_sync">剪貼簿同步（SyncClipboard / WebDAV），點擊設定</string>
+</resources>

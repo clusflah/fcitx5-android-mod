@@ -47,3 +47,7 @@ include(":plugin:chewing")
 include(":plugin:sayura")
 include(":plugin:jyutping")
 include(":plugin:thai")
+
+// all-in-one branch: the Kotlin plugins as libraries inside the app (native plugins: app/build.gradle.kts)
+include(":bundle:clipboard-filter")
+include(":bundle:clipboard-sync")

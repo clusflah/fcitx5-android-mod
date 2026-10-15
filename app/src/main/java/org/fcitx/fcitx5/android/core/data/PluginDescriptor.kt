@@ -32,7 +32,15 @@ data class PluginDescriptor(
      */
     val hasService: Boolean,
     val versionName: String,
-    val nativeLibraryDir: String
+    val nativeLibraryDir: String,
+    /** all-in-one build: part of the app itself, see [BundledPlugins] */
+    val bundled: Boolean = false,
+    /** bundled only: has data files under assets/bundled/<name>/ */
+    val hasData: Boolean = true,
+    /** bundled only: service class in the app, bound instead of looking up the plugin package */
+    val serviceClass: String? = null,
+    /** bundled only: activity opened from the plugin list */
+    val settingsActivity: String? = null
 ) {
     val name = packageName.removePrefix(pluginPackagePrefix).removeSuffix(pluginPackageSuffix)
 

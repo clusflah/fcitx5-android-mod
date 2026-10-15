@@ -131,7 +131,10 @@ class PluginFragment : PaddingPreferenceFragment() {
                     isIconSpaceReserved = false
                     loaded.forEach {
                         addPreference(it.name, "${it.versionName}\n${it.description}") {
-                            startPluginAboutActivity(it.packageName)
+                            if (!it.bundled) startPluginAboutActivity(it.packageName)
+                            else it.settingsActivity?.let { cls ->
+                                startActivity(Intent().setClassName(requireContext(), cls))
+                            }
                         }
                     }
                 }
