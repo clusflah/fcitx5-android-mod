@@ -94,6 +94,22 @@ object AiConfig {
     }
 
 
+    /**
+     * Image generation (生成图片): its own provider and model per provider. Only Gemini has a default;
+     * DeepSeek / Kimi have no image API, but their entry works with an OpenAI-compatible URL.
+     */
+    const val DEFAULT_GEMINI_IMAGE_MODEL = "gemini-nano-banana-2.1"
+
+    fun imageProvider(ctx: Context): AiProvider =
+        runCatching { AiProvider.valueOf(sp(ctx).getString("image_provider", null)!!) }
+            .getOrDefault(AiProvider.Gemini)
+    fun setImageProvider(ctx: Context, p: AiProvider) = sp(ctx).edit().putString("image_provider", p.name).apply()
+    fun rawImageModel(ctx: Context, p: AiProvider) = sp(ctx).getString("image_model_${p.name}", "")!!
+    fun imageModel(ctx: Context, p: AiProvider) =
+        rawImageModel(ctx, p).trim().ifBlank { if (p == AiProvider.Gemini) DEFAULT_GEMINI_IMAGE_MODEL else "" }
+    fun setImageModel(ctx: Context, p: AiProvider, model: String) =
+        sp(ctx).edit().putString("image_model_${p.name}", model.trim()).apply()
+
     fun lastPrompt(ctx: Context) = sp(ctx).getString("last_prompt", null)
     fun setLastPrompt(ctx: Context, id: String?) = sp(ctx).edit().putString("last_prompt", id).apply()
 
@@ -133,6 +149,18 @@ object AiConfig {
  * The assistant runs in its own Activity, so the text is committed when that app's editor regains focus.
  */
 object AiPendingCommit {
+    /** a generated image to insert (content:// uri from AiImageStore) */
+    private var image: Pair<android.net.Uri, String>? = null
+    private var imageTime = 0L
+
+    fun setImage(uri: android.net.Uri, mime: String) { image = uri to mime; imageTime = SystemClock.elapsedRealtime() }
+
+    fun takeImage(): Pair<android.net.Uri, String>? {
+        val i = image ?: return null
+        image = null
+        return if (SystemClock.elapsedRealtime() - imageTime < 60_000) i else null
+    }
+
     private var text: CharSequence? = null
     private var time = 0L
 

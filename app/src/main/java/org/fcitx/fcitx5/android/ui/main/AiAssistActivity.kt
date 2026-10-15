@@ -4,10 +4,14 @@
  * Input is prefilled from the clipboard; both input and reply are editable;
  * "输入" types the reply into the app the user came from.
  * Replies are usually Markdown; they can be shown as plain text, rich text or raw Markdown.
+ * "画图" generates an image from the input instead; it can be inserted, copied, saved or shared.
  */
 package org.fcitx.fcitx5.android.ui.main
 
 import android.content.ClipData
+import android.content.Intent
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -25,6 +29,7 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -41,6 +46,8 @@ import kotlinx.coroutines.launch
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.data.ai.AiClient
 import org.fcitx.fcitx5.android.data.ai.AiConfig
+import org.fcitx.fcitx5.android.data.ai.AiImage
+import org.fcitx.fcitx5.android.data.ai.AiImageStore
 import org.fcitx.fcitx5.android.data.ai.AiPendingCommit
 import org.fcitx.fcitx5.android.data.ai.AiPrompt
 import org.fcitx.fcitx5.android.data.ai.AiProvider
@@ -83,6 +90,16 @@ class AiAssistActivity : AppCompatActivity() {
     /** the model's reply as received (Markdown); [output] shows it in [format] */
     private var rawReply = ""
     private var format = FORMAT_PLAIN
+
+    // image generation (画图)
+    private lateinit var imageBtn: Button
+    private lateinit var resultLabel: TextView
+    private lateinit var imageView: ImageView
+    private lateinit var imageActions: LinearLayout
+    private var image: AiImage? = null
+    private var imageUri: Uri? = null
+    /** what 重新生成 repeats */
+    private var lastWasImage = false
 
     private var prompts = mutableListOf<AiPrompt>()
     private var promptId: String? = null
@@ -178,6 +195,10 @@ class AiAssistActivity : AppCompatActivity() {
         inputActions.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         progress = ProgressBar(this).apply { visibility = View.GONE }
         inputActions.addView(progress, LinearLayout.LayoutParams(dp(28), dp(28)))
+        imageBtn = smallButton("画图") { generateImage() }.apply {
+            visibility = if (translateMode) View.GONE else View.VISIBLE
+        }
+        inputActions.addView(imageBtn)
         sendBtn = Button(this).apply {
             text = if (translateMode) "翻译" else "发送"
             setOnClickListener { debounceJob?.cancel(); send() }
@@ -190,8 +211,8 @@ class AiAssistActivity : AppCompatActivity() {
         val resultHeader = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, 0)
         }
-        resultHeader.addView(TextView(this).apply { text = "模型回复（可修改）" },
-            LinearLayout.LayoutParams(0, -2, 1f))
+        resultLabel = TextView(this).apply { text = "模型回复（可修改）" }
+        resultHeader.addView(resultLabel, LinearLayout.LayoutParams(0, -2, 1f))
         formatBar = LinearLayout(this).apply {
             visibility = if (translateMode) View.GONE else View.VISIBLE
         }
@@ -203,15 +224,30 @@ class AiAssistActivity : AppCompatActivity() {
             minLines = 2; maxLines = 10; gravity = Gravity.TOP
         }
         resultBox.addView(output, LinearLayout.LayoutParams(-1, -2))
+        imageView = ImageView(this).apply {
+            adjustViewBounds = true; maxHeight = dp(360); visibility = View.GONE
+            setPadding(0, dp(6), 0, dp(6))
+        }
+        resultBox.addView(imageView, LinearLayout.LayoutParams(-1, -2))
+        imageActions = LinearLayout(this).apply { gravity = Gravity.END; visibility = View.GONE }
+        imageActions.addView(smallButton("保存到相册") { saveImage() })
+        imageActions.addView(smallButton("分享") { shareImage() })
+        resultBox.addView(imageActions)
         val outActions = LinearLayout(this).apply { gravity = Gravity.END }
-        outActions.addView(smallButton("重新生成") { send() })
+        outActions.addView(smallButton("重新生成") { if (lastWasImage) generateImage() else send() })
         outActions.addView(smallButton("复制") {
-            clipboardManager.setPrimaryClip(clipOf(output.text))
+            val uri = imageUri
+            if (lastWasImage && uri != null) {
+                clipboardManager.setPrimaryClip(ClipData.newUri(contentResolver, "ai image", uri))
+            } else {
+                clipboardManager.setPrimaryClip(clipOf(output.text))
+            }
             Toast.makeText(this@AiAssistActivity, "已复制", Toast.LENGTH_SHORT).show()
         })
         outActions.addView(Button(this).apply {
             text = "输入"
             setOnClickListener {
+                if (lastWasImage) { insertImage(); return@setOnClickListener }
                 val t: CharSequence = if (format == FORMAT_RICH) styledCopy(output.text) else output.text.toString()
                 if (t.isNotEmpty()) {
                     // backup: also put it on the clipboard in case the target app ignores it
@@ -339,6 +375,7 @@ class AiAssistActivity : AppCompatActivity() {
         }
         job?.cancel()
         sendBtn.isEnabled = false
+        imageBtn.isEnabled = false
         progress.visibility = View.VISIBLE
         job = lifecycleScope.launch {
             try {
@@ -357,6 +394,7 @@ class AiAssistActivity : AppCompatActivity() {
                 }
                 output.hint = ""
                 rawReply = reply
+                showTextResult()
                 showReply()
                 resultBox.visibility = View.VISIBLE
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -375,9 +413,119 @@ class AiAssistActivity : AppCompatActivity() {
                     .show()
             } finally {
                 sendBtn.isEnabled = true
+                imageBtn.isEnabled = true
                 progress.visibility = View.GONE
             }
         }
+    }
+
+    private fun showTextResult() {
+        lastWasImage = false
+        resultLabel.text = "模型回复（可修改）"
+        output.visibility = View.VISIBLE
+        formatBar.visibility = if (translateMode) View.GONE else View.VISIBLE
+        imageView.visibility = View.GONE
+        imageActions.visibility = View.GONE
+        resultBox.visibility = View.VISIBLE
+    }
+
+    /** 画图: the input (plus the selected prompt, if it uses {{input}}) describes the image. */
+    private fun generateImage() {
+        val text = input.text.toString()
+        if (text.isBlank()) {
+            Toast.makeText(this, "请先输入图片描述", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val prompt = prompts.find { it.id == promptId }?.content.orEmpty()
+        val description = if (prompt.contains("{{input}}")) prompt.replace("{{input}}", text) else text
+        val provider = AiConfig.imageProvider(this)
+        job?.cancel()
+        sendBtn.isEnabled = false
+        imageBtn.isEnabled = false
+        progress.visibility = View.VISIBLE
+        job = lifecycleScope.launch {
+            try {
+                val ctx = this@AiAssistActivity
+                val img = AiClient.generateImage(
+                    provider, AiConfig.baseUrl(ctx, provider), AiConfig.apiKey(ctx, provider),
+                    AiConfig.imageModel(ctx, provider), description
+                )
+                val uri = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    AiImageStore.save(ctx, img)
+                }
+                val bitmap = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    decodeScaled(img.bytes, 1280)
+                } ?: throw Exception("图片无法显示（格式不支持）")
+                image = img; imageUri = uri
+                lastWasImage = true
+                imageView.setImageBitmap(bitmap)
+                resultLabel.text = "生成的图片" + if (img.text.isNotBlank()) "：" + img.text.take(80) else ""
+                output.visibility = View.GONE
+                formatBar.visibility = View.GONE
+                imageView.visibility = View.VISIBLE
+                imageActions.visibility = View.VISIBLE
+                resultBox.visibility = View.VISIBLE
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AlertDialog.Builder(this@AiAssistActivity)
+                    .setTitle("生成图片失败").setMessage(e.message ?: e.toString())
+                    .setPositiveButton(android.R.string.ok, null)
+                    .setNeutralButton("设置") { _, _ ->
+                        startActivity(Intent(this@AiAssistActivity, AiSettingsActivity::class.java))
+                    }
+                    .show()
+            } finally {
+                sendBtn.isEnabled = true
+                imageBtn.isEnabled = true
+                progress.visibility = View.GONE
+            }
+        }
+    }
+
+    /** Downsampled so a 4K image doesn't take 64 MB of memory in the preview. */
+    private fun decodeScaled(bytes: ByteArray, maxSide: Int): android.graphics.Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+    }
+
+    /** Inserted by the keyboard into the editor (if it accepts images); always copied as a backup. */
+    private fun insertImage() {
+        val uri = imageUri ?: return
+        val img = image ?: return
+        runCatching { clipboardManager.setPrimaryClip(ClipData.newUri(contentResolver, "ai image", uri)) }
+        if (intent.hasExtra(EXTRA_CLIPBOARD) || intent.hasExtra(EXTRA_TEXT)) {
+            AiPendingCommit.setImage(uri, img.mime)
+        } else {
+            Toast.makeText(this, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+        }
+        finish()
+    }
+
+    private fun saveImage() {
+        val img = image ?: return
+        val ok = runCatching { AiImageStore.saveToGallery(this, img) }.getOrDefault(false)
+        Toast.makeText(
+            this,
+            if (ok) "已保存到 相册 / Pictures/Fcitx5"
+            else if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) "Android 10 以下请用“分享”保存"
+            else "保存失败",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun shareImage() {
+        val uri = imageUri ?: return
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = image?.mime ?: "image/png"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            clipData = ClipData.newUri(contentResolver, "ai image", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(send, "分享图片"))
     }
 
     private fun field(hint: String, value: String, password: Boolean = false, multi: Boolean = false) =
@@ -401,7 +549,11 @@ class AiAssistActivity : AppCompatActivity() {
             val key = field("API Key", AiConfig.apiKey(this, p), password = true)
             val model = field("模型（默认 ${p.defaultModel}）", AiConfig.rawModel(this, p))
             val url = field("接口地址（默认 ${p.defaultBaseUrl}）", AiConfig.rawBaseUrl(this, p))
-            box.addView(key); box.addView(model); box.addView(url)
+            box.addView(key); box.addView(model)
+            box.addView(smallButton("获取模型列表") {
+                AiModelPicker.show(this, p, url.text.toString(), key.text.toString(), image = false) { model.setText(it) }
+            })
+            box.addView(url)
             Triple(key, model, url)
         }
         box.addView(TextView(this).apply {
