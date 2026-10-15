@@ -195,6 +195,10 @@ abstract class BundlePluginsTask : DefaultTask() {
     @get:InputFiles
     abstract val rootAssets: ConfigurableFileCollection
 
+    /** a Rime configuration laid over the Rime plugin's shared data (rime-frost); may be empty */
+    @get:InputFiles
+    abstract val rimeData: ConfigurableFileCollection
+
     @get:OutputDirectory
     abstract val libsDir: DirectoryProperty
 
@@ -229,11 +233,98 @@ abstract class BundlePluginsTask : DefaultTask() {
                 into(assetsDir)
             }
         }
+        if (!rimeData.isEmpty) addRimeData(assetsDir.get().asFile.resolve("bundled/rime"))
         fs.copy {
             from(rootAssets)
             into(assetsDir)
         }
     }
+
+    /** Copies [rimeData] into the Rime plugin's rime-data and rewrites its data descriptor. */
+    private fun addRimeData(rime: File) {
+        val descriptorFile = rime.resolve("descriptor.json")
+        @Suppress("UNCHECKED_CAST")
+        val old = groovy.json.JsonSlurper().parse(descriptorFile) as Map<String, Any?>
+        val added = rimeData.files.flatMap { it.list()?.toList().orEmpty() }.toSet()
+        // drop symlinks the new data replaces with real files (rime-data/opencc -> usr/share/opencc)
+        @Suppress("UNCHECKED_CAST")
+        val symlinks = (old["symlinks"] as? Map<String, String>).orEmpty().filterKeys { key ->
+            !key.startsWith("usr/share/rime-data/") ||
+                key.removePrefix("usr/share/rime-data/").substringBefore('/') !in added
+        }
+        fs.copy {
+            from(rimeData)
+            into(rime.resolve("usr/share/rime-data"))
+        }
+        // same format as DataDescriptorPlugin (:build-logic): path -> sha256, "" for directories
+        val files = sortedMapOf<String, String>()
+        rime.walkTopDown().filter { it != rime && it != descriptorFile }.forEach { f ->
+            files[f.relativeTo(rime).invariantSeparatorsPath] = if (f.isDirectory) "" else sha256(f.readBytes())
+        }
+        val sha = sha256((files + symlinks).entries.joinToString { it.key + it.value }.toByteArray())
+        descriptorFile.writeText(
+            groovy.json.JsonOutput.toJson(mapOf("sha256" to sha, "files" to files, "symlinks" to symlinks))
+        )
+    }
+
+    private fun sha256(bytes: ByteArray) =
+        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+}
+
+// 白霜拼音 (gaboolic/rime-frost, GPL-3.0) as the built-in Rime configuration: downloaded at a fixed
+// commit and checked against a hash of its files (archives from GitHub aren't byte-stable).
+// Left out: others/ (images, word lists for maintenance), the unused Tencent dictionary, README.
+// To update: change the commit, then the hash (sha256 of "path sha256\n" lines, sorted by path).
+val rimeFrostCommit = "b356b525200627201730b0f13f52a6b7a1500193"
+val rimeFrostContentSha256 = "d13e7e9e3e91a69158cc74b67b030504b83f2d07e129944def3639e1a0dbb5ce"
+
+abstract class FetchRimeFrostTask : DefaultTask() {
+    @get:Input
+    abstract val commit: Property<String>
+
+    @get:Input
+    abstract val contentSha256: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @get:Inject
+    abstract val fs: FileSystemOperations
+
+    @get:Inject
+    abstract val archives: ArchiveOperations
+
+    @TaskAction
+    fun run() {
+        val archive = temporaryDir.resolve("rime-frost.tar.gz")
+        val url = "https://github.com/gaboolic/rime-frost/archive/${commit.get()}.tar.gz"
+        logger.lifecycle("Downloading $url")
+        java.net.URI(url).toURL().openStream().use { i -> archive.outputStream().use { o -> i.copyTo(o) } }
+        val out = outputDir.get().asFile
+        fs.delete { delete(out) }
+        fs.copy {
+            from(archives.tarTree(archives.gzip(archive)))
+            exclude("*/others/**", "*/README.md", "*/cn_dicts/tencent.dict.yaml", "*/.*", "*/.*/**")
+            eachFile { relativePath = RelativePath(true, *relativePath.segments.drop(1).toTypedArray()) }
+            includeEmptyDirs = false
+            into(out)
+        }
+        archive.delete()
+        val md = MessageDigest.getInstance("SHA-256")
+        fun hex(b: ByteArray) = b.joinToString("") { "%02x".format(it) }
+        val lines = out.walkTopDown().filter { it.isFile }
+            .map { it.relativeTo(out).invariantSeparatorsPath to it }
+            .sortedBy { it.first }
+            .joinToString("") { (path, f) -> "$path ${hex(MessageDigest.getInstance("SHA-256").digest(f.readBytes()))}\n" }
+        val actual = hex(md.digest(lines.toByteArray()))
+        if (actual != contentSha256.get()) throw GradleException("rime-frost content hash mismatch: $actual")
+    }
+}
+
+val fetchRimeFrost = tasks.register<FetchRimeFrostTask>("fetchRimeFrost") {
+    commit.set(rimeFrostCommit)
+    contentSha256.set(rimeFrostContentSha256)
+    outputDir.set(layout.buildDirectory.dir("rime-frost"))
 }
 
 val bundlePlugins = tasks.register<BundlePluginsTask>("bundlePlugins") {
@@ -245,6 +336,7 @@ val bundlePlugins = tasks.register<BundlePluginsTask>("bundlePlugins") {
     }
     // ClearURLs rules read by the clipboard filter from the app's assets
     rootAssets.from(rootDir.resolve("plugin/clipboard-filter/ClearURLsRules/data.min.json"))
+    rimeData.from(fetchRimeFrost.flatMap { it.outputDir })
     libsDir.set(layout.buildDirectory.dir("generated/bundled/jniLibs"))
     assetsDir.set(layout.buildDirectory.dir("generated/bundled/assets"))
 }
