@@ -100,7 +100,7 @@ git submodule update --init --recursive   # 原版可能更新了子模块
 git push origin master
 ```
 
-- 冲突最常见的地方，是修改版和原版都改过的文件：`KawaiiBarComponent.kt`、`ButtonsBarUi.kt`、`IdleUi.kt`、`ClipboardSuggestionUi.kt`、`TextKeyboard.kt`（底行布局、`onInputMethodUpdate` 和 `updatePunctuationKeys` 各几行，新按键在 `BottomRowKeys.kt`）、`PopupPreset.kt`（加了一行 `",."`）、`AppPrefs.kt`、`FcitxInputMethodService.kt`、`CommonKeyActionListener.kt`、`AndroidManifest.xml`、`settings.gradle.kts`、`build-logic/convention/...`。
+- 冲突最常见的地方，是修改版和原版都改过的文件：`KawaiiBarComponent.kt`、`ButtonsBarUi.kt`、`IdleUi.kt`、`ClipboardSuggestionUi.kt`、`HorizontalCandidateComponent.kt`（候选栏横向滑动）、`PreeditComponent.kt`、`TextKeyboard.kt`（底行布局、`onInputMethodUpdate` 和 `updatePunctuationKeys` 各几行，新按键在 `BottomRowKeys.kt`）、`PopupPreset.kt`（加了一行 `",."`）、`AppPrefs.kt`、`FcitxInputMethodService.kt`、`CommonKeyActionListener.kt`、`AndroidManifest.xml`、`settings.gradle.kts`、`build-logic/convention/...`。
 - 新功能尽量写在**新文件**里，原版文件里只留最少的调用代码（比如 `NumberSymbolSwitchKey.kt`、`data/otp/`、`data/password/`），这样合并时冲突少。
 - 原版改了 `.github/workflows/` 下的文件时，自动推送会被拒绝（GITHUB_TOKEN 没有 workflow 权限）。这种情况让用户在 GitHub 网页上点 **Sync fork**，或者在本地合并后推送。
 

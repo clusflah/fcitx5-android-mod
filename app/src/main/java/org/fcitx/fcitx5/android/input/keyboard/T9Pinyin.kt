@@ -92,7 +92,15 @@ object T9Pinyin {
      * the first candidate (Rime's spelling hint in its comment, e.g. "ni hao"), so "你64426" shows as
      * "你ni'hao". Digits the candidate doesn't cover stay as they are. Null = show [preedit] unchanged.
      */
-    fun displayPreedit(preedit: String, firstComment: String?): String? {
+    fun displayPreedit(preedit: String, firstComment: String?): String? =
+        displayPreedit(preedit, preedit.length, firstComment)?.first
+
+    /**
+     * [displayPreedit] plus where Rime's caret ([cursor], an index into [preedit]) falls in the
+     * shown text: each digit or letter of the input is one letter of the pinyin, so moving the caret
+     * with ← → (e.g. by swiping on space) moves it through the pinyin too.
+     */
+    fun displayPreedit(preedit: String, cursor: Int, firstComment: String?): Pair<String, Int>? {
         val raw = pendingInput(preedit) ?: return null
         val tail = preedit.takeLastWhile { it == ' ' || it == '\'' || it in 'a'..'z' || it in '0'..'9' }
         val head = preedit.dropLast(tail.length)
@@ -112,7 +120,18 @@ object T9Pinyin {
         // out ourselves, so the line never falls back to digits
         val rest = input.substring(pos)
         if (rest.isNotEmpty()) shown.addAll(spell(rest) ?: listOf(rest))
-        return head + shown.joinToString("'")
+        val text = head + shown.joinToString("'")
+        if (cursor <= head.length) return text to cursor.coerceAtLeast(0)
+        // letters of the input before the caret, then the same number of pinyin letters
+        var letters = tail.take(cursor - head.length).count { it != ' ' && it != '\'' }
+        var at = head.length
+        for ((i, piece) in shown.withIndex()) {
+            if (i > 0) at++ // the ' between syllables
+            if (letters <= piece.length) return text to at + letters
+            letters -= piece.length
+            at += piece.length
+        }
+        return text to text.length
     }
 
     /** rough frequency order of syllables, to pick one when several share the same digits */

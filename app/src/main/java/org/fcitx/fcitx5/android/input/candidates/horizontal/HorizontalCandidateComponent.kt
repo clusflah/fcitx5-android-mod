@@ -10,6 +10,7 @@ import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.RectShape
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -99,6 +100,8 @@ class HorizontalCandidateComponent :
                 holder.itemView.updateLayoutParams<FlexboxLayoutManager.LayoutParams> {
                     minWidth = layoutMinWidth
                     flexGrow = layoutFlexGrow
+                    // mod: one unwrapped row that scrolls sideways; never squeeze candidates
+                    flexShrink = 0f
                 }
                 holder.itemView.setOnClickListener {
                     fcitx.launchOnReady { it.select(holder.idx) }
@@ -119,8 +122,12 @@ class HorizontalCandidateComponent :
 
     val layoutManager: FlexboxLayoutManager by lazy {
         object : FlexboxLayoutManager(context) {
+            init {
+                // mod: all candidates in one row, scrolled sideways (CandidateScrollLoader)
+                flexWrap = FlexWrap.NOWRAP
+            }
+
             override fun canScrollVertically() = false
-            override fun canScrollHorizontally() = false
             override fun onLayoutCompleted(state: RecyclerView.State) {
                 super.onLayoutCompleted(state)
                 val cnt = this.childCount
@@ -140,7 +147,8 @@ class HorizontalCandidateComponent :
                         secondLayoutPassNeeded = false
                     }
                 }
-                refreshExpanded(cnt)
+                // mod: the expanded list continues after the candidates fully in view
+                refreshExpanded(findLastCompletelyVisibleItemPosition() + 1)
             }
             // no need to override `generate{,Default}LayoutParams`, because HorizontalCandidateViewAdapter
             // guarantees ViewHolder's layoutParams to be `FlexboxLayoutManager.LayoutParams`
@@ -171,6 +179,7 @@ class HorizontalCandidateComponent :
             adapter = this@HorizontalCandidateComponent.adapter
             layoutManager = this@HorizontalCandidateComponent.layoutManager
             addItemDecoration(FlexboxVerticalDecoration(dividerDrawable))
+            addOnScrollListener(CandidateScrollLoader(fcitx, this@HorizontalCandidateComponent.adapter))
         }
     }
 
@@ -198,6 +207,8 @@ class HorizontalCandidateComponent :
             }
         }
         adapter.updateCandidates(candidates, total)
+        // mod: a new list starts scrolled to its first candidate
+        view.scrollToPosition(0)
         // not sure why empty candidates won't trigger `FlexboxLayoutManager#onLayoutCompleted()`
         if (candidates.isEmpty()) {
             refreshExpanded(0)

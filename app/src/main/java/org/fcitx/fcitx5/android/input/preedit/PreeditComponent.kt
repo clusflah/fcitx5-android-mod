@@ -56,10 +56,15 @@ class PreeditComponent : UniqueComponent<PreeditComponent>(), Dependent, InputBr
     }
 
     private fun show(data: FcitxEvent.InputPanelEvent.Data) {
-        val pinyin = if (T9Pinyin.active) T9Pinyin.displayPreedit(data.preedit.toString(), firstComment) else null
+        val pinyin = if (T9Pinyin.active)
+            T9Pinyin.displayPreedit(
+                data.preedit.toString(),
+                data.preedit.cursor.takeIf { it >= 0 } ?: data.preedit.toString().length,
+                firstComment
+            ) else null
         ui.update(
             if (pinyin == null) data
-            else data.copy(preedit = FormattedText(arrayOf(pinyin), intArrayOf(0), pinyin.length))
+            else data.copy(preedit = FormattedText(arrayOf(pinyin.first), intArrayOf(0), pinyin.second))
         )
         ui.root.visibility = if (ui.visible) View.VISIBLE else View.INVISIBLE
     }

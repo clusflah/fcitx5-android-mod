@@ -37,4 +37,12 @@ class T9PinyinTest {
     fun committedHeadKept() {
         assertEquals("你hao", T9Pinyin.displayPreedit("你426", null))
     }
+
+    @Test
+    fun caretFollowsDigits() {
+        // caret after "ni4" (index 3) sits after "ni'h"
+        assertEquals("ni'hao" to 4, T9Pinyin.displayPreedit("ni426", 3, null))
+        assertEquals("ni'hao" to 6, T9Pinyin.displayPreedit("ni426", 5, null))
+        assertEquals("你hao" to 1, T9Pinyin.displayPreedit("你426", 1, null))
+    }
 }
