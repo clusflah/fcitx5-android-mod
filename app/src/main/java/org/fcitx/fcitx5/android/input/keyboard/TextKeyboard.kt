@@ -67,10 +67,10 @@ class TextKeyboard(
             ),
             listOf(
                 NumberSymbolSwitchKey(),
-                CommaKey(0.1f, KeyDef.Appearance.Variant.Alternative),
-                LanguageKey(),
+                // mod: "，。" and 中/英 on either side of space, as on the 九宫格 (BottomRowKeys.kt)
+                CommaPeriodKey(),
                 SpaceKey(),
-                SymbolKey(".", 0.1f, KeyDef.Appearance.Variant.Alternative),
+                ZhEnKey(),
                 ReturnKey()
             )
         )
@@ -169,6 +169,7 @@ class TextKeyboard(
             append(ime.displayName)
             ime.subMode.run { label.ifEmpty { name.ifEmpty { null } } }?.let { append(" ($it)") }
         }
+        lang.showLanguage(ime)
         if (capsState != CapsState.None) {
             switchCapsState()
         }
@@ -248,6 +249,9 @@ class TextKeyboard(
             if (it is AltTextKeyView) {
                 it.def as KeyDef.Appearance.AltText
                 it.altText.text = transformPunctuation(it.def.altText)
+                // mod: CommaPeriodKey's main label is punctuation too
+                if (it.def.displayText.let { s -> s.length == 1 && !s[0].isLetterOrDigit() })
+                    it.mainText.text = transformPunctuation(it.def.displayText)
             } else {
                 it.def as KeyDef.Appearance.Text
                 it.mainText.text = it.def.displayText.let { str ->
