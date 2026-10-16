@@ -160,6 +160,8 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
 
     private fun attachLayout(target: String) {
         currentKeyboardName = target
+        // mod: 九宫格 display rules (pinyin preedit, no pinyin beside candidates) follow the layout
+        T9Pinyin.active = target == T9Keyboard.Name
         currentKeyboard?.let {
             it.keyActionListener = keyActionListener
             it.popupActionListener = popupActionListener

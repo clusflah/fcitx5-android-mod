@@ -301,13 +301,9 @@ class T9Keyboard(
         super.onAction(action, source)
     }
 
-    override fun onAttach() {
-        super.onAttach()
-        T9Pinyin.active = true
-    }
-
     override fun onDetach() {
-        T9Pinyin.active = false
+        // T9Pinyin.active stays on: the keyboard is also detached while the expanded candidate
+        // window is open, whose candidates should still hide their pinyin (KeyboardWindow sets it)
         onPreeditUpdate("")
         symbolStrip?.hide()
         super.onDetach()
