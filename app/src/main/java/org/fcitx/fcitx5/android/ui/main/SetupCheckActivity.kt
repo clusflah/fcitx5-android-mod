@@ -158,25 +158,37 @@ class SetupCheckActivity : AppCompatActivity() {
         // plugins carry the same suffix as the main app (.mod / .debug)
         val suffix = BuildConfig.APPLICATION_ID.removePrefix("org.fcitx.fcitx5.android")
         val installed = installedPlugins()
-        fun has(name: String) = "org.fcitx.fcitx5.android.plugin.$name$suffix" in installed
+        // the all-in-one build has the plugins built in, listed without a package suffix
+        val builtIn = runCatching { DataManager.detectPlugins().loaded.map { it.packageName }.toSet() }
+            .getOrDefault(emptySet())
+        fun isBuiltIn(name: String) = "org.fcitx.fcitx5.android.plugin.$name" in builtIn
+        fun has(name: String) = "org.fcitx.fcitx5.android.plugin.$name$suffix" in installed || isBuiltIn(name)
         val rimeFiles = getExternalFilesDir(null)?.resolve("data/rime")?.listFiles()?.isNotEmpty() == true
         when {
+            isBuiltIn("rime") -> row(Status.Ok, "Rime 插件", "已内置（全家桶）。")
             has("rime") -> row(Status.Ok, "Rime 插件", "已安装。")
             rimeFiles -> row(Status.Bad, "Rime 插件",
                 "备份里有 Rime 用户文件（白霜拼音等），但还没有安装 Rime 插件。请安装用同一签名编译的 rime 插件 APK（包名带 $suffix）。")
             else -> row(Status.Info, "Rime 插件", "未安装（不使用中州韵可忽略）。")
         }
         if (has("clipboard_sync")) {
-            row(Status.Warn, "剪贴板同步插件", "已安装。它的服务器地址、账号密码不在备份里，请打开插件重新填写。",
+            val state = if (isBuiltIn("clipboard_sync")) "已内置（全家桶）" else "已安装"
+            row(Status.Warn, "剪贴板同步插件", "$state。它的服务器地址、账号密码不在备份里，请打开插件重新填写。",
                 "打开插件设置") {
-                packageManager.getLaunchIntentForPackage("org.fcitx.fcitx5.android.plugin.clipboard_sync$suffix")
+                // built in: its settings activity is part of this app
+                val builtInSettings = Intent().setClassName(this, "org.fcitx.fcitx5.android.plugin.clipboard_sync.ui.SettingsActivity")
+                    .takeIf { packageManager.resolveActivity(it, 0) != null }
+                (builtInSettings ?: packageManager.getLaunchIntentForPackage("org.fcitx.fcitx5.android.plugin.clipboard_sync$suffix"))
                     ?.let { startActivity(it) }
                     ?: Toast.makeText(this, "找不到插件设置入口", Toast.LENGTH_SHORT).show()
             }
         } else {
             row(Status.Info, "剪贴板同步插件", "未安装（不需要同步剪贴板可忽略）。")
         }
-        row(Status.Info, "插件管理", "安装插件后，回到设置主页点击顶部的“检测到插件更改”提示以重新加载。")
+        if (isBuiltIn("rime"))
+            row(Status.Info, "插件管理", "全家桶已内置全部插件，不需要另外安装。")
+        else
+            row(Status.Info, "插件管理", "安装插件后，回到设置主页点击顶部的“检测到插件更改”提示以重新加载。")
     }
 
     // ---------- 3. 语音 ----------
