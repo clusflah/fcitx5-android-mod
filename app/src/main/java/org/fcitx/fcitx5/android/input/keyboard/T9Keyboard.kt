@@ -31,11 +31,12 @@ import splitties.views.dsl.core.add
 import splitties.views.imageResource
 
 /** A letter group key: tap sends the digit; swipe types the digit itself. */
-class T9Key(letters: String, digit: Int, display: String = letters) : KeyDef(
+class T9Key(letters: String, digit: Int, display: String = letters, viewId: Int = -1) : KeyDef(
     Appearance.Text(
         displayText = display,
         textSize = 20f,
-        percentWidth = T9Keyboard.KEY_WIDTH
+        percentWidth = T9Keyboard.KEY_WIDTH,
+        viewId = viewId
     ),
     setOf(
         Behavior.Press(KeyAction.FcitxKeyAction(digit.toString())),
@@ -103,11 +104,14 @@ class T9Keyboard(
         private val LEFT_IDS = IntArray(3) { View.generateViewId() }
         private val RIGHT_IDS = IntArray(2) { View.generateViewId() }
 
+        /** the 1 key: shows "@#", or "'分词" while typing */
+        private val SEPARATOR_ID = View.generateViewId()
+
         val Layout: List<List<KeyDef>> = listOf(
             listOf(
                 T9Placeholder(LEFT_IDS[0]),
                 // 1: syllable separator while typing (the schema maps it to '), symbols otherwise
-                T9Key("@#", 1),
+                T9Key("@#", 1, viewId = SEPARATOR_ID),
                 T9Key("ABC", 2),
                 T9Key("DEF", 3),
                 BackspaceKey(SIDE_WIDTH)
@@ -161,6 +165,8 @@ class T9Keyboard(
         }
     }
 
+    private val separatorKey get() = findViewById<TextKeyView>(SEPARATOR_ID)
+
     /** Rime input not converted yet, as last read from the preedit */
     private var pendingRaw: String? = null
 
@@ -212,6 +218,7 @@ class T9Keyboard(
 
     /** Called with Rime's preedit (the code being typed) whenever it changes. */
     fun onPreeditUpdate(preedit: String) {
+        separatorKey?.mainText?.text = if (preedit.isEmpty()) "@#" else "'分词"
         val raw = T9Pinyin.pendingInput(preedit)
         if (raw == pendingRaw) return
         pendingRaw = raw
