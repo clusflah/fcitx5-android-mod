@@ -155,6 +155,8 @@ abstract class BaseKeyboard(
             }
             if (def is SpaceKey) {
                 spaceKeys.add(this)
+                // mod: 🎤 hint for hold-space voice input
+                (this as? TextKeyView)?.let { SpaceVoiceIcon.attach(it, theme, centered = this@BaseKeyboard !is TextKeyboard) }
                 swipeEnabled = spaceSwipeMoveCursor.getValue()
                 swipeRepeatEnabled = true
                 swipeThresholdX = selectionSwipeThreshold

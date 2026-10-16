@@ -13,6 +13,7 @@ import androidx.annotation.Keep
 import androidx.core.content.ContextCompat
 import androidx.transition.Slide
 import org.fcitx.fcitx5.android.R
+import org.fcitx.fcitx5.android.core.CapabilityFlag
 import org.fcitx.fcitx5.android.core.CapabilityFlags
 import org.fcitx.fcitx5.android.core.FcitxEvent
 import org.fcitx.fcitx5.android.core.FormattedText
@@ -75,7 +76,7 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
         hashMapOf(
             TextKeyboard.Name to TextKeyboard(context, theme),
             NumberKeyboard.Name to NumberKeyboard(context, theme),
-            T9Keyboard.Name to T9Keyboard(context, theme)
+            T9Keyboard.Name to T9Keyboard(context, theme).apply { symbolStrip = bar.t9SymbolStrip }
         )
     }
 
@@ -200,6 +201,7 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     }
 
     override fun onStartInput(info: EditorInfo, capFlags: CapabilityFlags) {
+        SpaceVoiceIcon.allowed = !capFlags.has(CapabilityFlag.Password)
         val variation = info.inputType and InputType.TYPE_MASK_VARIATION
         t9Allowed = (info.inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT &&
                 variation != InputType.TYPE_TEXT_VARIATION_PASSWORD &&

@@ -93,23 +93,88 @@ object T9Pinyin {
      * "你ni'hao". Digits the candidate doesn't cover stay as they are. Null = show [preedit] unchanged.
      */
     fun displayPreedit(preedit: String, firstComment: String?): String? {
-        val hint = firstComment?.trim()?.lowercase()?.takeIf { PINYIN_HINT.matches(it) } ?: return null
         val raw = pendingInput(preedit) ?: return null
         val tail = preedit.takeLastWhile { it == ' ' || it == '\'' || it in 'a'..'z' || it in '0'..'9' }
         val head = preedit.dropLast(tail.length)
         // walk the input syllable by syllable; letters already chosen encode to themselves
-        val code = encode(raw.replace("'", ""))
+        val input = raw.replace("'", "")
+        val code = encode(input)
         var pos = 0
         val shown = mutableListOf<String>()
-        for (syllable in hint.split(' ', '\'')) {
+        val hint = firstComment?.trim()?.lowercase()?.takeIf { PINYIN_HINT.matches(it) }
+        if (hint != null) for (syllable in hint.split(' ', '\'')) {
             val c = encode(syllable.replace('ü', 'v'))
             if (!code.startsWith(c, pos)) break
             shown.add(syllable)
             pos += c.length
         }
-        if (shown.isEmpty()) return null
-        val rest = code.substring(pos)
-        return head + shown.joinToString("'") + if (rest.isEmpty()) "" else "'$rest"
+        // what the candidate doesn't cover (or all of it, when it has no pinyin hint): spell it
+        // out ourselves, so the line never falls back to digits
+        val rest = input.substring(pos)
+        if (rest.isNotEmpty()) shown.addAll(spell(rest) ?: listOf(rest))
+        return head + shown.joinToString("'")
+    }
+
+    /** rough frequency order of syllables, to pick one when several share the same digits */
+    private val COMMON = ("de shi yi bu you zhe ge le wo ren zai ta men lai dao shang da wei ji zi " +
+        "zhong guo sheng xia yu jia ke zhi xue neng jiu me hui nian dui fa chu zuo yao ye kan dong " +
+        "ying jin hao xiang qi mei jian yong li ru shuo dian qian ming gong bei ri zhu ben xin hou " +
+        "fang tian he cheng gao zheng shou lu bian mian xing qu xian quan ai du er hai ma ni na hen " +
+        "ba ting zou dan wen ci jing xie bie zhao an mu kai jie ji tong xiao yan shen ying ke lian " +
+        "san si wu liu qing ba jiao zhan chang yang jiang hua kuai gei qie han ru ning bao liang " +
+        "duo shao ming tou ying zui ce zao wan hong yue bai lao gan ji sui ge shu che pin yin")
+        .split(' ').withIndex().reversed().associate { (i, s) -> s to i }
+
+    private fun rank(syllable: String) = COMMON[syllable] ?: (1000 + syllable.length)
+
+    /** whether [syllable] fits [input] at [at]: digits stand for any of their letters, letters for themselves */
+    private fun fits(input: String, at: Int, syllable: String): Boolean {
+        if (at + syllable.length > input.length) return false
+        return syllable.indices.all { k ->
+            val c = input[at + k]
+            c == syllable[k] || c == DIGIT_OF[syllable[k]]
+        }
+    }
+
+    /**
+     * Pinyin for typed digits (and letters already chosen): the fewest syllables that cover it,
+     * favouring common ones; an unfinished last syllable shows as its first letters. Null if the
+     * input can't be read as pinyin (e.g. it has 0 or 1 in it).
+     */
+    fun spell(input: String): List<String>? {
+        val n = input.length
+        // best[i] = (syllables, rank sum, first piece) for input[i:]
+        val best = arrayOfNulls<Triple<Int, Int, String>>(n + 1)
+        best[n] = Triple(0, 0, "")
+        for (i in n - 1 downTo 0) {
+            var choice: Triple<Int, Int, String>? = null
+            fun offer(piece: String, next: Triple<Int, Int, String>) {
+                val c = Triple(next.first + 1, next.second + rank(piece), piece)
+                if (choice == null || c.first < choice!!.first ||
+                    (c.first == choice!!.first && c.second < choice!!.second)) choice = c
+            }
+            for ((s, _) in SYLLABLES) {
+                if (!fits(input, i, s)) continue
+                best[i + s.length]?.let { offer(s, it) }
+            }
+            // the last, unfinished syllable: letters of the most common syllable it could become
+            if (choice == null) {
+                val left = n - i
+                SYLLABLES.filter { (s, _) -> s.length > left && fits(input, i, s.take(left)) }
+                    .minByOrNull { rank(it.first) }
+                    ?.let { offer(it.first.take(left), best[n]!!) }
+            }
+            best[i] = choice
+        }
+        if (best[0] == null) return null
+        val out = mutableListOf<String>()
+        var i = 0
+        while (i < n) {
+            val piece = best[i]!!.third
+            out.add(piece)
+            i += piece.length
+        }
+        return out
     }
 
     /**
