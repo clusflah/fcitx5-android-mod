@@ -110,6 +110,10 @@ class T9Keyboard(
         /** the 1 key: shows "@#", or "'词" while typing */
         private val SEPARATOR_ID = View.generateViewId()
 
+        /** X11 keysyms of keypad ← →, which Rime's navigator maps to moving by one letter */
+        private const val KP_LEFT = 0xff96
+        private const val KP_RIGHT = 0xff98
+
         /** shown in the symbol row when 1 is tapped with nothing typed */
         val SYMBOLS = listOf("@", "#", "*", "+", "…", "~", "（）", "、", "/")
 
@@ -267,6 +271,19 @@ class T9Keyboard(
 
     @SuppressLint("MissingSuperCall") // the 1 key may open the symbol row instead
     override fun onAction(action: KeyAction, source: KeyActionListener.Source) {
+        // swiping on space while typing: Rime moves the caret a whole syllable on ← and a letter
+        // on keypad ←/→, so send those to move through the pinyin one letter at a time
+        if (typing && action is KeyAction.SymAction) {
+            val keypad = when (action.sym.sym) {
+                FcitxKeyMapping.FcitxKey_Left -> KP_LEFT
+                FcitxKeyMapping.FcitxKey_Right -> KP_RIGHT
+                else -> null
+            }
+            if (keypad != null) {
+                super.onAction(KeyAction.SymAction(KeySym(keypad), action.states), source)
+                return
+            }
+        }
         // 1 with nothing typed: toggle the symbol row instead of sending it to Rime
         if (action is KeyAction.FcitxKeyAction && action.act == "1" && !typing) {
             val strip = symbolStrip

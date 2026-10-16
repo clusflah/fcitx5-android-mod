@@ -39,6 +39,13 @@ open class HorizontalCandidateViewAdapter(val theme: Theme) :
         notifyDataSetChanged()
     }
 
+    /** mod: more candidates fetched while scrolling the bar (CandidateScrollLoader) */
+    fun appendCandidates(more: Array<CandidateWord>) {
+        val start = candidates.size
+        candidates += more
+        notifyItemRangeInserted(start, more.size)
+    }
+
     override fun getItemCount() = candidates.size
 
     override fun getItemId(position: Int) = candidates.getOrNull(position).hashCode().toLong()
