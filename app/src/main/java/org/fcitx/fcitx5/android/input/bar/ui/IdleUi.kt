@@ -79,6 +79,12 @@ class IdleUi(
 
     val hideKeyboardButton = ToolButton(ctx, R.drawable.ic_baseline_arrow_drop_down_24, theme)
 
+    /** mod: 🎤 left of the hide-keyboard button, so it no longer takes that button's place */
+    val voiceButton = ToolButton(ctx, R.drawable.ic_baseline_keyboard_voice_24, theme).apply {
+        contentDescription = ctx.getString(R.string.switch_to_voice_input)
+        visibility = View.GONE
+    }
+
     val emptyBar = Space(ctx)
 
     val buttonsUi = ButtonsBarUi(ctx, theme)
@@ -141,9 +147,13 @@ class IdleUi(
             endOfParent()
             centerVertically()
         })
+        add(voiceButton, lParams(size, size) {
+            before(hideKeyboardButton)
+            centerVertically()
+        })
         add(animator, lParams(matchConstraints, matchParent) {
             after(menuButton)
-            before(hideKeyboardButton)
+            before(voiceButton)
             centerVertically()
         })
     }

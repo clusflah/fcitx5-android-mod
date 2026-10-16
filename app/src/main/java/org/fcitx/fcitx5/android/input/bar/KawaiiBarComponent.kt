@@ -570,13 +570,6 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         else VoicePushToTalk.start(service, tapMode = true)
     }
 
-    /** the 🎤 replaces the hide-keyboard button, so long-press it to hide the keyboard */
-    private val hideKeyboardLongClick = View.OnLongClickListener {
-        if (VoicePushToTalk.isRecording) VoicePushToTalk.cancel()
-        service.requestHideSelf(0)
-        true
-    }
-
     private val idleUi: IdleUi by lazy {
         IdleUi(context, theme, popup, commonKeyActionListener).apply {
             menuButton.setOnClickListener {
@@ -604,6 +597,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                     launchClipboardTimeoutJob()
                 }
             }
+            voiceButton.setOnClickListener(modVoiceInputCallback)
             hideKeyboardButton.apply {
                 setOnClickListener(hideKeyboardCallback)
                 swipeEnabled = true
@@ -889,11 +883,8 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         voiceInputSubtype = InputMethodUtil.findVoiceSubtype(preferredVoiceInput)
         // mod: no system voice IME needed; the button records with the mod's own voice input
         val shouldShowVoiceInput = showVoiceInputButton && !capFlags.has(CapabilityFlag.Password)
-        idleUi.setHideKeyboardIsVoiceInput(
-            shouldShowVoiceInput,
-            if (shouldShowVoiceInput) modVoiceInputCallback else hideKeyboardCallback
-        )
-        idleUi.hideKeyboardButton.setOnLongClickListener(if (shouldShowVoiceInput) hideKeyboardLongClick else null)
+        // the 🎤 has its own button left of the hide-keyboard one
+        idleUi.voiceButton.visibility = if (shouldShowVoiceInput) View.VISIBLE else View.GONE
         evalIdleUiState()
         refreshOtp(autoFill = true)
     }

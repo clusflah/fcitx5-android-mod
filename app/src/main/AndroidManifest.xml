@@ -151,6 +151,12 @@
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
 
         <activity
+            android:name=".ui.main.ToolbarButtonsActivity"
+            android:exported="false"
+            android:label="@string/toolbar_buttons"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
+
+        <activity
             android:name=".ui.main.SmsPermissionActivity"
             android:excludeFromRecents="true"
             android:exported="false"

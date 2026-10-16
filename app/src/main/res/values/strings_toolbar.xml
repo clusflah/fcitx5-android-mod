@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="toolbar_buttons">Toolbar buttons</string>
+    <string name="toolbar_buttons_summary">Show, hide and reorder the toolbar buttons, and the voice input button</string>
+    <string name="toolbar_buttons_voice_header">Next to the hide-keyboard button</string>
+    <string name="toolbar_buttons_list_header">Toolbar (shown when the toolbar is expanded)</string>
+    <string name="toolbar_buttons_list_note">Use the arrows to reorder; the buttons appear left to right in this order</string>
+    <string name="toolbar_button_bitwarden">Bitwarden (hidden when not installed)</string>
+</resources>

@@ -15,6 +15,7 @@ import org.fcitx.fcitx5.android.data.password.PasswordManager
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.prefs.ManagedPreference
 import org.fcitx.fcitx5.android.data.theme.Theme
+import org.fcitx.fcitx5.android.input.bar.ToolbarButton
 import org.fcitx.fcitx5.android.input.bar.ui.ToolButton
 import splitties.dimensions.dp
 import splitties.views.dsl.core.Ui
@@ -87,6 +88,36 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
 
     val moreButton = toolButton(R.drawable.ic_baseline_more_horiz_24, prefs.showMoreButton).apply {
         contentDescription = ctx.getString(R.string.status_area)
+    }
+
+    // mod: put the buttons in the order chosen in Settings → Virtual Keyboard → Toolbar buttons
+    private val buttonOf = mapOf(
+        ToolbarButton.Undo to undoButton,
+        ToolbarButton.Redo to redoButton,
+        ToolbarButton.CursorMove to cursorMoveButton,
+        ToolbarButton.Clipboard to clipboardButton,
+        ToolbarButton.AiAssist to aiAssistButton,
+        ToolbarButton.AiPredict to aiPredictButton,
+        ToolbarButton.Translate to translateButton,
+        ToolbarButton.T9 to t9Button,
+        ToolbarButton.PasswordManager to passwordManagerButton,
+        ToolbarButton.More to moreButton,
+    )
+
+    private fun applyOrder(saved: String) {
+        val views = ToolbarButton.ordered(saved).mapNotNull { buttonOf[it] }
+        views.forEach { v ->
+            val lp = v.layoutParams
+            root.removeView(v)
+            root.addView(v, lp)
+        }
+    }
+
+    private val orderListener = ManagedPreference.OnChangeListener<String> { _, v -> applyOrder(v) }
+
+    init {
+        applyOrder(prefs.toolbarButtonOrder.getValue())
+        prefs.toolbarButtonOrder.registerOnChangeListener(orderListener)
     }
 
 }
