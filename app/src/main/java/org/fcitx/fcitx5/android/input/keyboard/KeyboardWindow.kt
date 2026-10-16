@@ -75,7 +75,7 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
         hashMapOf(
             TextKeyboard.Name to TextKeyboard(context, theme),
             NumberKeyboard.Name to NumberKeyboard(context, theme),
-            T9Keyboard.Name to T9Keyboard(context, theme)
+            T9Keyboard.Name to T9Keyboard(context, theme).apply { symbolStrip = bar.t9SymbolStrip }
         )
     }
 

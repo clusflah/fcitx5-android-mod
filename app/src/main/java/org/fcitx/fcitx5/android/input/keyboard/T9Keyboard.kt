@@ -7,6 +7,7 @@
  * one replaces those digits with its letters in Rime's input. The preedit line shows the first
  * candidate's pinyin instead of digits, and candidates don't repeat it (PreeditComponent,
  * CandidateItemUi).
+ * With nothing typed, 1 opens a row of symbols over the toolbar (SymbolStrip, KawaiiBarComponent).
  */
 package org.fcitx.fcitx5.android.input.keyboard
 
@@ -104,13 +105,16 @@ class T9Keyboard(
         private val LEFT_IDS = IntArray(3) { View.generateViewId() }
         private val RIGHT_IDS = IntArray(2) { View.generateViewId() }
 
-        /** the 1 key: shows "@#", or "'分词" while typing */
+        /** the 1 key: shows "@#", or "'词" while typing */
         private val SEPARATOR_ID = View.generateViewId()
+
+        /** shown in the symbol row when 1 is tapped with nothing typed */
+        val SYMBOLS = listOf("@", "#", "*", "+", "…", "~", "（", "、", "/")
 
         val Layout: List<List<KeyDef>> = listOf(
             listOf(
                 T9Placeholder(LEFT_IDS[0]),
-                // 1: syllable separator while typing (the schema maps it to '), symbols otherwise
+                // 1: syllable separator while typing (the schema maps it to '), symbol row otherwise
                 T9Key("@#", 1, viewId = SEPARATOR_ID),
                 T9Key("ABC", 2),
                 T9Key("DEF", 3),
@@ -167,6 +171,18 @@ class T9Keyboard(
 
     private val separatorKey get() = findViewById<TextKeyView>(SEPARATOR_ID)
 
+    /** The symbol row over the toolbar; KeyboardWindow sets it to KawaiiBarComponent's. */
+    interface SymbolStrip {
+        val isShown: Boolean
+        fun show(symbols: List<String>, onPick: (String) -> Unit)
+        fun hide()
+    }
+
+    var symbolStrip: SymbolStrip? = null
+
+    /** whether Rime has input being typed */
+    private var typing = false
+
     /** Rime input not converted yet, as last read from the preedit */
     private var pendingRaw: String? = null
 
@@ -218,7 +234,9 @@ class T9Keyboard(
 
     /** Called with Rime's preedit (the code being typed) whenever it changes. */
     fun onPreeditUpdate(preedit: String) {
-        separatorKey?.mainText?.text = if (preedit.isEmpty()) "@#" else "'分词"
+        typing = preedit.isNotEmpty()
+        separatorKey?.mainText?.text = if (typing) "'词" else "@#"
+        if (typing) symbolStrip?.hide()
         val raw = T9Pinyin.pendingInput(preedit)
         if (raw == pendingRaw) return
         pendingRaw = raw
@@ -248,6 +266,23 @@ class T9Keyboard(
         type.forEach { sendKey(it.toString()) }
     }
 
+    @SuppressLint("MissingSuperCall") // the 1 key may open the symbol row instead
+    override fun onAction(action: KeyAction, source: KeyActionListener.Source) {
+        // 1 with nothing typed: toggle the symbol row instead of sending it to Rime
+        if (action is KeyAction.FcitxKeyAction && action.act == "1" && !typing) {
+            val strip = symbolStrip
+            if (strip != null) {
+                if (strip.isShown) strip.hide()
+                else strip.show(SYMBOLS) {
+                    keyActionListener?.onKeyAction(KeyAction.CommitAction(it), source)
+                    strip.hide()
+                }
+                return
+            }
+        }
+        super.onAction(action, source)
+    }
+
     override fun onAttach() {
         super.onAttach()
         T9Pinyin.active = true
@@ -256,6 +291,7 @@ class T9Keyboard(
     override fun onDetach() {
         T9Pinyin.active = false
         onPreeditUpdate("")
+        symbolStrip?.hide()
         super.onDetach()
     }
 

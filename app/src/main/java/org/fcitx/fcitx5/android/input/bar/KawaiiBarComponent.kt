@@ -48,6 +48,7 @@ import org.fcitx.fcitx5.android.input.bar.KawaiiBarStateMachine.TransitionEvent.
 import org.fcitx.fcitx5.android.input.bar.KawaiiBarStateMachine.TransitionEvent.WindowDetached
 import org.fcitx.fcitx5.android.input.bar.ui.CandidateUi
 import org.fcitx.fcitx5.android.input.bar.ui.IdleUi
+import org.fcitx.fcitx5.android.input.bar.ui.T9SymbolUi
 import org.fcitx.fcitx5.android.input.bar.ui.TitleUi
 import org.fcitx.fcitx5.android.input.bar.ui.ToolButton
 import org.fcitx.fcitx5.android.input.broadcast.InputBroadcastReceiver
@@ -80,6 +81,7 @@ import org.fcitx.fcitx5.android.input.editing.TextEditingWindow
 import org.fcitx.fcitx5.android.input.keyboard.CommonKeyActionListener
 import org.fcitx.fcitx5.android.input.keyboard.CustomGestureView
 import org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow
+import org.fcitx.fcitx5.android.input.keyboard.T9Keyboard
 import org.fcitx.fcitx5.android.input.popup.PopupComponent
 import org.fcitx.fcitx5.android.input.status.StatusAreaWindow
 import org.fcitx.fcitx5.android.input.wm.InputWindow
@@ -806,6 +808,26 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         candidateUi.expandButton.visibility = if (enabled) View.VISIBLE else View.INVISIBLE
     }
 
+    // mod: 九宫格 symbol row, shown over the toolbar until closed or the bar's state changes
+    private val t9SymbolUi by lazy {
+        T9SymbolUi(context, theme).apply {
+            closeButton.setOnClickListener { t9SymbolStrip.hide() }
+        }
+    }
+
+    val t9SymbolStrip = object : T9Keyboard.SymbolStrip {
+        override val isShown get() = view.displayedChild == T9_SYMBOL_INDEX
+
+        override fun show(symbols: List<String>, onPick: (String) -> Unit) {
+            t9SymbolUi.setSymbols(symbols, onPick)
+            view.displayedChild = T9_SYMBOL_INDEX
+        }
+
+        override fun hide() {
+            if (isShown) view.displayedChild = barStateMachine.currentState.ordinal
+        }
+    }
+
     private fun switchUiByState(state: KawaiiBarStateMachine.State) {
         val index = state.ordinal
         if (view.displayedChild == index) return
@@ -826,6 +848,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             add(idleUi.root, lParams(matchParent, matchParent))
             add(candidateUi.root, lParams(matchParent, matchParent))
             add(titleUi.root, lParams(matchParent, matchParent))
+            add(t9SymbolUi.root, lParams(matchParent, matchParent))
         }
     }
 
@@ -884,6 +907,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         // mod: no system voice IME needed; the button records with the mod's own voice input
         // no recording in password fields
         idleUi.buttonsUi.setVoiceAllowed(!capFlags.has(CapabilityFlag.Password))
+        t9SymbolStrip.hide()
         evalIdleUiState()
         refreshOtp(autoFill = true)
     }
@@ -993,6 +1017,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
 
     companion object {
         const val HEIGHT = 40
+
+        /** child of [view] after the three KawaiiBarStateMachine states */
+        private const val T9_SYMBOL_INDEX = 3
 
         /** longest text (each side of the cursor) that in-place translation reads from the field */
         private const val MAX_TRANSLATE = 5000
