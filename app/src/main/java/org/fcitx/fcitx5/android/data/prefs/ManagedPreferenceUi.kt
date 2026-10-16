@@ -46,6 +46,26 @@ abstract class ManagedPreferenceUi<T : Preference>(
         }
     }
 
+    /** mod: an entry that opens another settings screen (activity named by [activity]) */
+    class Link(
+        @StringRes
+        val title: Int,
+        key: String,
+        @StringRes
+        val summary: Int,
+        val activity: String
+    ) : ManagedPreferenceUi<Preference>(key) {
+        override fun createUi(context: Context) = Preference(context).apply {
+            key = this@Link.key
+            isPersistent = false
+            isIconSpaceReserved = false
+            isSingleLineTitle = false
+            setTitle(this@Link.title)
+            setSummary(this@Link.summary)
+            intent = android.content.Intent().setClassName(context, activity)
+        }
+    }
+
     class StringList<T : Any>(
         @StringRes
         val title: Int,

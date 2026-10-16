@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="toolbar_buttons">Toolbar buttons</string>
+    <string name="toolbar_buttons_summary">Show, hide, reorder and pin the toolbar buttons (including voice input)</string>
+    <string name="toolbar_buttons_list_note">Switch: show the button. Arrows: order, left to right. Pin: keep it at the right, left of the hide-keyboard button, visible even with the toolbar collapsed; unpinned buttons only show when the toolbar is expanded.</string>
+    <string name="toolbar_button_bitwarden">Bitwarden (hidden when not installed)</string>
+    <string name="toolbar_button_voice">Voice input (tap to talk, tap again to recognize; not in password fields)</string>
+    <string name="toolbar_button_pin">Pin to the right</string>
+    <string name="toolbar_button_unpin">Unpin</string>
+</resources>

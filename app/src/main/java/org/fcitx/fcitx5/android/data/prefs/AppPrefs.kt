@@ -148,15 +148,40 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             switch(R.string.otp_clipboard, "otp_clipboard", true, R.string.otp_clipboard_summary)
         val otpAutoFill =
             switch(R.string.otp_auto_fill, "otp_auto_fill", false, R.string.otp_auto_fill_summary)
-        // ---- toolbar shortcuts: each one can be hidden ----
-        val showUndoButton = switch(R.string.show_undo_button, "show_undo_button", true)
-        val showRedoButton = switch(R.string.show_redo_button, "show_redo_button", true)
-        val showCursorMoveButton =
-            switch(R.string.show_cursor_move_button, "show_cursor_move_button", true)
-        val showClipboardButton =
-            switch(R.string.show_clipboard_button, "show_clipboard_button", true)
-        val showAiAssistButton =
-            switch(R.string.show_ai_assist_button, "show_ai_assist_button", true)
+        // ---- toolbar shortcuts: shown / hidden and ordered on one page (ToolbarButtonsActivity) ----
+        private fun toolbarSwitch(key: String) =
+            ManagedPreference.PBool(sharedPreferences, key, true).apply { register() }
+
+        val showUndoButton = toolbarSwitch("show_undo_button")
+        val showRedoButton = toolbarSwitch("show_redo_button")
+        val showCursorMoveButton = toolbarSwitch("show_cursor_move_button")
+        val showClipboardButton = toolbarSwitch("show_clipboard_button")
+        val showAiAssistButton = toolbarSwitch("show_ai_assist_button")
+        val showAiPredictButton = toolbarSwitch("show_ai_predict_button")
+        val showTranslateButton = toolbarSwitch("show_translate_button")
+        val showT9Button = toolbarSwitch("show_t9_button")
+        val showPasswordManagerButton = toolbarSwitch("show_password_manager_button")
+        val showMoreButton = toolbarSwitch("show_more_button")
+
+        /** mod: the toolbar 🎤; records with the mod's own voice input */
+        val showVoiceInputButton =
+            ManagedPreference.PBool(sharedPreferences, "show_voice_input_button", false).apply { register() }
+
+        /** comma-separated ToolbarButton ids; ids missing from it go at the end */
+        val toolbarButtonOrder =
+            ManagedPreference.PString(sharedPreferences, "toolbar_button_order", "").apply { register() }
+
+        /** comma-separated ToolbarButton ids kept left of the hide-keyboard button even when the toolbar is collapsed */
+        val toolbarPinnedButtons =
+            ManagedPreference.PString(sharedPreferences, "toolbar_pinned_buttons", "").apply { register() }
+
+        init {
+            ManagedPreferenceUi.Link(
+                R.string.toolbar_buttons, "toolbar_buttons_link", R.string.toolbar_buttons_summary,
+                "org.fcitx.fcitx5.android.ui.main.ToolbarButtonsActivity"
+            ).registerUi()
+        }
+
         val aiPredictDelay = int(
             R.string.ai_predict_delay, "ai_predict_delay",
             50, 0, 1000, "ms", 10
@@ -165,18 +190,6 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             R.string.ai_predict_chain_limit, "ai_predict_chain_limit",
             2, 0, 10
         ) { aiPredictAuto.getValue() }
-        val showAiPredictButton =
-            switch(R.string.show_ai_predict_button, "show_ai_predict_button", true)
-        val showTranslateButton =
-            switch(R.string.show_translate_button, "show_translate_button", true)
-        val showT9Button = switch(R.string.show_t9_button, "show_t9_button", true)
-        val showPasswordManagerButton = switch(
-            R.string.show_password_manager_button, "show_password_manager_button", true,
-            R.string.show_password_manager_button_summary
-        )
-        val showMoreButton = switch(
-            R.string.show_more_button, "show_more_button", true, R.string.show_more_button_summary
-        )
         val inlineSuggestions = switch(R.string.inline_suggestions, "inline_suggestions", true)
         val toolbarNumRowOnPassword =
             switch(R.string.toolbar_num_row_on_password, "toolbar_num_row_on_password", true)
@@ -187,11 +200,6 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             false
         )
 
-        // mod: the toolbar mic records with the mod's own voice input (see 设置 → 语音模型)
-        val showVoiceInputButton = switch(
-            R.string.show_voice_input_button, "show_voice_input_button", false,
-            R.string.show_voice_input_button_summary
-        )
         // mod: only meaningful for switching to a system voice IME, which the mic no longer does;
         // keep the value but don't show it in settings
         val preferredVoiceInput =

@@ -41,6 +41,7 @@ import splitties.views.dsl.core.add
 import splitties.views.dsl.core.lParams
 import splitties.views.dsl.core.frameLayout
 import splitties.views.dsl.core.matchParent
+import splitties.views.dsl.core.wrapContent
 import splitties.views.imageResource
 import timber.log.Timber
 
@@ -141,9 +142,14 @@ class IdleUi(
             endOfParent()
             centerVertically()
         })
+        // mod: toolbar buttons pinned in Settings stay left of the hide-keyboard button
+        add(buttonsUi.pinnedRoot, lParams(wrapContent, size) {
+            before(hideKeyboardButton)
+            centerVertically()
+        })
         add(animator, lParams(matchConstraints, matchParent) {
             after(menuButton)
-            before(hideKeyboardButton)
+            before(buttonsUi.pinnedRoot)
             centerVertically()
         })
     }
