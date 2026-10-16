@@ -19,7 +19,8 @@ sealed class KeyAction {
 
     data class SymAction(val sym: KeySym, val states: KeyStates = KeyStates.Virtual) : KeyAction()
 
-    data class CommitAction(val text: String) : KeyAction()
+    // mod: cursor = where the caret ends up inside text (-1: after it), e.g. 1 for "（）"
+    data class CommitAction(val text: String, val cursor: Int = -1) : KeyAction()
 
     data class CapsAction(val lock: Boolean) : KeyAction()
 
