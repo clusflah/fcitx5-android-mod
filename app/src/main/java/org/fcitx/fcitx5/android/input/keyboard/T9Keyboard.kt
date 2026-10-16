@@ -111,7 +111,7 @@ class T9Keyboard(
         private val SEPARATOR_ID = View.generateViewId()
 
         /** shown in the symbol row when 1 is tapped with nothing typed */
-        val SYMBOLS = listOf("@", "#", "*", "+", "…", "~", "（", "、", "/")
+        val SYMBOLS = listOf("@", "#", "*", "+", "…", "~", "（）", "、", "/")
 
         val Layout: List<List<KeyDef>> = listOf(
             listOf(
@@ -273,7 +273,9 @@ class T9Keyboard(
             if (strip != null) {
                 if (strip.isShown) strip.hide()
                 else strip.show(SYMBOLS) {
-                    keyActionListener?.onKeyAction(KeyAction.CommitAction(it), source)
+                    // a bracket pair puts the caret between the two
+                    val cursor = if (it == "（）") 1 else -1
+                    keyActionListener?.onKeyAction(KeyAction.CommitAction(it, cursor), source)
                     strip.hide()
                 }
                 return

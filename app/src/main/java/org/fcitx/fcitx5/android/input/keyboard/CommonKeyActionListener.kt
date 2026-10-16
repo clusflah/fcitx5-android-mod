@@ -142,7 +142,7 @@ class CommonKeyActionListener :
                 }
                 is CommitAction -> service.postFcitxJob {
                     commitAndReset()
-                    service.lifecycleScope.launch { service.commitText(action.text) }
+                    service.lifecycleScope.launch { service.commitText(action.text, action.cursor) }
                 }
                 is QuickPhraseAction -> service.postFcitxJob {
                     commitAndReset()
