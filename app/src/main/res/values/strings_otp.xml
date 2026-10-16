@@ -8,6 +8,4 @@
     <string name="otp_auto_fill_summary">When the current field looks like a code field, type a code received or copied within the last minute automatically (once)</string>
     <string name="otp_permission_granted">SMS permission granted; new verification codes will appear on the toolbar</string>
     <string name="otp_permission_denied">SMS permission denied</string>
-    <string name="show_password_manager_button">Show Bitwarden button in toolbar</string>
-    <string name="show_password_manager_button_summary">Opens Bitwarden, for apps where its autofill suggestions don\'t appear. Only shown when Bitwarden is installed.</string>
 </resources>

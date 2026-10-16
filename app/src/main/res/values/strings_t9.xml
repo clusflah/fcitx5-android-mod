@@ -2,5 +2,4 @@
 <resources>
     <string name="t9_keyboard">Nine-key (T9) layout for Rime</string>
     <string name="t9_keyboard_summary">While Rime is the input method, show a 3×3 keypad instead of the 26-key layout and switch Rime to its nine-key schema (e.g. 白霜拼音\'s \"中文九键\"). Password, e-mail and URL fields keep the 26-key layout</string>
-    <string name="show_t9_button">Show nine-key / 26-key switch button in toolbar</string>
 </resources>
