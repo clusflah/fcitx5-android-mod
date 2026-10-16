@@ -20,7 +20,9 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
+import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.core.FcitxKeyMapping
+import org.fcitx.fcitx5.android.core.InputMethodEntry
 import org.fcitx.fcitx5.android.core.KeySym
 import org.fcitx.fcitx5.android.data.InputFeedbacks
 import org.fcitx.fcitx5.android.data.theme.Theme
@@ -140,10 +142,7 @@ class T9Keyboard(
                 LayoutSwitchKey("123", NumberKeyboard.Name, SIDE_WIDTH, Variant.Normal),
                 SpaceKey(),
                 // 中/英: next input method (e.g. English, which brings back the 26-key layout)
-                T9ActionKey(
-                    "中/英", KeyAction.LangSwitchAction, KeyAction.ShowInputMethodPickerAction,
-                    variant = Variant.Normal
-                ),
+                ZhEnKey(SIDE_WIDTH),
                 T9Placeholder(RIGHT_IDS[1])
             )
         )
@@ -293,6 +292,10 @@ class T9Keyboard(
         onPreeditUpdate("")
         symbolStrip?.hide()
         super.onDetach()
+    }
+
+    override fun onInputMethodUpdate(ime: InputMethodEntry) {
+        findViewById<ImageKeyView>(R.id.button_lang)?.showLanguage(ime)
     }
 
     override fun onReturnDrawableUpdate(returnDrawable: Int) {
