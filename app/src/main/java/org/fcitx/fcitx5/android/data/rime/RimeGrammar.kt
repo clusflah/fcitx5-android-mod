@@ -44,9 +44,11 @@ object RimeGrammar {
         "rime_frost_double_pinyin_ziguang",
     )
 
-    private const val BEGIN = "# >>> 万象语法模型（由小企鹅输入法 设置 → Rime 语法模型 添加，可以整段删除）"
-    private const val END = "# <<< 万象语法模型"
-    private const val CREATED = "# 此文件由小企鹅输入法创建（Rime 语法模型）"
+    private val PATCH = RimeCustomPatch(
+        begin = "# >>> 万象语法模型（由小企鹅输入法 设置 → Rime 语法模型 添加，可以整段删除）",
+        end = "# <<< 万象语法模型",
+        created = "${RimeCustomPatch.CREATED_PREFIX}（Rime 语法模型）"
+    )
 
     /** values recommended by rime-frost's documentation for the 万象 model */
     private fun settings(language: String) = listOf(
@@ -70,8 +72,7 @@ object RimeGrammar {
 
     /** the model the schemas are set to use, read from rime_frost.custom.yaml */
     fun enabled(ctx: Context): Model? {
-        val text = File(rimeDir(ctx), "rime_frost.custom.yaml").takeIf { it.exists() }?.readText() ?: return null
-        val block = text.substringAfter(BEGIN, "").substringBefore(END)
+        val block = PATCH.read(File(rimeDir(ctx), "rime_frost.custom.yaml")) ?: return null
         return Model.entries.find { block.contains("grammar/language: ${it.language}") }
     }
 
@@ -80,78 +81,11 @@ object RimeGrammar {
     // ---------- settings in <schema>.custom.yaml ----------
 
     /** Points every 白霜 schema at [model]; returns the files that couldn't be changed. */
-    fun enable(ctx: Context, model: Model): List<String> {
-        val dir = rimeDir(ctx).apply { mkdirs() }
-        val failed = mutableListOf<String>()
-        SCHEMAS.forEach { id ->
-            val file = File(dir, "$id.custom.yaml")
-            val old = if (file.exists()) file.readText() else "$CREATED\npatch:\n"
-            val new = addBlock(removeBlock(old), settings(model.language))
-            if (new == null) failed.add(file.name) else file.writeText(new)
-        }
-        return failed
-    }
+    fun enable(ctx: Context, model: Model): List<String> =
+        PATCH.apply(rimeDir(ctx), SCHEMAS, settings(model.language))
 
     /** Removes the lines [enable] added; deletes files it created that hold nothing else. */
-    fun disable(ctx: Context) {
-        SCHEMAS.forEach { id ->
-            val file = File(rimeDir(ctx), "$id.custom.yaml")
-            if (!file.exists()) return@forEach
-            val text = dropEmptyPatch(removeBlock(file.readText()))
-            val rest = text.lines().filter { it.isNotBlank() && !it.trimStart().startsWith("#") }
-            if (text.startsWith(CREATED) && rest.isEmpty()) file.delete()
-            else file.writeText(text)
-        }
-    }
-
-    /** A `patch:` left without entries would be null, which Rime doesn't take as a patch. */
-    private fun dropEmptyPatch(text: String): String {
-        val lines = text.lines()
-        val patch = lines.indexOfFirst { it.trimEnd() == "patch:" }
-        if (patch < 0) return text
-        val entries = lines.drop(patch + 1).takeWhile { it.isBlank() || it.first().isWhitespace() }
-        if (entries.any { it.isNotBlank() && !it.trimStart().startsWith("#") }) return text
-        return (lines.take(patch) + lines.drop(patch + 1 + entries.size)).joinToString("\n")
-    }
-
-    private fun removeBlock(text: String): String {
-        val lines = text.lines()
-        val begin = lines.indexOfFirst { it.trim() == BEGIN }
-        if (begin < 0) return text
-        val end = lines.indexOfFirst { it.trim() == END }.takeIf { it > begin } ?: return text
-        return (lines.take(begin) + lines.drop(end + 1)).joinToString("\n")
-    }
-
-    /**
-     * Puts the settings right after the top-level `patch:` (adding one if missing), indented like
-     * the entries already there, and drops the user's own lines for the same keys. Null if the
-     * patch is written in a form this doesn't handle (e.g. `patch: { ... }`).
-     */
-    private fun addBlock(text: String, settings: List<Pair<String, String>>): String? {
-        val lines = text.lines().toMutableList()
-        var patch = lines.indexOfFirst { it.startsWith("patch:") }
-        if (patch < 0) {
-            if (lines.lastOrNull()?.isEmpty() == true) lines.removeAt(lines.lastIndex)
-            lines.add("patch:")
-            patch = lines.lastIndex
-        } else if (lines[patch].removePrefix("patch:").substringBefore('#').isNotBlank()) {
-            return null
-        }
-        // the patch's entries: the indented lines after it
-        var end = patch + 1
-        while (end < lines.size && (lines[end].isBlank() || lines[end].first().isWhitespace())) end++
-        val entries = lines.subList(patch + 1, end)
-        val indent = entries.firstOrNull { it.isNotBlank() && !it.trimStart().startsWith("#") }
-            ?.takeWhile { it.isWhitespace() } ?: "  "
-        val keys = settings.map { it.first }.toSet()
-        entries.removeAll { line ->
-            line.startsWith(indent) && !line.startsWith("$indent ") &&
-                    line.trim().substringBefore(':').trim('"', '\'', ' ') in keys
-        }
-        val block = listOf("$indent$BEGIN") + settings.map { (k, v) -> "$indent$k: $v" } + "$indent$END"
-        lines.addAll(patch + 1, block)
-        return lines.joinToString("\n").trimEnd('\n') + "\n"
-    }
+    fun disable(ctx: Context) = PATCH.remove(rimeDir(ctx), SCHEMAS)
 
     // ---------- download (system DownloadManager) and import ----------
 

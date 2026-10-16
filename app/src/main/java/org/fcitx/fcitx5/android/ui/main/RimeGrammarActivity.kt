@@ -27,6 +27,7 @@ import org.fcitx.fcitx5.android.core.data.DataManager
 import org.fcitx.fcitx5.android.daemon.FcitxDaemon
 import org.fcitx.fcitx5.android.data.rime.RimeGrammar
 import org.fcitx.fcitx5.android.data.rime.RimeGrammar.Model
+import org.fcitx.fcitx5.android.data.rime.RimeSimplified
 import java.io.File
 
 class RimeGrammarActivity : AppCompatActivity() {
@@ -51,6 +52,7 @@ class RimeGrammarFragment : PreferenceFragmentCompat() {
     private lateinit var downloadPref: Preference
     private lateinit var importPref: Preference
     private lateinit var deletePref: Preference
+    private lateinit var unifyPref: Preference
 
     private val pickFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@registerForActivityResult
@@ -99,6 +101,11 @@ class RimeGrammarFragment : PreferenceFragmentCompat() {
         screen.addPreference(switchPref)
         screen.addPreference(model)
         listOf(downloadPref, importPref, deletePref).forEach { model.addPreference(it) }
+        // mod: 简繁候选统一 (RimeSimplified), also a 白霜 custom.yaml setting
+        val script = PreferenceCategory(screen.context).apply { title = "简繁"; isIconSpaceReserved = false }
+        unifyPref = plain(screen, "简体只出简体字，繁体只出繁体字", null) { onUnifyClick() }
+        screen.addPreference(script)
+        script.addPreference(unifyPref)
         screen.addPreference(plain(
             screen, null,
             "注意：模型约 $SIZE_MB MB，启用或停用后会重新部署 Rime，要等一会儿才能打字。" +
@@ -162,6 +169,21 @@ class RimeGrammarFragment : PreferenceFragmentCompat() {
             ).show()
         }
         redeploy("已启用万象语法模型（${model.label}）")
+        refresh()
+    }
+
+    private fun onUnifyClick() {
+        val ctx = requireContext()
+        if (RimeSimplified.enabled(ctx)) {
+            RimeSimplified.disable(ctx)
+            redeploy("已关闭简繁候选统一")
+        } else {
+            val failed = RimeSimplified.enable(ctx)
+            if (failed.isNotEmpty()) {
+                Toast.makeText(ctx, "这些文件的格式无法自动修改：${failed.joinToString()}", Toast.LENGTH_LONG).show()
+            }
+            redeploy("已开启简繁候选统一")
+        }
         refresh()
     }
 
@@ -241,6 +263,9 @@ class RimeGrammarFragment : PreferenceFragmentCompat() {
         }
         importPref.isEnabled = !running
         deletePref.isVisible = installed.isNotEmpty() && !running
+        unifyPref.summary = if (RimeSimplified.enabled(ctx))
+            "✅ 已开启：简体模式下繁体字（如“書”）转成简体，繁体模式下全部是繁体。点击关闭"
+        else "白霜词库里有少量繁体字，简体模式下也会出现。点击开启，所有候选跟随当前简繁模式"
         deletePref.summary = installed.joinToString("、") { "${it.fileName}（${RimeGrammar.sizeMb(ctx, it)} MB）" }
     }
 
