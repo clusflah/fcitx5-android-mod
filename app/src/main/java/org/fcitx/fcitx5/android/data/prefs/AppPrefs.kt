@@ -163,13 +163,17 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         val showPasswordManagerButton = toolbarSwitch("show_password_manager_button")
         val showMoreButton = toolbarSwitch("show_more_button")
 
-        /** mod: the 🎤 left of the hide-keyboard button; records with the mod's own voice input */
+        /** mod: the toolbar 🎤; records with the mod's own voice input */
         val showVoiceInputButton =
             ManagedPreference.PBool(sharedPreferences, "show_voice_input_button", false).apply { register() }
 
         /** comma-separated ToolbarButton ids; ids missing from it go at the end */
         val toolbarButtonOrder =
             ManagedPreference.PString(sharedPreferences, "toolbar_button_order", "").apply { register() }
+
+        /** comma-separated ToolbarButton ids kept left of the hide-keyboard button even when the toolbar is collapsed */
+        val toolbarPinnedButtons =
+            ManagedPreference.PString(sharedPreferences, "toolbar_pinned_buttons", "").apply { register() }
 
         init {
             ManagedPreferenceUi.Link(

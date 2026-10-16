@@ -26,9 +26,18 @@ enum class ToolbarButton(
     Translate("translate", R.drawable.ic_translate, R.string.ai_translate, { it.showTranslateButton }),
     T9("t9", R.drawable.ic_t9, R.string.t9_keyboard, { it.showT9Button }),
     PasswordManager("bitwarden", R.drawable.ic_password_key, R.string.toolbar_button_bitwarden, { it.showPasswordManagerButton }),
-    More("more", R.drawable.ic_baseline_more_horiz_24, R.string.status_area, { it.showMoreButton });
+    More("more", R.drawable.ic_baseline_more_horiz_24, R.string.status_area, { it.showMoreButton }),
+    Voice("voice", R.drawable.ic_baseline_keyboard_voice_24, R.string.toolbar_button_voice, { it.showVoiceInputButton });
 
     companion object {
+        fun pinned(saved: String): Set<ToolbarButton> {
+            val ids = saved.split(',').map { it.trim() }.toSet()
+            return entries.filter { it.id in ids }.toSet()
+        }
+
+        fun encodePinned(pinned: Set<ToolbarButton>) =
+            entries.filter { it in pinned }.joinToString(",") { it.id }
+
         /** buttons in the user's order; ones the saved order doesn't name keep their default place at the end */
         fun ordered(saved: String): List<ToolbarButton> {
             val byId = entries.associateBy { it.id }

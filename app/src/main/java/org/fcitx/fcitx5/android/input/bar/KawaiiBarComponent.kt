@@ -597,7 +597,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                     launchClipboardTimeoutJob()
                 }
             }
-            voiceButton.setOnClickListener(modVoiceInputCallback)
+            buttonsUi.voiceButton.setOnClickListener(modVoiceInputCallback)
             hideKeyboardButton.apply {
                 setOnClickListener(hideKeyboardCallback)
                 swipeEnabled = true
@@ -882,9 +882,8 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         }
         voiceInputSubtype = InputMethodUtil.findVoiceSubtype(preferredVoiceInput)
         // mod: no system voice IME needed; the button records with the mod's own voice input
-        val shouldShowVoiceInput = showVoiceInputButton && !capFlags.has(CapabilityFlag.Password)
-        // the 🎤 has its own button left of the hide-keyboard one
-        idleUi.voiceButton.visibility = if (shouldShowVoiceInput) View.VISIBLE else View.GONE
+        // no recording in password fields
+        idleUi.buttonsUi.setVoiceAllowed(!capFlags.has(CapabilityFlag.Password))
         evalIdleUiState()
         refreshOtp(autoFill = true)
     }

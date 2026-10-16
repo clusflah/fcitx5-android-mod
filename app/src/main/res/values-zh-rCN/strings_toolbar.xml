@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="toolbar_buttons">工具栏按钮</string>
-    <string name="toolbar_buttons_summary">统一设置工具栏上各个按钮的显示 / 隐藏和顺序，以及语音输入按钮</string>
-    <string name="toolbar_buttons_voice_header">收起键盘按钮旁</string>
-    <string name="toolbar_buttons_list_header">工具栏（展开工具栏后显示）</string>
-    <string name="toolbar_buttons_list_note">用箭头调整顺序，按钮在工具栏上从左到右按此排列</string>
+    <string name="toolbar_buttons_summary">统一设置工具栏按钮（含语音输入）的显示 / 隐藏、顺序和常驻右侧</string>
+    <string name="toolbar_buttons_list_note">开关：是否显示。箭头：调整顺序（从左到右）。图钉：常驻右侧，放在收起键盘按钮左边，工具栏收起时也显示；没钉住的按钮只在展开工具栏后显示。</string>
     <string name="toolbar_button_bitwarden">Bitwarden（未安装时不显示）</string>
+    <string name="toolbar_button_voice">语音输入（点一下说话，再点一下识别；密码框不显示）</string>
+    <string name="toolbar_button_pin">常驻右侧</string>
+    <string name="toolbar_button_unpin">取消常驻</string>
 </resources>

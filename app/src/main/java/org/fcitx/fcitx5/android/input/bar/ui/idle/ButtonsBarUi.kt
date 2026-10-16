@@ -5,7 +5,10 @@
 package org.fcitx.fcitx5.android.input.bar.ui.idle
 
 import android.content.Context
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.annotation.DrawableRes
 import com.google.android.flexbox.AlignItems
 import com.google.android.flexbox.FlexboxLayout
@@ -33,14 +36,22 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
     // listeners must be kept strongly referenced, ManagedPreference holds them weakly
     private val visibilityListeners = mutableListOf<ManagedPreference.OnChangeListener<Boolean>>()
 
+    /** mod: buttons pinned in Settings sit here, left of the hide-keyboard button, toolbar collapsed or not */
+    val pinnedRoot = LinearLayout(ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+
     /** Every toolbar shortcut can be shown or hidden from Settings → Virtual Keyboard. */
-    private fun toolButton(@DrawableRes icon: Int, show: ManagedPreference.PBool) =
+    private fun toolButton(
+        @DrawableRes icon: Int, show: ManagedPreference.PBool, allowed: () -> Boolean = { true }
+    ) =
         ToolButton(ctx, icon, theme).also { button ->
             val size = ctx.dp(40)
             root.addView(button, FlexboxLayout.LayoutParams(size, size))
-            button.visibility = if (show.getValue()) View.VISIBLE else View.GONE
+            button.visibility = if (show.getValue() && allowed()) View.VISIBLE else View.GONE
             val listener = ManagedPreference.OnChangeListener<Boolean> { _, v ->
-                button.visibility = if (v) View.VISIBLE else View.GONE
+                button.visibility = if (v && allowed()) View.VISIBLE else View.GONE
             }
             visibilityListeners.add(listener)
             show.registerOnChangeListener(listener)
@@ -81,13 +92,27 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
 
     /** opens Bitwarden; hidden when it isn't installed */
     val passwordManagerButton =
-        toolButton(R.drawable.ic_password_key, prefs.showPasswordManagerButton).apply {
+        toolButton(R.drawable.ic_password_key, prefs.showPasswordManagerButton, { PasswordManager.isInstalled(ctx) }).apply {
             contentDescription = "Bitwarden"
-            if (!PasswordManager.isInstalled(ctx)) visibility = View.GONE
         }
 
     val moreButton = toolButton(R.drawable.ic_baseline_more_horiz_24, prefs.showMoreButton).apply {
         contentDescription = ctx.getString(R.string.status_area)
+    }
+
+    /** false in password fields: no recording there */
+    private var voiceAllowed = true
+
+    /** mod: records with the mod's own voice input */
+    val voiceButton =
+        toolButton(R.drawable.ic_baseline_keyboard_voice_24, prefs.showVoiceInputButton, { voiceAllowed }).apply {
+            contentDescription = ctx.getString(R.string.switch_to_voice_input)
+        }
+
+    fun setVoiceAllowed(allowed: Boolean) {
+        voiceAllowed = allowed
+        voiceButton.visibility =
+            if (allowed && prefs.showVoiceInputButton.getValue()) View.VISIBLE else View.GONE
     }
 
     // mod: put the buttons in the order chosen in Settings → Virtual Keyboard → Toolbar buttons
@@ -102,22 +127,27 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
         ToolbarButton.T9 to t9Button,
         ToolbarButton.PasswordManager to passwordManagerButton,
         ToolbarButton.More to moreButton,
+        ToolbarButton.Voice to voiceButton,
     )
 
-    private fun applyOrder(saved: String) {
-        val views = ToolbarButton.ordered(saved).mapNotNull { buttonOf[it] }
-        views.forEach { v ->
-            val lp = v.layoutParams
-            root.removeView(v)
-            root.addView(v, lp)
+    /** the order chosen in Settings; pinned buttons go to [pinnedRoot] (same relative order) */
+    private fun applyLayout() {
+        val pinned = ToolbarButton.pinned(prefs.toolbarPinnedButtons.getValue())
+        val size = ctx.dp(40)
+        ToolbarButton.ordered(prefs.toolbarButtonOrder.getValue()).forEach { b ->
+            val v = buttonOf[b] ?: return@forEach
+            (v.parent as? ViewGroup)?.removeView(v)
+            if (b in pinned) pinnedRoot.addView(v, LinearLayout.LayoutParams(size, size))
+            else root.addView(v, FlexboxLayout.LayoutParams(size, size))
         }
     }
 
-    private val orderListener = ManagedPreference.OnChangeListener<String> { _, v -> applyOrder(v) }
+    private val layoutListener = ManagedPreference.OnChangeListener<String> { _, _ -> applyLayout() }
 
     init {
-        applyOrder(prefs.toolbarButtonOrder.getValue())
-        prefs.toolbarButtonOrder.registerOnChangeListener(orderListener)
+        applyLayout()
+        prefs.toolbarButtonOrder.registerOnChangeListener(layoutListener)
+        prefs.toolbarPinnedButtons.registerOnChangeListener(layoutListener)
     }
 
 }
