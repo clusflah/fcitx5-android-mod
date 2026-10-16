@@ -81,7 +81,7 @@ class T9SymbolUi(override val ctx: Context, private val theme: Theme) : Ui {
                     InputFeedbacks.soundEffect(InputFeedbacks.SoundEffect.Standard)
                     onPick(symbol)
                 }
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, matchParent))
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.MATCH_PARENT))
         }
         scroll.scrollTo(0, 0)
     }

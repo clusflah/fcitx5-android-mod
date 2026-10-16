@@ -809,7 +809,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     }
 
     // mod: 九宫格 symbol row, shown over the toolbar until closed or the bar's state changes
-    private val t9SymbolUi by lazy {
+    private val t9SymbolUi: T9SymbolUi by lazy {
         T9SymbolUi(context, theme).apply {
             closeButton.setOnClickListener { t9SymbolStrip.hide() }
         }
