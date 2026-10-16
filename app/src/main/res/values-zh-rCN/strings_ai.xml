@@ -1,19 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ai_assist">大模型助手</string>
-    <string name="show_ai_assist_button">在工具栏显示大模型按钮</string>
     <string name="ai_translate">中外互译</string>
-    <string name="show_translate_button">在工具栏显示中外互译按钮</string>
     <string name="ai_predict">AI 联想</string>
-    <string name="show_ai_predict_button">在工具栏显示 AI 联想按钮</string>
     <string name="ai_predict_auto">AI 联想（自动）</string>
     <string name="ai_predict_auto_summary">打字停顿后自动用大模型预测接下来的词语（需联网，会消耗 API 额度；密码框和无痕模式下不启用）</string>
-    <string name="show_undo_button">在工具栏显示撤销按钮</string>
-    <string name="show_redo_button">在工具栏显示重做按钮</string>
-    <string name="show_cursor_move_button">在工具栏显示文本编辑按钮</string>
-    <string name="show_clipboard_button">在工具栏显示剪贴板 / 常用语按钮</string>
-    <string name="show_more_button">在工具栏显示状态面板（…）按钮</string>
-    <string name="show_more_button_summary">隐藏后将无法从工具栏打开状态面板（输入法开关、Rime 的简繁 / 预测等选项）</string>
     <string name="ai_predict_delay">AI 联想延迟（上屏后多久发起请求）</string>
     <string name="setup_check">新手机检查</string>
     <string name="space_clears_prediction">有联想词时空格、符号不选词</string>
