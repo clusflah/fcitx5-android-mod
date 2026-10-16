@@ -8,6 +8,4 @@
     <string name="otp_auto_fill_summary">当前输入框看起来是验证码框时，自动填入 1 分钟内收到或复制的验证码（每个验证码只填一次）</string>
     <string name="otp_permission_granted">已允许读取短信，新的验证码会显示在工具栏上</string>
     <string name="otp_permission_denied">读取短信权限被拒绝</string>
-    <string name="show_password_manager_button">在工具栏显示 Bitwarden 按钮</string>
-    <string name="show_password_manager_button_summary">一键打开 Bitwarden，用于自动填充建议没有出现的 App。只有安装了 Bitwarden 才会显示</string>
 </resources>

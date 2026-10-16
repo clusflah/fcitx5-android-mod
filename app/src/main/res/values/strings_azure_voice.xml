@@ -3,7 +3,6 @@
     <string name="azure_voice_input">Voice input</string>
     <string name="azure_voice_enabled">Hold space to talk</string>
     <string name="azure_voice_enabled_summary">Hold space to talk, release to recognize and type (overrides the space long-press behavior). Choose the engine in Settings → Voice models</string>
-    <string name="show_voice_input_button_summary">Replace the hide-keyboard button at the right of the toolbar with a mic: tap to start talking, tap again to recognize (engine in Settings → Voice models); long-press it to hide the keyboard</string>
     <string name="voice_engine">Speech recognition engine</string>
     <string name="voice_engine_azure">Azure (cloud, needs a key)</string>
     <string name="voice_engine_sensevoice">SenseVoice (offline, free)</string>
