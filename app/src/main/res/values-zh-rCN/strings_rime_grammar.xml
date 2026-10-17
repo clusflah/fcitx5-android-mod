@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="rime_grammar">Rime 语法模型（万象）</string>
+    <string name="rime_grammar">Rime 语法模型（万象）与简繁</string>
 </resources>

@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="rime_grammar">Rime grammar model</string>
+    <string name="rime_grammar">Rime grammar model &amp; script</string>
 </resources>
