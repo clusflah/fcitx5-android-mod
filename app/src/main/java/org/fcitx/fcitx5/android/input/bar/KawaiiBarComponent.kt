@@ -55,6 +55,7 @@ import org.fcitx.fcitx5.android.input.broadcast.InputBroadcastReceiver
 import org.fcitx.fcitx5.android.input.candidates.expanded.ExpandedCandidateStyle
 import org.fcitx.fcitx5.android.input.candidates.expanded.window.FlexboxExpandedCandidateWindow
 import org.fcitx.fcitx5.android.input.candidates.expanded.window.GridExpandedCandidateWindow
+import org.fcitx.fcitx5.android.input.candidates.expanded.window.T9CandidateWindow
 import org.fcitx.fcitx5.android.input.candidates.horizontal.HorizontalCandidateComponent
 import org.fcitx.fcitx5.android.input.clipboard.ClipboardWindow
 import org.fcitx.fcitx5.android.input.phrase.CommonPhraseWindow
@@ -82,6 +83,7 @@ import org.fcitx.fcitx5.android.input.keyboard.CommonKeyActionListener
 import org.fcitx.fcitx5.android.input.keyboard.CustomGestureView
 import org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow
 import org.fcitx.fcitx5.android.input.keyboard.T9Keyboard
+import org.fcitx.fcitx5.android.input.keyboard.T9Pinyin
 import org.fcitx.fcitx5.android.input.popup.PopupComponent
 import org.fcitx.fcitx5.android.input.status.StatusAreaWindow
 import org.fcitx.fcitx5.android.input.wm.InputWindow
@@ -784,7 +786,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     private fun setExpandButtonToAttach() {
         candidateUi.expandButton.setOnClickListener {
             windowManager.attachWindow(
-                when (expandedCandidateStyle) {
+                // mod: the 九宫格 has its own list (pinyin column, 词频 / 单字)
+                if (T9Pinyin.active) T9CandidateWindow()
+                else when (expandedCandidateStyle) {
                     ExpandedCandidateStyle.Grid -> GridExpandedCandidateWindow()
                     ExpandedCandidateStyle.Flexbox -> FlexboxExpandedCandidateWindow()
                 }
