@@ -28,6 +28,9 @@ class MainService : FcitxPluginService() {
 
     companion object {
         private const val TAG = "FcitxClipboardSync"
+        private const val KEY_LAST_REMOTE_HASH = "last_remote_hash"
+        /** hash of the last text taken from the server (not the text itself), for servers without a hash */
+        private const val KEY_LAST_REMOTE_TEXT = "last_remote_text_hash"
         private const val DEFAULT_INTERVAL = 3 // seconds
         /** Retry higher-priority servers this often, e.g. to switch back to the LAN address at home. */
         private const val PREFERRED_RECHECK_MS = 5 * 60 * 1000L
@@ -66,7 +69,14 @@ class MainService : FcitxPluginService() {
     // Cache to avoid circular updates (Pull -> Local -> Push -> Loop)
     private var lastLocalContent: String? = null
     private var lastRemoteContent: String? = null
+
+    // kept across restarts: otherwise the first pull after the service (re)starts puts whatever the
+    // server holds, often an old entry, back on the clipboard, and the keyboard pops it up again
     private var lastRemoteHash: String = ""
+        set(value) {
+            field = value
+            prefs.edit().putString(KEY_LAST_REMOTE_HASH, value).apply()
+        }
 
     private val transformer = object : IClipboardEntryTransformer.Stub() {
         override fun getPriority(): Int = 100
@@ -80,6 +90,8 @@ class MainService : FcitxPluginService() {
 
             if (clipboardText != lastLocalContent) {
                 lastLocalContent = clipboardText
+                // the server will hold this text: don't take it back as "new" after a restart
+                prefs.edit().putString(KEY_LAST_REMOTE_TEXT, clipboardText.hashCode().toString()).apply()
                 Log.d(TAG, "[Push] Detected local change, triggering upload")
                 uploadToCloud(clipboardText)
             }
@@ -93,6 +105,7 @@ class MainService : FcitxPluginService() {
         super.onCreate()
         Log.d(TAG, "MainService onCreate")
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        lastRemoteHash = prefs.getString(KEY_LAST_REMOTE_HASH, "") ?: ""
         
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
@@ -258,9 +271,12 @@ class MainService : FcitxPluginService() {
             val remoteText = data.text
             Log.d(TAG, "[Pull] Processed data: type=${data.type}, text=$remoteText")
             
-            if (remoteText.isNotEmpty() && remoteText != lastLocalContent && remoteText != lastRemoteContent) {
+            val textHash = remoteText.hashCode().toString()
+            val seenBefore = lastRemoteContent == null && prefs.getString(KEY_LAST_REMOTE_TEXT, null) == textHash
+            if (remoteText.isNotEmpty() && remoteText != lastLocalContent && remoteText != lastRemoteContent && !seenBefore) {
                 Log.d(TAG, "[Pull] Remote content changed, updating local")
                 lastRemoteContent = remoteText
+                prefs.edit().putString(KEY_LAST_REMOTE_TEXT, textHash).apply()
                 lastLocalContent = remoteText // Update local cache to prevent echo
                 
                 withContext(Dispatchers.Main) {
