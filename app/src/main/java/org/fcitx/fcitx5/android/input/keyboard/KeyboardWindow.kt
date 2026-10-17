@@ -205,13 +205,18 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     override fun onStartInput(info: EditorInfo, capFlags: CapabilityFlags) {
         SpaceVoiceIcon.allowed = !capFlags.has(CapabilityFlag.Password)
         val variation = info.inputType and InputType.TYPE_MASK_VARIATION
-        t9Allowed = (info.inputType and InputType.TYPE_MASK_CLASS) == InputType.TYPE_CLASS_TEXT &&
-                variation != InputType.TYPE_TEXT_VARIATION_PASSWORD &&
-                variation != InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD &&
-                variation != InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD &&
-                variation != InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS &&
-                variation != InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS &&
-                variation != InputType.TYPE_TEXT_VARIATION_URI
+        // 26-key layout only for passwords and e-mail addresses. URL fields stay 九宫格 (browser
+        // address bars are mostly used to search), and so do fields without a type (TYPE_NULL, e.g.
+        // many WebView / game / terminal inputs), which used to fall back to 26 keys "at random"
+        t9Allowed = when (info.inputType and InputType.TYPE_MASK_CLASS) {
+            InputType.TYPE_CLASS_TEXT -> variation != InputType.TYPE_TEXT_VARIATION_PASSWORD &&
+                    variation != InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD &&
+                    variation != InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD &&
+                    variation != InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS &&
+                    variation != InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS
+            InputType.TYPE_NULL -> true
+            else -> false
+        }
         val targetLayout = when (info.inputType and InputType.TYPE_MASK_CLASS) {
             InputType.TYPE_CLASS_NUMBER -> NumberKeyboard.Name
             InputType.TYPE_CLASS_PHONE -> NumberKeyboard.Name
