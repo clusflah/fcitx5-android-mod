@@ -13,6 +13,7 @@ import androidx.annotation.Keep
 import androidx.core.content.ContextCompat
 import androidx.transition.Slide
 import org.fcitx.fcitx5.android.R
+import org.fcitx.fcitx5.android.core.Action
 import org.fcitx.fcitx5.android.core.CapabilityFlag
 import org.fcitx.fcitx5.android.core.CapabilityFlags
 import org.fcitx.fcitx5.android.core.FcitxEvent
@@ -108,11 +109,17 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     /** the "no nine-key schema" hint is shown once per process */
     private var t9MissingWarned = false
 
+    /** the last [enterT9] found Rime not ready yet: try again on the next status-area update */
+    @Volatile
+    private var t9Pending = false
+
     /** select Rime's nine-key schema for 九宫格, and the previous one again for the 26-key layout */
     private fun syncRimeSchema(layout: String) {
         when (layout) {
             T9Keyboard.Name -> service.postFcitxJob {
-                if (!enterT9() && !t9MissingWarned) {
+                val entered = enterT9()
+                t9Pending = entered == null
+                if (entered == false && !t9MissingWarned) {
                     t9MissingWarned = true
                     ContextCompat.getMainExecutor(service).execute {
                         android.widget.Toast.makeText(
@@ -122,9 +129,22 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
                     }
                 }
             }
-            TextKeyboard.Name -> service.postFcitxJob { leaveT9() }
+            // only when 九宫格 is really off here: while fcitx starts, the input method isn't known
+            // to be Rime yet and the 26-key layout shows for a moment; leaving then would switch Rime
+            // back to the 26-key schema right before the 九宫格 comes up, and its keys type digits
+            TextKeyboard.Name -> if (!t9Pref.getValue() || !t9Allowed) service.postFcitxJob { leaveT9() }
         }
     }
+
+    // mod: Rime may not have its schemas yet when the 九宫格 first asks for the nine-key one (fcitx
+    // just started, e.g. coming from another keyboard app), so the keys would type digits; ask again
+    // once the status area shows Rime on a non-nine-key schema
+    override fun onStatusAreaUpdate(actions: Array<Action>) {
+        if (!t9Pending || currentKeyboardName != T9Keyboard.Name) return
+        val schema = RimeT9.currentSchema(actions) ?: return
+        if (!RimeT9.isT9Schema(schema)) syncRimeSchema(T9Keyboard.Name)
+    }
+
     private var currentKeyboardName = ""
     private var lastSymbolType: String by AppPrefs.getInstance().internal.lastSymbolLayout
 

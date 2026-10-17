@@ -26,16 +26,24 @@ object RimeT9 {
     private suspend fun FcitxAPI.rimeAction(): Action? =
         statusArea().firstOrNull { it.name == "fcitx-rime-im" }
 
+    /** The schema Rime is on, from a status-area update; null while Rime isn't active or not ready. */
+    fun currentSchema(actions: Array<Action>): String? =
+        actions.firstOrNull { it.name == "fcitx-rime-im" }?.longText?.takeIf { it.isNotEmpty() }
+
     /**
-     * Selects the nine-key schema. Returns false if Rime isn't the current input method or the user
-     * has no nine-key schema (the keyboard still works then, the keys just send digits).
+     * Selects the nine-key schema. Returns false if the user has no nine-key schema (the keyboard
+     * still works then, the keys just send digits), null if Rime isn't the current input method or
+     * hasn't loaded its schemas yet (right after fcitx starts, e.g. when switching from another
+     * keyboard app): KeyboardWindow tries again when the status area changes.
      */
-    suspend fun FcitxAPI.enterT9(): Boolean {
-        if (inputMethodEntryCached.uniqueName != RIME) return false
-        val rime = rimeAction() ?: return false
+    suspend fun FcitxAPI.enterT9(): Boolean? {
+        if (inputMethodEntryCached.uniqueName != RIME) return null
+        val rime = rimeAction() ?: return null
         val current = rime.longText
         if (isT9Schema(current)) return true
-        val t9 = rime.menu?.firstOrNull { !it.isSeparator && isT9Schema(it.shortText) } ?: return false
+        val schemas = rime.menu?.filter { !it.isSeparator }
+        if (current.isEmpty() || schemas.isNullOrEmpty()) return null
+        val t9 = schemas.firstOrNull { isT9Schema(it.shortText) } ?: return false
         previousSchema = current
         activateAction(t9.id)
         return true
