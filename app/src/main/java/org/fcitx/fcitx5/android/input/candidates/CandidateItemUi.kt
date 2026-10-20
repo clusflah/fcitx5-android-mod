@@ -52,7 +52,7 @@ class CandidateItemUi(override val ctx: Context, val theme: Theme) : Ui {
             color(fg) {
                 append(candidate.text)
             }
-            // mod: on the 九宫格 the pinyin hints are shown in the preedit line, not next to each word
+            // mod: pinyin hints are not shown next to each word (the preedit line already has them)
             if (candidate.comment.isNotBlank() && !T9Pinyin.hidesComment(candidate.comment)) {
                 if (candidate.spaceBetweenComment) {
                     append(" ")
