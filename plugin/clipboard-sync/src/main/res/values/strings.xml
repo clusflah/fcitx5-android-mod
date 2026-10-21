@@ -15,7 +15,7 @@
     <string name="testing_connection">正在测试连接...</string>
     
     <string name="quick_sync">开启同步</string>
-    <string name="quick_sync_summary">关闭后将停止所有同步服务</string>
+    <string name="quick_sync_summary">键盘弹出时才从服务器拉取新内容；关闭后停止所有同步</string>
     <string name="please_set_server_address">请先设置服务器地址</string>
     <string name="connecting_to">正在连接到 %s...</string>
     <string name="unknown_error">未知错误</string>

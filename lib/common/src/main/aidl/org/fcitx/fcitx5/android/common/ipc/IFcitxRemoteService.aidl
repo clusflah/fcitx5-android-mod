@@ -1,6 +1,7 @@
 package org.fcitx.fcitx5.android.common.ipc;
 
 import org.fcitx.fcitx5.android.common.ipc.IClipboardEntryTransformer;
+import org.fcitx.fcitx5.android.common.ipc.IKeyboardVisibilityListener;
 
 interface IFcitxRemoteService {
    /** Get the version name of fcitx app */
@@ -22,4 +23,8 @@ interface IFcitxRemoteService {
    void reloadPinyinDict();
    /** Reload fcitx quick phrase */
    void reloadQuickPhrase();
+
+   /** Get told when the keyboard is shown or hidden; called right away if it is showing now */
+   void registerKeyboardVisibilityListener(IKeyboardVisibilityListener listener);
+   void unregisterKeyboardVisibilityListener(IKeyboardVisibilityListener listener);
 }
