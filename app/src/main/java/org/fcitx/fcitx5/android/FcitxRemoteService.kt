@@ -18,6 +18,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.fcitx.fcitx5.android.common.ipc.IClipboardEntryTransformer
 import org.fcitx.fcitx5.android.common.ipc.IFcitxRemoteService
+import org.fcitx.fcitx5.android.common.ipc.IKeyboardVisibilityListener
 import org.fcitx.fcitx5.android.core.data.DataManager
 import org.fcitx.fcitx5.android.core.reloadPinyinDict
 import org.fcitx.fcitx5.android.core.reloadQuickPhrase
@@ -106,6 +107,14 @@ class FcitxRemoteService : Service() {
 
         override fun reloadQuickPhrase() {
             FcitxDaemon.getFirstConnectionOrNull()?.runIfReady { reloadQuickPhrase() }
+        }
+
+        override fun registerKeyboardVisibilityListener(listener: IKeyboardVisibilityListener) {
+            KeyboardVisibility.register(listener)
+        }
+
+        override fun unregisterKeyboardVisibilityListener(listener: IKeyboardVisibilityListener) {
+            KeyboardVisibility.unregister(listener)
         }
     }
 
