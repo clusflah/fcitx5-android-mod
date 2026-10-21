@@ -567,6 +567,12 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         highlightColor =
             styledColorOrDefault(android.R.attr.colorAccent, DefaultHighlightColor).alpha(0.4f)
         InputFeedbacks.syncSystemPrefs()
+        org.fcitx.fcitx5.android.KeyboardVisibility.onShown()
+    }
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        org.fcitx.fcitx5.android.KeyboardVisibility.onHidden()
     }
 
     override fun onCreateInputView(): View? {
@@ -1199,6 +1205,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         }
         prefs.candidates.unregisterOnChangeListener(recreateCandidatesViewListener)
         ThemeManager.removeOnChangedListener(onThemeChangeListener)
+        org.fcitx.fcitx5.android.KeyboardVisibility.onHidden()
         super.onDestroy()
         // Fcitx might be used in super.onDestroy()
         FcitxDaemon.disconnect(javaClass.name)
