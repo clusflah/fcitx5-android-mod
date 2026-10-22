@@ -288,7 +288,19 @@ class ClipboardWindow : InputWindow.ExtendedInputWindow<ClipboardWindow>() {
         context.getString(R.string.clipboard)
     }
 
+    // mod: card style: ∧ | 剪贴板 · 常用语 | delete all, instead of the title
+    private val cardStyle = ThemeManager.prefs.cardStyle.getValue()
+
+    override val showTitle get() = !cardStyle
+
     private val barExtension by lazy {
+        if (cardStyle) return@lazy org.fcitx.fcitx5.android.input.bar.ui.PanelSwitchBar.create(
+            context, theme,
+            listOf(context.getString(R.string.clipboard), context.getString(R.string.common_phrase)), 0,
+            onBack = { windowManager.attachWindow(KeyboardWindow) },
+            onSelect = { windowManager.attachWindow(org.fcitx.fcitx5.android.input.phrase.CommonPhraseWindow()) },
+            actions = listOf(ui.deleteAllButton)
+        )
         android.widget.LinearLayout(context).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
             addView(

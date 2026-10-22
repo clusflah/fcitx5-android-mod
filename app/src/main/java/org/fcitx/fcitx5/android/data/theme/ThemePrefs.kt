@@ -34,7 +34,7 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
         return pref
     }
 
-    val keyBorder = switch(R.string.key_border, "key_border", false)
+    val keyBorder = switch(R.string.key_border, "key_border", true) // mod: separate rounded keys
 
     val keyBorderStroke = switch(
         R.string.key_border_stroke, "key_border_stroke", false,
@@ -42,6 +42,9 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
     )
 
     val keyRippleEffect = switch(R.string.key_ripple_effect, "key_ripple_effect", false)
+
+    /** mod: round toolbar buttons and card-like panels (更多, 键盘选择, 剪贴板 / 常用语) */
+    val cardStyle = switch(R.string.card_style, "card_style", true)
 
     val keyHorizontalMargin: ManagedPreference.PInt
     val keyHorizontalMarginLandscape: ManagedPreference.PInt
@@ -83,13 +86,13 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
         keyVerticalMarginLandscape = secondary
     }
 
-    val keyRadius = int(R.string.key_radius, "key_radius", 4, 0, 48, "dp")
+    val keyRadius = int(R.string.key_radius, "key_radius", 8, 0, 48, "dp") // mod: was 4
 
     val textEditingButtonRadius =
         int(R.string.text_editing_button_radius, "text_editing_button_radius", 8, 0, 48, "dp")
 
     val clipboardEntryRadius =
-        int(R.string.clipboard_entry_radius, "clipboard_entry_radius", 2, 0, 48, "dp")
+        int(R.string.clipboard_entry_radius, "clipboard_entry_radius", 14, 0, 48, "dp") // mod: was 2
 
     enum class PunctuationPosition(override val stringRes: Int) : ManagedPreferenceEnum {
         None(R.string.punctuation_pos_none),
@@ -143,7 +146,7 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
     val lightModeTheme = themePreference(
         R.string.light_mode_theme,
         "light_mode_theme",
-        if (BuildConfig.DEBUG) ThemePreset.MaterialLight else ThemePreset.PixelLight,
+        ThemePresetMod.JadeLight, // mod
         enableUiOn = {
             followSystemDayNightTheme.getValue()
         })
@@ -151,7 +154,7 @@ class ThemePrefs(sharedPreferences: SharedPreferences) :
     val darkModeTheme = themePreference(
         R.string.dark_mode_theme,
         "dark_mode_theme",
-        if (BuildConfig.DEBUG) ThemePreset.MaterialDark else ThemePreset.PixelDark,
+        ThemePresetMod.JadeDark, // mod
         enableUiOn = {
             followSystemDayNightTheme.getValue()
         })
