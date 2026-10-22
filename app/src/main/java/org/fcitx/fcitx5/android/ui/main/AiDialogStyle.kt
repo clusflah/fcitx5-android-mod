@@ -52,7 +52,7 @@ object AiDialogStyle {
         window.setBackgroundDrawable(InsetDrawable(GradientDrawable().apply {
             cornerRadius = ctx.dp(20f)
             setColor(t.keyboardColor)
-        }, ctx.dp(20), ctx.dp(16), ctx.dp(20), ctx.dp(16)))
+        }, ctx.dp(20), ctx.dp(12), ctx.dp(20), ctx.dp(12)))
     }
 
     fun title(view: TextView) {
@@ -89,7 +89,7 @@ object AiDialogStyle {
             }
             is EditText -> {
                 root.background = root.rounded(t.keyBackgroundColor, root.dp(12f))
-                root.setPadding(root.dp(12), root.dp(8), root.dp(12), root.dp(8))
+                root.setPadding(root.dp(12), root.dp(6), root.dp(12), root.dp(6))
                 root.textSize = 15f
                 root.setTextColor(t.keyTextColor)
                 root.setHintTextColor(t.candidateCommentColor)
@@ -169,12 +169,13 @@ object AiDialogStyle {
     fun chip(b: Button, selected: Boolean, big: Boolean = false) {
         button(b)
         if (big) {
-            b.textSize = 16f
-            b.minHeight = b.dp(44)
-            b.minimumHeight = b.dp(44)
-            b.setPadding(b.dp(18), 0, b.dp(18), 0)
+            // one low row: a little bigger than the other buttons, but not taller
+            b.textSize = 15f
+            b.minHeight = b.dp(34)
+            b.minimumHeight = b.dp(34)
+            b.setPadding(b.dp(16), 0, b.dp(16), 0)
             (b.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
-                it.setMargins(b.dp(4), b.dp(4), b.dp(4), b.dp(4))
+                it.setMargins(b.dp(3), b.dp(3), b.dp(3), b.dp(3))
                 b.layoutParams = it
             }
         }

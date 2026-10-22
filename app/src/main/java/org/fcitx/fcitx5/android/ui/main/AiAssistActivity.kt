@@ -132,7 +132,7 @@ class AiAssistActivity : AppCompatActivity() {
             header.addView(TextView(this).apply {
                 setText(if (translateMode) R.string.ai_translate else R.string.ai_assist)
                 AiDialogStyle.title(this)
-                setPadding(dp(4), dp(6), 0, dp(6))
+                setPadding(dp(4), dp(2), 0, dp(2))
             }, LinearLayout.LayoutParams(0, -2, 1f))
             root.addView(header)
         }
@@ -169,19 +169,11 @@ class AiAssistActivity : AppCompatActivity() {
             root.addView(top)
         }
 
-        // prompts: in the card style they wrap onto several rows as big chips
-        if (styled) {
-            promptBar = com.google.android.flexbox.FlexboxLayout(this).apply {
-                flexWrap = com.google.android.flexbox.FlexWrap.WRAP
-                setPadding(0, dp(4), 0, dp(2))
-            }
-            root.addView(promptBar, LinearLayout.LayoutParams(-1, -2))
-        } else {
-            promptBar = LinearLayout(this)
-            root.addView(HorizontalScrollView(this).apply {
-                isHorizontalScrollBarEnabled = false; addView(promptBar)
-            })
-        }
+        // prompts: one row that scrolls sideways (the card style keeps it low, see AiDialogStyle.chip)
+        promptBar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        root.addView(HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false; addView(promptBar)
+        })
 
         if (translateMode) promptBar.visibility = View.GONE
         directionLabel = TextView(this).apply {
@@ -303,6 +295,8 @@ class AiAssistActivity : AppCompatActivity() {
             AiDialogStyle.apply(root)
             styleChips(formatBar)
             AiDialogStyle.compact(providerSpinner, header.getChildAt(header.childCount - 1) as Button)
+            // keep the card low: the field grows as text is typed or pasted
+            input.minLines = 1
         }
         renderPrompts()
         // selected text passed in from the keyboard: translate right away
