@@ -24,6 +24,8 @@ object ThemeManager {
     }
 
     val BuiltinThemes = listOf(
+        ThemePresetMod.JadeLight, // mod
+        ThemePresetMod.JadeDark, // mod
         ThemePreset.MaterialLight,
         ThemePreset.MaterialDark,
         ThemePreset.PixelLight,
@@ -35,7 +37,7 @@ object ThemeManager {
         ThemePreset.AMOLEDBlack,
     )
 
-    val DefaultTheme = ThemePreset.PixelDark
+    val DefaultTheme = ThemePresetMod.JadeLight // mod
 
     private var monetThemes = listOf(ThemeMonet.getLight(), ThemeMonet.getDark())
 

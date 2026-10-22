@@ -14,7 +14,9 @@ import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.graphics.drawable.GradientDrawable
 import org.fcitx.fcitx5.android.data.theme.Theme
+import org.fcitx.fcitx5.android.data.theme.ThemeManager
 import org.fcitx.fcitx5.android.input.AutoScaleTextView
 import org.fcitx.fcitx5.android.input.keyboard.CustomGestureView
 import splitties.dimensions.dp
@@ -40,6 +42,11 @@ import splitties.views.imageDrawable
 
 class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : Ui {
 
+    /** mod: a rounded tile with the icon above a grey label, instead of a circle */
+    private val card = ThemeManager.prefs.cardStyle.getValue()
+
+    private val cardDrawable = GradientDrawable().apply { cornerRadius = ctx.dp(16f) }
+
     private val bkgDrawable = ShapeDrawable(OvalShape())
 
     val bkg = frameLayout {
@@ -64,11 +71,29 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
     val label = textView {
         textSize = 12f
         gravity = gravityCenter
-        setTextColor(theme.keyTextColor)
+        setTextColor(if (card) theme.altKeyTextColor else theme.keyTextColor)
+    }
+
+    private fun cardContent() = constraintLayout {
+        background = cardDrawable
+        add(bkg, lParams(dp(32), dp(32)) {
+            topOfParent(dp(14))
+            centerHorizontally()
+        })
+        add(icon, lParams(dp(28), dp(28)) {
+            centerOn(bkg)
+        })
+        add(textIcon, lParams(wrapContent, wrapContent) {
+            centerOn(bkg)
+        })
+        add(label, lParams(wrapContent, wrapContent) {
+            below(bkg, dp(8))
+            centerHorizontally()
+        })
     }
 
     override val root = object : CustomGestureView(ctx) {
-        val content = constraintLayout {
+        val content = if (card) cardContent() else constraintLayout {
             add(bkg, lParams(dp(48), dp(48)) {
                 topOfParent(dp(4))
                 centerHorizontally()
@@ -87,14 +112,24 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
         }
 
         init {
-            add(content, lParams(matchParent, matchParent))
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(96))
+            if (card) {
+                add(content, lParams(matchParent, matchParent) { setMargins(dp(6), dp(6), dp(6), dp(6)) })
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(92))
+            } else {
+                add(content, lParams(matchParent, matchParent))
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(96))
+            }
         }
     }
 
     fun setEntry(entry: StatusAreaEntry) {
-        val contentColor =
-            if (entry.active) theme.genericActiveForegroundColor else theme.keyTextColor
+        val contentColor = when {
+            // mod: on a tile the active state is a green icon and label
+            card && entry.active -> theme.genericActiveBackgroundColor
+            card -> theme.keyTextColor
+            entry.active -> theme.genericActiveForegroundColor
+            else -> theme.keyTextColor
+        }
         if (entry.icon != 0) {
             icon.visibility = View.VISIBLE
             textIcon.visibility = View.GONE
@@ -107,8 +142,14 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
             textIcon.text = getFirstCharacter(entry.label)
             textIcon.setTextColor(contentColor)
         }
-        bkgDrawable.paint.color =
-            if (entry.active) theme.genericActiveBackgroundColor else theme.keyBackgroundColor
+        if (card) {
+            bkgDrawable.paint.color = android.graphics.Color.TRANSPARENT
+            cardDrawable.setColor(theme.popupBackgroundColor)
+            label.setTextColor(if (entry.active) theme.genericActiveBackgroundColor else theme.altKeyTextColor)
+        } else {
+            bkgDrawable.paint.color =
+                if (entry.active) theme.genericActiveBackgroundColor else theme.keyBackgroundColor
+        }
         label.text = entry.label
     }
 

@@ -665,10 +665,15 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                         }
                     )
                 }
+                // mod: tap picks a layout / input method in the 键盘选择 panel, long-press flips 九宫格
                 t9Button.setOnClickListener {
+                    windowManager.attachWindow(org.fcitx.fcitx5.android.input.status.KeyboardPickerWindow())
+                }
+                t9Button.setOnLongClickListener {
                     val t9 = AppPrefs.getInstance().keyboard.t9Keyboard
                     t9.setValue(!t9.getValue())
                     context.toast(if (t9.getValue()) "九宫格（Rime 时生效）" else "全键盘")
+                    true
                 }
                 passwordManagerButton.setOnClickListener {
                     if (!PasswordManager.launch(service)) context.toast("没有安装 Bitwarden")
