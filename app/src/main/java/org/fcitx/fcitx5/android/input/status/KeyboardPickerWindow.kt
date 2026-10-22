@@ -44,8 +44,6 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
     private val theme by manager.theme()
     private val windowManager: InputWindowManager by manager.must()
 
-    override val showTitle = false
-
     private val t9 = AppPrefs.getInstance().keyboard.t9Keyboard
 
     private class Tile(val label: String, val icon: Int, val selected: Boolean, val onClick: () -> Unit)

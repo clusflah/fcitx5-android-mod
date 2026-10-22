@@ -29,7 +29,13 @@ import splitties.views.gravityVerticalCenter
 
 class TitleUi(override val ctx: Context, theme: Theme) : Ui {
 
-    private val backButton = ToolButton(ctx, R.drawable.ic_baseline_arrow_back_24, theme).apply {
+    // mod: the card style closes panels with ∧, like the toolbar's expand button
+    private val backButton = ToolButton(
+        ctx,
+        if (org.fcitx.fcitx5.android.data.theme.ThemeManager.prefs.cardStyle.getValue()) R.drawable.ic_baseline_expand_less_24
+        else R.drawable.ic_baseline_arrow_back_24,
+        theme
+    ).apply {
         contentDescription = ctx.getString(R.string.back_to_keyboard)
     }
 
