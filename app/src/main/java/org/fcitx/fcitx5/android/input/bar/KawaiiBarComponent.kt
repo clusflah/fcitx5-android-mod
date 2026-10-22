@@ -637,6 +637,12 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                     true
                 }
                 translateButton.setOnClickListener {
+                    // mod: card style: open the translate card above the toolbar instead
+                    if (ThemeManager.prefs.cardStyle.getValue()) {
+                        if (isPasswordField) context.toast("密码框里不翻译")
+                        else org.fcitx.fcitx5.android.input.translate.TranslateDraft.togglePanel?.invoke()
+                        return@setOnClickListener
+                    }
                     // translate the selection if there is one, replacing it on "输入"
                     val selected = runCatching {
                         service.currentInputConnection?.getSelectedText(0)?.toString()
