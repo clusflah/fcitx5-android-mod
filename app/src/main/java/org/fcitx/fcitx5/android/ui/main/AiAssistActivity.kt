@@ -81,7 +81,7 @@ class AiAssistActivity : AppCompatActivity() {
     private var debounceJob: Job? = null
 
     private lateinit var providerSpinner: Spinner
-    private lateinit var promptBar: LinearLayout
+    private lateinit var promptBar: ViewGroup
     private lateinit var input: EditText
     private lateinit var output: EditText
     private lateinit var sendBtn: Button
@@ -121,16 +121,21 @@ class AiAssistActivity : AppCompatActivity() {
         promptId = AiConfig.lastPrompt(this)?.takeIf { id -> prompts.any { it.id == id } }
             ?: prompts.firstOrNull()?.id
 
-        val pad = dp(14)
+        val pad = if (styled) dp(10) else dp(14)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad / 2, pad, pad)
         }
-        if (styled) root.addView(TextView(this).apply {
-            setText(if (translateMode) R.string.ai_translate else R.string.ai_assist)
-            AiDialogStyle.title(this)
-            setPadding(dp(4), dp(10), 0, dp(6))
-        })
+        // card style: title on the left, a compact model picker and ⚙ in the top right corner
+        val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        if (styled) {
+            header.addView(TextView(this).apply {
+                setText(if (translateMode) R.string.ai_translate else R.string.ai_assist)
+                AiDialogStyle.title(this)
+                setPadding(dp(4), dp(6), 0, dp(6))
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            root.addView(header)
+        }
 
         // provider + settings
         val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -153,15 +158,30 @@ class AiAssistActivity : AppCompatActivity() {
                 override fun onNothingSelected(p: AdapterView<*>?) {}
             }
         }
-        top.addView(providerSpinner, LinearLayout.LayoutParams(0, -2, 1f))
-        top.addView(smallButton("⚙ 设置") { openSettings() })
-        root.addView(top)
+        if (styled) {
+            header.addView(providerSpinner, LinearLayout.LayoutParams(-2, dp(30)))
+            header.addView(smallButton("⚙") { openSettings() }.apply {
+                contentDescription = "设置"
+            }, LinearLayout.LayoutParams(dp(34), dp(30)))
+        } else {
+            top.addView(providerSpinner, LinearLayout.LayoutParams(0, -2, 1f))
+            top.addView(smallButton("⚙ 设置") { openSettings() })
+            root.addView(top)
+        }
 
-        // prompts
-        promptBar = LinearLayout(this)
-        root.addView(HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false; addView(promptBar)
-        })
+        // prompts: in the card style they wrap onto several rows as big chips
+        if (styled) {
+            promptBar = com.google.android.flexbox.FlexboxLayout(this).apply {
+                flexWrap = com.google.android.flexbox.FlexWrap.WRAP
+                setPadding(0, dp(4), 0, dp(2))
+            }
+            root.addView(promptBar, LinearLayout.LayoutParams(-1, -2))
+        } else {
+            promptBar = LinearLayout(this)
+            root.addView(HorizontalScrollView(this).apply {
+                isHorizontalScrollBarEnabled = false; addView(promptBar)
+            })
+        }
 
         if (translateMode) promptBar.visibility = View.GONE
         directionLabel = TextView(this).apply {
@@ -282,6 +302,7 @@ class AiAssistActivity : AppCompatActivity() {
             AiDialogStyle.styleWindow(window)
             AiDialogStyle.apply(root)
             styleChips(formatBar)
+            AiDialogStyle.compact(providerSpinner, header.getChildAt(header.childCount - 1) as Button)
         }
         renderPrompts()
         // selected text passed in from the keyboard: translate right away
@@ -325,10 +346,11 @@ class AiAssistActivity : AppCompatActivity() {
     }
 
     /** mod: card style look for the prompt / format chips, see AiDialogStyle.chip */
-    private fun styleChips(bar: LinearLayout) {
+    private fun styleChips(bar: ViewGroup) {
         if (!AiDialogStyle.enabled) return
+        val big = bar === promptBar
         for (i in 0 until bar.childCount) {
-            (bar.getChildAt(i) as? Button)?.let { AiDialogStyle.chip(it, it.tag == CHIP_SELECTED) }
+            (bar.getChildAt(i) as? Button)?.let { AiDialogStyle.chip(it, it.tag == CHIP_SELECTED, big) }
         }
     }
 

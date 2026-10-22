@@ -48,7 +48,7 @@ object AiDialogStyle {
         window.setBackgroundDrawable(InsetDrawable(GradientDrawable().apply {
             cornerRadius = ctx.dp(20f)
             setColor(t.keyboardColor)
-        }, ctx.dp(12), ctx.dp(16), ctx.dp(12), ctx.dp(16)))
+        }, ctx.dp(20), ctx.dp(16), ctx.dp(20), ctx.dp(16)))
     }
 
     fun title(view: TextView) {
@@ -85,8 +85,8 @@ object AiDialogStyle {
             }
             is EditText -> {
                 root.background = root.rounded(t.keyBackgroundColor, root.dp(12f))
-                val p = root.dp(12)
-                root.setPadding(p, p, p, p)
+                root.setPadding(root.dp(12), root.dp(8), root.dp(12), root.dp(8))
+                root.textSize = 15f
                 root.setTextColor(t.keyTextColor)
                 root.setHintTextColor(t.candidateCommentColor)
                 root.highlightColor = (ThemePresetMod.JADE and 0x00ffffff) or 0x40000000
@@ -97,7 +97,7 @@ object AiDialogStyle {
                     }
                 }
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
-                    it.setMargins(0, root.dp(6), 0, root.dp(4))
+                    it.setMargins(0, root.dp(4), 0, root.dp(2))
                     root.layoutParams = it
                 }
             }
@@ -111,27 +111,77 @@ object AiDialogStyle {
         val t = theme
         b.isAllCaps = false
         b.stateListAnimator = null
-        b.minHeight = b.dp(38)
-        b.minimumHeight = b.dp(38)
+        b.textSize = 14f
+        b.minHeight = b.dp(34)
+        b.minimumHeight = b.dp(34)
         b.minWidth = 0
         b.minimumWidth = 0
-        b.setPadding(b.dp(14), 0, b.dp(14), 0)
+        b.setPadding(b.dp(12), 0, b.dp(12), 0)
         b.background = b.rounded(if (primary) ThemePresetMod.JADE else t.keyBackgroundColor)
         b.foreground = pressHighlightDrawable(t.keyPressHighlightColor)
         b.setTextColor(if (primary) 0xffffffff.toInt() else t.keyTextColor)
         b.alpha = 1f
         (b.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
-            it.setMargins(b.dp(3), b.dp(4), b.dp(3), b.dp(4))
+            it.setMargins(b.dp(3), b.dp(3), b.dp(3), b.dp(3))
             b.layoutParams = it
         }
     }
 
-    /** prompt / format chips: the selected one is white with green text, the others grey */
-    fun chip(b: Button, selected: Boolean) {
+    /**
+     * prompt / format chips: the selected one is white with green text, the others grey;
+     * [big] for the prompts, which are the main choice of the dialog
+     */
+    fun chip(b: Button, selected: Boolean, big: Boolean = false) {
         button(b)
+        if (big) {
+            b.textSize = 16f
+            b.minHeight = b.dp(44)
+            b.minimumHeight = b.dp(44)
+            b.setPadding(b.dp(18), 0, b.dp(18), 0)
+            (b.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+                it.setMargins(b.dp(4), b.dp(4), b.dp(4), b.dp(4))
+                b.layoutParams = it
+            }
+        }
         val t = theme
         b.background = b.rounded(if (selected) t.keyBackgroundColor else t.altKeyBackgroundColor.withAlpha(0x80))
         b.setTextColor(if (selected) ThemePresetMod.JADE else t.altKeyTextColor)
+    }
+
+    /** the model picker and ⚙ in the top right corner: small, quiet */
+    fun compact(spinner: Spinner, settings: Button) {
+        val t = theme
+        spinner.background = spinner.rounded(t.altKeyBackgroundColor.withAlpha(0x80), spinner.dp(15f))
+        spinner.setPadding(spinner.dp(10), 0, spinner.dp(10), 0)
+        (spinner.adapter as? ArrayAdapter<*>)?.let { old ->
+            val items = (0 until old.count).map { old.getItem(it).toString() }
+            val selected = spinner.selectedItemPosition
+            spinner.adapter = object : ArrayAdapter<String>(
+                spinner.context, android.R.layout.simple_spinner_dropdown_item, items
+            ) {
+                override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
+                    super.getView(position, convertView, parent).also {
+                        (it as? TextView)?.apply {
+                            textSize = 13f
+                            setTextColor(t.altKeyTextColor)
+                            setPadding(0, 0, 0, 0)
+                            minHeight = 0
+                        }
+                    }
+            }
+            spinner.setSelection(selected, false)
+        }
+        button(settings)
+        settings.setPadding(0, 0, 0, 0)
+        settings.minHeight = 0
+        settings.minimumHeight = 0
+        settings.textSize = 15f
+        settings.background = settings.rounded(t.altKeyBackgroundColor.withAlpha(0x80), settings.dp(15f))
+        settings.setTextColor(t.altKeyTextColor)
+        (settings.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+            it.setMargins(settings.dp(6), 0, 0, 0)
+            settings.layoutParams = it
+        }
     }
 
     private fun Int.withAlpha(alpha: Int) = (this and 0x00ffffff) or (alpha shl 24)
