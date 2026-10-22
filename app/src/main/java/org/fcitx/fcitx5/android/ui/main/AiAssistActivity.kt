@@ -592,6 +592,7 @@ class AiAssistActivity : AppCompatActivity() {
         val fields = AiProvider.entries.associateWith { p ->
             box.addView(TextView(this).apply {
                 text = p.label; textSize = 16f; setPadding(0, dp(12), 0, 0)
+                tag = AiDialogStyle.HEADING
             })
             val key = field("API Key", AiConfig.apiKey(this, p), password = true)
             val model = field("模型（默认 ${p.defaultModel}）", AiConfig.rawModel(this, p))
@@ -614,7 +615,7 @@ class AiAssistActivity : AppCompatActivity() {
                     AiConfig.saveProvider(this, p, f.first.text.toString(), f.second.text.toString(), f.third.text.toString())
                 }
             }
-            .setNegativeButton(android.R.string.cancel, null).show()
+            .setNegativeButton(android.R.string.cancel, null).showStyled()
     }
 
     private fun editPrompt(p: AiPrompt?) {
@@ -634,20 +635,26 @@ class AiAssistActivity : AppCompatActivity() {
                 else { p.name = n; p.content = content.text.toString() }
                 AiConfig.savePrompts(this, prompts); renderPrompts()
             }
-            .setNegativeButton(android.R.string.cancel, null).show()
+            .setNegativeButton(android.R.string.cancel, null).showStyled()
     }
 
     private fun promptMenu(p: AiPrompt) {
         AlertDialog.Builder(this).setTitle(p.name)
-            .setItems(arrayOf("编辑", "左移", "右移", "删除")) { _, which ->
+            .setAdapter(
+                AiDialogStyle.textAdapter(this, android.R.layout.simple_list_item_1, mutableListOf("编辑", "左移", "右移", "删除"))
+            ) { _, which ->
                 val i = prompts.indexOf(p)
                 when (which) {
-                    0 -> { editPrompt(p); return@setItems }
+                    0 -> { editPrompt(p); return@setAdapter }
                     1 -> if (i > 0) prompts.add(i - 1, prompts.removeAt(i))
                     2 -> if (i < prompts.lastIndex) prompts.add(i + 1, prompts.removeAt(i))
                     3 -> prompts.remove(p)
                 }
                 AiConfig.savePrompts(this, prompts); renderPrompts()
-            }.show()
+            }.showStyled()
     }
+
+    /** mod: show, dressed like the assistant itself when the card style is on */
+    private fun AlertDialog.Builder.showStyled(): AlertDialog =
+        show().also { if (AiDialogStyle.enabled) AiDialogStyle.alert(it) }
 }

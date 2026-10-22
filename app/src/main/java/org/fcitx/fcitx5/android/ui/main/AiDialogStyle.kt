@@ -21,6 +21,7 @@ import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.data.theme.ThemeManager
 import org.fcitx.fcitx5.android.data.theme.ThemePresetMod
@@ -31,6 +32,9 @@ object AiDialogStyle {
 
     /** buttons tagged with this are drawn green */
     const val PRIMARY = "ai_primary"
+
+    /** text views tagged with this are section headings: dark and bold */
+    const val HEADING = "ai_heading"
 
     val enabled get() = ThemeManager.prefs.cardStyle.getValue()
 
@@ -103,9 +107,40 @@ object AiDialogStyle {
             }
             is Button -> button(root, primary = root.tag == PRIMARY)
             is ProgressBar -> root.indeterminateTintList = ColorStateList.valueOf(ThemePresetMod.JADE)
-            is TextView -> root.setTextColor(t.altKeyTextColor)
+            is TextView -> if (root.tag == HEADING) {
+                root.setTextColor(t.keyTextColor)
+                root.typeface = Typeface.DEFAULT_BOLD
+            } else {
+                root.setTextColor(t.altKeyTextColor)
+            }
         }
     }
+
+    /** the settings / prompt / error dialogs opened from the assistant: same card, keys and fields */
+    fun alert(d: AlertDialog) {
+        val t = theme
+        d.window?.let { styleWindow(it) }
+        d.findViewById<TextView>(androidx.appcompat.R.id.alertTitle)?.let { title(it) }
+        d.findViewById<TextView>(android.R.id.message)?.setTextColor(t.keyTextColor)
+        d.findViewById<View>(androidx.appcompat.R.id.custom)?.let { apply(it) }
+        d.listView?.divider = null
+        listOf(
+            AlertDialog.BUTTON_POSITIVE to true,
+            AlertDialog.BUTTON_NEGATIVE to false,
+            AlertDialog.BUTTON_NEUTRAL to false
+        ).forEach { (which, primary) ->
+            d.getButton(which)?.takeIf { it.visibility == View.VISIBLE }?.let { button(it, primary) }
+        }
+    }
+
+    /** list items in the keyboard's text color, for dialogs styled with [alert] */
+    fun <T> textAdapter(ctx: android.content.Context, layout: Int, items: MutableList<T>) =
+        object : ArrayAdapter<T>(ctx, layout, items) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
+                super.getView(position, convertView, parent).also {
+                    if (enabled) (it as? TextView)?.setTextColor(theme.keyTextColor)
+                }
+        }
 
     fun button(b: Button, primary: Boolean = false) {
         val t = theme

@@ -28,7 +28,9 @@ import splitties.dimensions.dp
 internal fun AlertDialog.Builder.showIfAlive(activity: Activity, fallback: String) {
     if (!activity.isFinishing && !activity.isDestroyed) {
         try {
-            show(); return
+            // mod: dialogs over the assistant look like it (card style)
+            show().also { if (activity is AiAssistActivity && AiDialogStyle.enabled) AiDialogStyle.alert(it) }
+            return
         } catch (e: WindowManager.BadTokenException) {
             // window went away between the check and show()
         }
@@ -79,7 +81,9 @@ object AiModelPicker {
     }
 
     private fun pick(activity: AppCompatActivity, provider: AiProvider, models: List<String>, onPick: (String) -> Unit) {
-        val adapter = ArrayAdapter(activity, android.R.layout.simple_list_item_1, models.toMutableList())
+        val styled = activity is AiAssistActivity && AiDialogStyle.enabled
+        val adapter = if (styled) AiDialogStyle.textAdapter(activity, android.R.layout.simple_list_item_1, models.toMutableList())
+        else ArrayAdapter(activity, android.R.layout.simple_list_item_1, models.toMutableList())
         val search = EditText(activity).apply { hint = "搜索（共 ${models.size} 个）"; isSingleLine = true }
         val list = ListView(activity).apply { this.adapter = adapter }
         val box = LinearLayout(activity).apply {
@@ -90,6 +94,7 @@ object AiModelPicker {
         }
         val dialog = AlertDialog.Builder(activity).setTitle("选择 ${provider.label} 模型")
             .setView(box).setNegativeButton(android.R.string.cancel, null).show()
+            .also { if (styled) AiDialogStyle.alert(it) }
         search.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
