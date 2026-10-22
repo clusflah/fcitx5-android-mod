@@ -1,9 +1,10 @@
 /*
  * SPDX-License-Identifier: LGPL-2.1-or-later
- * mod: the expanded candidate list of the 九宫格, laid out like the common Chinese nine-key keypads:
- * "词频 / 单字" tabs and ∧ in the toolbar, the pinyin to choose from on the left, the candidates
- * five to a row from the first one, and ⌫ in the bottom right corner.
- * Opened by the toolbar's ∨ instead of Grid/FlexboxExpandedCandidateWindow while T9Pinyin.active.
+ * mod: the expanded candidate list laid out like the common Chinese nine-key keypads:
+ * "词频 / 单字" tabs and ∧ in the toolbar, the pinyin to choose from on the left (九宫格 only),
+ * the candidates in a 5×5 grid filling the keyboard area, and ⌫ in the bottom right corner.
+ * Opened by the toolbar's ∨ instead of Grid/FlexboxExpandedCandidateWindow while T9Pinyin.active,
+ * and on the 26-key layout when the expanded candidate style is ExpandedCandidateStyle.Keypad.
  * Candidates are read from fcitx page by page; "单字" keeps only single characters, remembering
  * each one's index in fcitx's list so selecting it picks the right candidate.
  */
@@ -62,6 +63,14 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
 
     override val showTitle = false
 
+    /** the pinyin column only makes sense for digits typed on the 九宫格 */
+    private val pinyinColumn = T9Pinyin.active
+
+    /** a fifth of the window's height, so exactly [ROWS] rows of candidates fit */
+    private var rowHeight = 0
+
+    private fun rowHeightOrDefault() = if (rowHeight > 0) rowHeight else context.dp(ROW_DP)
+
     // ---------- candidates ----------
 
     /** "单字": only single characters */
@@ -81,10 +90,16 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
             CandidateViewHolder(CandidateItemUi(parent.context, theme)).apply {
-                itemView.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, parent.dp(ROW_DP))
+                itemView.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, rowHeightOrDefault())
             }
 
         override fun onBindViewHolder(holder: CandidateViewHolder, position: Int) {
+            holder.itemView.layoutParams.let {
+                if (it.height != rowHeightOrDefault()) {
+                    it.height = rowHeightOrDefault()
+                    holder.itemView.layoutParams = it
+                }
+            }
             val (index, word) = items[position]
             holder.update(index, word)
             holder.itemView.setOnClickListener { fcitx.launchOnReady { it.select(holder.idx) } }
@@ -102,6 +117,7 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
     }
 
     private lateinit var grid: RecyclerView
+    private lateinit var backspace: ImageView
 
     private fun reload() {
         generation++
@@ -154,6 +170,7 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
         commonKeyActionListener.listener.onKeyAction(action, KeyActionListener.Source.Keyboard)
 
     private fun updatePinyinColumn() {
+        if (!pinyinColumn) return
         val raw = T9Pinyin.pendingInput(panelPreedit.ifEmpty { clientPreedit })
         if (raw == pendingRaw && columnList.childCount > 0) return
         pendingRaw = raw
@@ -163,15 +180,27 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
                 text = syllable
                 textSize = 18f
                 gravity = Gravity.CENTER
-                minHeight = dp(ROW_DP)
                 setTextColor(theme.altKeyTextColor)
                 background = pressHighlightDrawable(theme.keyPressHighlightColor)
                 setOnClickListener {
                     InputFeedbacks.hapticFeedback(it)
                     choose(syllable)
                 }
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, rowHeightOrDefault()))
         }
+    }
+
+    /** Size rows to a fifth of the window, once its height is known or when it changes. */
+    private fun onHeightChanged(height: Int) {
+        val h = height / ROWS
+        if (h <= 0 || h == rowHeight) return
+        rowHeight = h
+        grid.setPadding(0, 0, 0, h)
+        backspace.layoutParams = backspace.layoutParams.apply { this.height = h }
+        for (i in 0 until columnList.childCount) {
+            columnList.getChildAt(i).let { it.layoutParams = it.layoutParams.apply { this.height = h } }
+        }
+        adapter.notifyDataSetChanged()
     }
 
     /** same as T9Keyboard: replace the digits the syllable covers with its letters */
@@ -239,7 +268,7 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
             adapter = this@T9CandidateWindow.adapter
             // the last row can scroll out from under ⌫
             clipToPadding = false
-            setPadding(0, 0, 0, dp(ROW_DP))
+            setPadding(0, 0, 0, rowHeightOrDefault())
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                     val last = (recyclerView.layoutManager as GridLayoutManager).findLastVisibleItemPosition()
@@ -247,7 +276,7 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
                 }
             })
         }
-        val backspace = ImageView(context).apply {
+        backspace = ImageView(context).apply {
             setImageResource(R.drawable.ic_baseline_backspace_24)
             imageTintList = android.content.res.ColorStateList.valueOf(theme.altKeyTextColor)
             scaleType = ImageView.ScaleType.CENTER
@@ -265,7 +294,7 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
                 startToStart = ConstraintLayout.LayoutParams.PARENT_ID
                 endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
             })
-            addView(backspace, ConstraintLayout.LayoutParams(0, dp(ROW_DP)).apply {
+            addView(backspace, ConstraintLayout.LayoutParams(0, rowHeightOrDefault()).apply {
                 matchConstraintDefaultWidth = ConstraintLayout.LayoutParams.MATCH_CONSTRAINT_PERCENT
                 matchConstraintPercentWidth = 1f / COLUMNS
                 bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
@@ -280,8 +309,14 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(theme.keyboardColor)
-            addView(column, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.15f))
+            if (pinyinColumn) {
+                addView(column, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.15f))
+            }
             addView(right, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.85f))
+            addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+                // not in the middle of this layout pass
+                if (bottom - top != oldBottom - oldTop) post { onHeightChanged(bottom - top) }
+            }
         }
     }
 
@@ -318,6 +353,7 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
 
     companion object {
         private const val COLUMNS = 5
+        private const val ROWS = 5
         private const val ROW_DP = 52
         private const val PAGE = 60
         private const val PRELOAD = 15

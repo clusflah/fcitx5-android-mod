@@ -314,7 +314,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         val expandedCandidateStyle = enumList(
             R.string.expanded_candidate_style,
             "expanded_candidate_style",
-            ExpandedCandidateStyle.Grid
+            ExpandedCandidateStyle.Keypad // mod
         )
 
         val expandedCandidateGridSpanCount: ManagedPreference.PInt

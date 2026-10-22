@@ -786,11 +786,12 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
     private fun setExpandButtonToAttach() {
         candidateUi.expandButton.setOnClickListener {
             windowManager.attachWindow(
-                // mod: the 九宫格 has its own list (pinyin column, 词频 / 单字)
+                // mod: the 九宫格 always has its own 5×5 list (pinyin column, 词频 / 单字)
                 if (T9Pinyin.active) T9CandidateWindow()
                 else when (expandedCandidateStyle) {
                     ExpandedCandidateStyle.Grid -> GridExpandedCandidateWindow()
                     ExpandedCandidateStyle.Flexbox -> FlexboxExpandedCandidateWindow()
+                    ExpandedCandidateStyle.Keypad -> T9CandidateWindow()
                 }
             )
         }
