@@ -13,9 +13,12 @@ package org.fcitx.fcitx5.android.input.keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -26,6 +29,8 @@ import org.fcitx.fcitx5.android.core.InputMethodEntry
 import org.fcitx.fcitx5.android.core.KeySym
 import org.fcitx.fcitx5.android.data.InputFeedbacks
 import org.fcitx.fcitx5.android.data.theme.Theme
+import org.fcitx.fcitx5.android.data.theme.ThemeManager
+import org.fcitx.fcitx5.android.utils.pressHighlightDrawable
 import org.fcitx.fcitx5.android.input.keyboard.KeyDef.Appearance.Variant
 import org.fcitx.fcitx5.android.input.picker.PickerWindow
 import splitties.dimensions.dp
@@ -152,14 +157,54 @@ class T9Keyboard(
         )
     }
 
-    private val columnList = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+    // with separate keys ("按键边框"), the column is one rounded grey key with the same margins and
+    // shadow as the others and thin lines between its entries; otherwise a flat grey strip
+    private val bordered = ThemeManager.prefs.keyBorder.getValue()
+    private val keyRadius = dp(ThemeManager.prefs.keyRadius.getValue().toFloat())
+    private val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    private val hMargin = dp(
+        (if (landscape) ThemeManager.prefs.keyHorizontalMarginLandscape else ThemeManager.prefs.keyHorizontalMargin).getValue()
+    )
+    private val vMargin = dp(
+        (if (landscape) ThemeManager.prefs.keyVerticalMarginLandscape else ThemeManager.prefs.keyVerticalMargin).getValue()
+    )
+
+    private val columnList = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        if (bordered) {
+            dividerDrawable = GradientDrawable().apply {
+                setColor(theme.dividerColor)
+                setSize(0, 1.coerceAtLeast(dp(1) / 2))
+            }
+            showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE
+        }
+    }
 
     /** left column over rows 1–3: the marks ，。？！, or while typing the pinyin to choose from */
     private val leftColumn = ScrollView(context).apply {
         isVerticalScrollBarEnabled = false
         isFillViewport = true
-        setBackgroundColor(theme.altKeyBackgroundColor)
+        if (bordered) {
+            background = GradientDrawable().apply {
+                cornerRadius = keyRadius
+                setColor(theme.altKeyBackgroundColor)
+            }
+            // keep the entries' press highlight inside the rounded corners
+            clipToOutline = true
+        } else {
+            setBackgroundColor(theme.altKeyBackgroundColor)
+        }
         addView(columnList)
+    }
+
+    private val leftBox = FrameLayout(context).apply {
+        if (bordered) {
+            setPadding(hMargin, vMargin, hMargin, vMargin)
+            background = shadowedKeyBackgroundDrawable(
+                theme.altKeyBackgroundColor, theme.keyShadowColor, keyRadius, dp(1), hMargin, vMargin
+            )
+        }
+        addView(leftColumn, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
     }
 
     /** return key spanning the last two rows */
@@ -194,7 +239,7 @@ class T9Keyboard(
         val rows = (0 until childCount).map { getChildAt(it) }
         rows.forEach { if (it.id == View.NO_ID) it.id = View.generateViewId() }
         (LEFT_IDS + RIGHT_IDS).forEach { findViewById<View>(it)?.visibility = View.INVISIBLE }
-        add(leftColumn, lParams(0, 0) {
+        add(leftBox, lParams(0, 0) {
             topToTop = rows[0].id
             bottomToBottom = rows[2].id
             startToStart = ConstraintLayout.LayoutParams.PARENT_ID
@@ -216,6 +261,7 @@ class T9Keyboard(
         textSize = 18f
         gravity = Gravity.CENTER
         setTextColor(theme.altKeyTextColor)
+        background = pressHighlightDrawable(theme.keyPressHighlightColor)
         setOnClickListener {
             InputFeedbacks.hapticFeedback(it)
             InputFeedbacks.soundEffect(InputFeedbacks.SoundEffect.Standard)
