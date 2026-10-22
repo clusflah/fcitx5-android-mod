@@ -62,6 +62,7 @@ class AiAssistActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CLIPBOARD = "clipboard"
+        private const val CHIP_SELECTED = "selected"
         const val EXTRA_MODE = "mode"
         const val EXTRA_TEXT = "text"
         const val MODE_TRANSLATE = "translate"
@@ -80,7 +81,7 @@ class AiAssistActivity : AppCompatActivity() {
     private var debounceJob: Job? = null
 
     private lateinit var providerSpinner: Spinner
-    private lateinit var promptBar: LinearLayout
+    private lateinit var promptBar: ViewGroup
     private lateinit var input: EditText
     private lateinit var output: EditText
     private lateinit var sendBtn: Button
@@ -109,6 +110,9 @@ class AiAssistActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setTitle(if (translateMode) R.string.ai_translate else R.string.ai_assist)
+        // mod: card style: the keyboard's colors and shapes, with our own title inside the card
+        val styled = AiDialogStyle.enabled
+        if (styled) supportRequestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         prompts = AiConfig.prompts(this)
@@ -117,10 +121,20 @@ class AiAssistActivity : AppCompatActivity() {
         promptId = AiConfig.lastPrompt(this)?.takeIf { id -> prompts.any { it.id == id } }
             ?: prompts.firstOrNull()?.id
 
-        val pad = dp(14)
+        val pad = if (styled) dp(10) else dp(14)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad / 2, pad, pad)
+        }
+        // card style: title on the left, a compact model picker and ⚙ in the top right corner
+        val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        if (styled) {
+            header.addView(TextView(this).apply {
+                setText(if (translateMode) R.string.ai_translate else R.string.ai_assist)
+                AiDialogStyle.title(this)
+                setPadding(dp(4), dp(6), 0, dp(6))
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            root.addView(header)
         }
 
         // provider + settings
@@ -144,15 +158,30 @@ class AiAssistActivity : AppCompatActivity() {
                 override fun onNothingSelected(p: AdapterView<*>?) {}
             }
         }
-        top.addView(providerSpinner, LinearLayout.LayoutParams(0, -2, 1f))
-        top.addView(smallButton("⚙ 设置") { openSettings() })
-        root.addView(top)
+        if (styled) {
+            header.addView(providerSpinner, LinearLayout.LayoutParams(-2, dp(30)))
+            header.addView(smallButton("⚙") { openSettings() }.apply {
+                contentDescription = "设置"
+            }, LinearLayout.LayoutParams(dp(34), dp(30)))
+        } else {
+            top.addView(providerSpinner, LinearLayout.LayoutParams(0, -2, 1f))
+            top.addView(smallButton("⚙ 设置") { openSettings() })
+            root.addView(top)
+        }
 
-        // prompts
-        promptBar = LinearLayout(this)
-        root.addView(HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false; addView(promptBar)
-        })
+        // prompts: in the card style they wrap onto several rows as big chips
+        if (styled) {
+            promptBar = com.google.android.flexbox.FlexboxLayout(this).apply {
+                flexWrap = com.google.android.flexbox.FlexWrap.WRAP
+                setPadding(0, dp(4), 0, dp(2))
+            }
+            root.addView(promptBar, LinearLayout.LayoutParams(-1, -2))
+        } else {
+            promptBar = LinearLayout(this)
+            root.addView(HorizontalScrollView(this).apply {
+                isHorizontalScrollBarEnabled = false; addView(promptBar)
+            })
+        }
 
         if (translateMode) promptBar.visibility = View.GONE
         directionLabel = TextView(this).apply {
@@ -202,6 +231,7 @@ class AiAssistActivity : AppCompatActivity() {
         inputActions.addView(imageBtn)
         sendBtn = Button(this).apply {
             text = if (translateMode) "翻译" else "发送"
+            tag = AiDialogStyle.PRIMARY
             setOnClickListener { debounceJob?.cancel(); send() }
         }
         inputActions.addView(sendBtn)
@@ -246,6 +276,7 @@ class AiAssistActivity : AppCompatActivity() {
             Toast.makeText(this@AiAssistActivity, "已复制", Toast.LENGTH_SHORT).show()
         })
         outActions.addView(Button(this).apply {
+            tag = AiDialogStyle.PRIMARY
             text = "输入"
             setOnClickListener {
                 if (lastWasImage) { insertImage(); return@setOnClickListener }
@@ -267,6 +298,12 @@ class AiAssistActivity : AppCompatActivity() {
         root.addView(resultBox)
 
         setContentView(ScrollView(this).apply { addView(root) })
+        if (styled) {
+            AiDialogStyle.styleWindow(window)
+            AiDialogStyle.apply(root)
+            styleChips(formatBar)
+            AiDialogStyle.compact(providerSpinner, header.getChildAt(header.childCount - 1) as Button)
+        }
         renderPrompts()
         // selected text passed in from the keyboard: translate right away
         if (translateMode && input.text.isNotBlank()) send(auto = true)
@@ -302,7 +339,18 @@ class AiAssistActivity : AppCompatActivity() {
         FORMAT_LABELS.forEachIndexed { f, label ->
             formatBar.addView(smallButton(label) { setFormat(f) }.apply {
                 alpha = if (f == format) 1f else 0.5f
+                tag = if (f == format) CHIP_SELECTED else null
             })
+        }
+        styleChips(formatBar)
+    }
+
+    /** mod: card style look for the prompt / format chips, see AiDialogStyle.chip */
+    private fun styleChips(bar: ViewGroup) {
+        if (!AiDialogStyle.enabled) return
+        val big = bar === promptBar
+        for (i in 0 until bar.childCount) {
+            (bar.getChildAt(i) as? Button)?.let { AiDialogStyle.chip(it, it.tag == CHIP_SELECTED, big) }
         }
     }
 
@@ -354,10 +402,12 @@ class AiAssistActivity : AppCompatActivity() {
                 promptId = p.id; AiConfig.setLastPrompt(this, p.id); renderPrompts()
             }.apply {
                 alpha = if (p.id == promptId) 1f else 0.5f
+                tag = if (p.id == promptId) CHIP_SELECTED else null
                 setOnLongClickListener { promptMenu(p); true }
             })
         }
         promptBar.addView(smallButton("＋") { editPrompt(null) })
+        styleChips(promptBar)
     }
 
     private fun send(auto: Boolean = false) {
@@ -542,6 +592,7 @@ class AiAssistActivity : AppCompatActivity() {
         val fields = AiProvider.entries.associateWith { p ->
             box.addView(TextView(this).apply {
                 text = p.label; textSize = 16f; setPadding(0, dp(12), 0, 0)
+                tag = AiDialogStyle.HEADING
             })
             val key = field("API Key", AiConfig.apiKey(this, p), password = true)
             val model = field("模型（默认 ${p.defaultModel}）", AiConfig.rawModel(this, p))
@@ -564,7 +615,7 @@ class AiAssistActivity : AppCompatActivity() {
                     AiConfig.saveProvider(this, p, f.first.text.toString(), f.second.text.toString(), f.third.text.toString())
                 }
             }
-            .setNegativeButton(android.R.string.cancel, null).show()
+            .setNegativeButton(android.R.string.cancel, null).showStyled()
     }
 
     private fun editPrompt(p: AiPrompt?) {
@@ -584,20 +635,26 @@ class AiAssistActivity : AppCompatActivity() {
                 else { p.name = n; p.content = content.text.toString() }
                 AiConfig.savePrompts(this, prompts); renderPrompts()
             }
-            .setNegativeButton(android.R.string.cancel, null).show()
+            .setNegativeButton(android.R.string.cancel, null).showStyled()
     }
 
     private fun promptMenu(p: AiPrompt) {
         AlertDialog.Builder(this).setTitle(p.name)
-            .setItems(arrayOf("编辑", "左移", "右移", "删除")) { _, which ->
+            .setAdapter(
+                AiDialogStyle.textAdapter(this, android.R.layout.simple_list_item_1, mutableListOf("编辑", "左移", "右移", "删除"))
+            ) { _, which ->
                 val i = prompts.indexOf(p)
                 when (which) {
-                    0 -> { editPrompt(p); return@setItems }
+                    0 -> { editPrompt(p); return@setAdapter }
                     1 -> if (i > 0) prompts.add(i - 1, prompts.removeAt(i))
                     2 -> if (i < prompts.lastIndex) prompts.add(i + 1, prompts.removeAt(i))
                     3 -> prompts.remove(p)
                 }
                 AiConfig.savePrompts(this, prompts); renderPrompts()
-            }.show()
+            }.showStyled()
     }
+
+    /** mod: show, dressed like the assistant itself when the card style is on */
+    private fun AlertDialog.Builder.showStyled(): AlertDialog =
+        show().also { if (AiDialogStyle.enabled) AiDialogStyle.alert(it) }
 }
