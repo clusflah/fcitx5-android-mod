@@ -62,6 +62,7 @@ class AiAssistActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CLIPBOARD = "clipboard"
+        private const val CHIP_SELECTED = "selected"
         const val EXTRA_MODE = "mode"
         const val EXTRA_TEXT = "text"
         const val MODE_TRANSLATE = "translate"
@@ -109,6 +110,9 @@ class AiAssistActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setTitle(if (translateMode) R.string.ai_translate else R.string.ai_assist)
+        // mod: card style: the keyboard's colors and shapes, with our own title inside the card
+        val styled = AiDialogStyle.enabled
+        if (styled) supportRequestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         prompts = AiConfig.prompts(this)
@@ -122,6 +126,11 @@ class AiAssistActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad / 2, pad, pad)
         }
+        if (styled) root.addView(TextView(this).apply {
+            setText(if (translateMode) R.string.ai_translate else R.string.ai_assist)
+            AiDialogStyle.title(this)
+            setPadding(dp(4), dp(10), 0, dp(6))
+        })
 
         // provider + settings
         val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -202,6 +211,7 @@ class AiAssistActivity : AppCompatActivity() {
         inputActions.addView(imageBtn)
         sendBtn = Button(this).apply {
             text = if (translateMode) "翻译" else "发送"
+            tag = AiDialogStyle.PRIMARY
             setOnClickListener { debounceJob?.cancel(); send() }
         }
         inputActions.addView(sendBtn)
@@ -246,6 +256,7 @@ class AiAssistActivity : AppCompatActivity() {
             Toast.makeText(this@AiAssistActivity, "已复制", Toast.LENGTH_SHORT).show()
         })
         outActions.addView(Button(this).apply {
+            tag = AiDialogStyle.PRIMARY
             text = "输入"
             setOnClickListener {
                 if (lastWasImage) { insertImage(); return@setOnClickListener }
@@ -267,6 +278,11 @@ class AiAssistActivity : AppCompatActivity() {
         root.addView(resultBox)
 
         setContentView(ScrollView(this).apply { addView(root) })
+        if (styled) {
+            AiDialogStyle.styleWindow(window)
+            AiDialogStyle.apply(root)
+            styleChips(formatBar)
+        }
         renderPrompts()
         // selected text passed in from the keyboard: translate right away
         if (translateMode && input.text.isNotBlank()) send(auto = true)
@@ -302,7 +318,17 @@ class AiAssistActivity : AppCompatActivity() {
         FORMAT_LABELS.forEachIndexed { f, label ->
             formatBar.addView(smallButton(label) { setFormat(f) }.apply {
                 alpha = if (f == format) 1f else 0.5f
+                tag = if (f == format) CHIP_SELECTED else null
             })
+        }
+        styleChips(formatBar)
+    }
+
+    /** mod: card style look for the prompt / format chips, see AiDialogStyle.chip */
+    private fun styleChips(bar: LinearLayout) {
+        if (!AiDialogStyle.enabled) return
+        for (i in 0 until bar.childCount) {
+            (bar.getChildAt(i) as? Button)?.let { AiDialogStyle.chip(it, it.tag == CHIP_SELECTED) }
         }
     }
 
@@ -354,10 +380,12 @@ class AiAssistActivity : AppCompatActivity() {
                 promptId = p.id; AiConfig.setLastPrompt(this, p.id); renderPrompts()
             }.apply {
                 alpha = if (p.id == promptId) 1f else 0.5f
+                tag = if (p.id == promptId) CHIP_SELECTED else null
                 setOnLongClickListener { promptMenu(p); true }
             })
         }
         promptBar.addView(smallButton("＋") { editPrompt(null) })
+        styleChips(promptBar)
     }
 
     private fun send(auto: Boolean = false) {
