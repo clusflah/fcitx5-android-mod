@@ -53,6 +53,10 @@ class AzureVoiceInputWindow : InputWindow.ExtendedInputWindow<AzureVoiceInputWin
     private lateinit var mic: TextView
     private lateinit var ring: View
 
+    // mod: card style: tinted gradient, green waveform, a white dome at the bottom to tap when done
+    private val cardStyle = org.fcitx.fcitx5.android.data.theme.ThemeManager.prefs.cardStyle.getValue()
+    private var wave: VoiceWaveView? = null
+
     private fun circle(color: Int) = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(color) }
 
     private fun config() = AzureConfig(
@@ -61,7 +65,48 @@ class AzureVoiceInputWindow : InputWindow.ExtendedInputWindow<AzureVoiceInputWin
         prefs.azureTtsVoice.getValue(), prefs.azureTtsEndpoint.getValue()
     )
 
+    private fun cardView(): View {
+        val green = org.fcitx.fcitx5.android.data.theme.ThemePresetMod.JADE
+        val root = FrameLayout(context).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf((green and 0x00ffffff) or 0x1f000000, theme.keyboardColor)
+            )
+        }
+        status = TextView(context).apply {
+            textSize = 16f; gravity = Gravity.CENTER
+            setTextColor(theme.altKeyTextColor)
+            setPadding(context.dp(16), context.dp(16), context.dp(16), 0)
+        }
+        root.addView(status, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP))
+        wave = VoiceWaveView(context, green).apply { setOnClickListener { onMicClick() } }
+        root.addView(wave, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, context.dp(64), Gravity.CENTER).apply {
+            bottomMargin = context.dp(40)
+        })
+        // a wide oval whose top shows as a dome; tapping it finishes like the mic button
+        val dome = FrameLayout(context).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(theme.keyBackgroundColor) }
+            setOnClickListener { onMicClick() }
+            addView(TextView(context).apply {
+                text = context.getString(R.string.azure_voice_hint)
+                textSize = 12f; setTextColor(theme.altKeyTextColor); gravity = Gravity.CENTER
+            }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, context.dp(48), Gravity.TOP).apply {
+                topMargin = context.dp(18)
+            })
+        }
+        root.addView(dome, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, context.dp(220), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            val side = -context.dp(120)
+            setMargins(side, 0, side, -context.dp(130))
+        })
+        // [mic] and [ring] are only used by the classic layout
+        mic = TextView(context)
+        ring = View(context)
+        root.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        return root
+    }
+
     override fun onCreateView(): View {
+        if (cardStyle) return cardView()
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -132,10 +177,12 @@ class AzureVoiceInputWindow : InputWindow.ExtendedInputWindow<AzureVoiceInputWin
                 val r = recorder ?: break
                 val scale = 0.8f + (r.level * 3f).coerceAtMost(1f) * 0.4f
                 ring.scaleX = scale; ring.scaleY = scale
+                wave?.setLevel(r.level)
                 if (!r.isRunning) { finishRecording(); break }
                 delay(60)
             }
             ring.scaleX = 1f; ring.scaleY = 1f
+            wave?.setLevel(0f)
         }
     }
 
