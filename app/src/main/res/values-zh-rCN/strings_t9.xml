@@ -2,4 +2,5 @@
 <resources>
     <string name="t9_keyboard">Rime 使用九宫格键盘</string>
     <string name="t9_keyboard_summary">当前输入法是 Rime 时，用九宫格代替全键盘，并自动切换到 Rime 的九键方案（例如白霜拼音自带的“中文九键”）。密码、邮箱、网址输入框仍然用全键盘</string>
+    <string name="expanded_candidate_style_keypad">5×5 宫格（同九宫格）</string>
 </resources>

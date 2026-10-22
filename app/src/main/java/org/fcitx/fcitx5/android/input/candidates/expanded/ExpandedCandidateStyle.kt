@@ -9,5 +9,7 @@ import org.fcitx.fcitx5.android.data.prefs.ManagedPreferenceEnum
 
 enum class ExpandedCandidateStyle(override val stringRes: Int) : ManagedPreferenceEnum {
     Grid(R.string.expanded_candidate_style_grid),
-    Flexbox(R.string.expanded_candidate_style_flexbox);
+    Flexbox(R.string.expanded_candidate_style_flexbox),
+    // mod: the nine-key layout's 5×5 list, without the pinyin column
+    Keypad(R.string.expanded_candidate_style_keypad);
 }
