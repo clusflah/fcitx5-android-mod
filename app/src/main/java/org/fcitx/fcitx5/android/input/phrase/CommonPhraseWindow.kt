@@ -76,7 +76,23 @@ class CommonPhraseWindow : InputWindow.ExtendedInputWindow<CommonPhraseWindow>()
         return root
     }
 
-    override fun onCreateBarExtension(): View = LinearLayout(context).apply {
+    // mod: card style: ∧ | 剪贴板 · 常用语 | manage, instead of the title
+    private val cardStyle = org.fcitx.fcitx5.android.data.theme.ThemeManager.prefs.cardStyle.getValue()
+
+    override val showTitle get() = !cardStyle
+
+    override fun onCreateBarExtension(): View = if (cardStyle) {
+        org.fcitx.fcitx5.android.input.bar.ui.PanelSwitchBar.create(
+            context, theme,
+            listOf(context.getString(R.string.clipboard), context.getString(R.string.common_phrase)), 1,
+            onBack = { windowManager.attachWindow(org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow) },
+            onSelect = { windowManager.attachWindow(org.fcitx.fcitx5.android.input.clipboard.ClipboardWindow()) },
+            actions = listOf(ToolButton(context, R.drawable.ic_baseline_settings_24, theme).apply {
+                contentDescription = context.getString(R.string.common_phrase_manage)
+                setOnClickListener { openManager() }
+            })
+        )
+    } else LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
         // 切换回剪贴板
         addView(ToolButton(context, R.drawable.ic_clipboard, theme).apply {

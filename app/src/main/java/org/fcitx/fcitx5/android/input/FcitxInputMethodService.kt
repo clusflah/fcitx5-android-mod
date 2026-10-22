@@ -351,6 +351,8 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
     }
 
     private fun handleBackspaceKey() {
+        // mod: the translate panel's field takes the keyboard's input
+        if (org.fcitx.fcitx5.android.input.translate.TranslateDraft.backspace()) return
         val lastSelection = selection.latest
         if (lastSelection.isNotEmpty()) {
             selection.predict(lastSelection.start)
@@ -382,6 +384,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
     }
 
     private fun handleReturnKey() {
+        if (org.fcitx.fcitx5.android.input.translate.TranslateDraft.submit()) return
         currentInputEditorInfo.run {
             if (inputType and InputType.TYPE_MASK_CLASS == InputType.TYPE_NULL ||
                 imeOptions.hasFlag(EditorInfo.IME_FLAG_NO_ENTER_ACTION)
@@ -422,6 +425,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
     }
 
     fun commitText(text: String, cursor: Int = -1) {
+        if (org.fcitx.fcitx5.android.input.translate.TranslateDraft.commit(text)) return
         val ic = currentInputConnection ?: return
         // when composing text equals commit content, finish composing text as-is
         if (composing.isNotEmpty() && composingText.toString() == text) {
@@ -1032,6 +1036,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
     // because of https://android.googlesource.com/platform/frameworks/base.git/+/refs/tags/android-11.0.0_r45/core/java/android/view/inputmethod/BaseInputConnection.java#851
     // it's not possible to set cursor inside composing text
     private fun updateComposingText(text: FormattedText) {
+        if (org.fcitx.fcitx5.android.input.translate.TranslateDraft.composing(text.toString())) return
         val ic = currentInputConnection ?: return
         val lastSelection = selection.latest
         ic.beginBatchEdit()
@@ -1161,6 +1166,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         Timber.d("onFinishInputView: finishingInput=$finishingInput")
+        org.fcitx.fcitx5.android.input.translate.TranslateDraft.closePanel?.invoke()
         // keyboard hidden while holding space: drop the recording
         if (org.fcitx.fcitx5.android.input.voice.VoicePushToTalk.isRecording) {
             org.fcitx.fcitx5.android.input.voice.VoicePushToTalk.cancel()

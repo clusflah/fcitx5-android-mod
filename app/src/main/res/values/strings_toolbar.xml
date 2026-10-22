@@ -7,4 +7,5 @@
     <string name="toolbar_button_voice">Voice input (tap to talk, tap again to recognize; not in password fields)</string>
     <string name="toolbar_button_pin">Pin to the right</string>
     <string name="toolbar_button_unpin">Unpin</string>
+    <string name="card_style">Round buttons and card panels</string>
 </resources>

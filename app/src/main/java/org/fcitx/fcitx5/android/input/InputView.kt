@@ -224,6 +224,13 @@ class InputView(
 
         customBackground.imageDrawable = theme.backgroundDrawable(keyBorder)
 
+        // mod: in-keyboard translate card above the toolbar, see TranslatePanel
+        val translatePanel = org.fcitx.fcitx5.android.input.translate.TranslatePanel(service, theme)
+        org.fcitx.fcitx5.android.input.translate.TranslateDraft.togglePanel = { translatePanel.toggle() }
+        org.fcitx.fcitx5.android.input.translate.TranslateDraft.closePanel = { translatePanel.close() }
+        // a panel left open by the previous input view must not keep swallowing input
+        org.fcitx.fcitx5.android.input.translate.TranslateDraft.stop()
+
         keyboardView = constraintLayout {
             // allow MotionEvent to be delivered to keyboard while pressing on padding views.
             // although it should be default for apps targeting Honeycomb (3.0, API 11) and higher,
@@ -233,8 +240,12 @@ class InputView(
                 centerVertically()
                 centerHorizontally()
             })
-            add(kawaiiBar.view, lParams(matchParent, dp(KawaiiBarComponent.HEIGHT)) {
+            add(translatePanel.view, lParams(matchParent, wrapContent) {
                 topOfParent()
+                centerHorizontally()
+            })
+            add(kawaiiBar.view, lParams(matchParent, dp(KawaiiBarComponent.HEIGHT)) {
+                below(translatePanel.view)
                 centerHorizontally()
             })
             add(leftPaddingSpace, lParams {
