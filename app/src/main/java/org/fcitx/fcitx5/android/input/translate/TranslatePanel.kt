@@ -8,7 +8,10 @@
 package org.fcitx.fcitx5.android.input.translate
 
 import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -18,7 +21,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.PopupMenu
+import android.widget.PopupWindow
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
@@ -128,6 +132,7 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
 
     fun close() {
         job?.cancel()
+        targetMenu?.dismiss()
         TranslateDraft.stop()
         TranslateDraft.onChange = null
         TranslateDraft.onSubmit = null
@@ -150,15 +155,64 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
         }
     }
 
+    private var targetMenu: PopupWindow? = null
+
+    /** The target language list, drawn in the keyboard theme's colors like the card itself. */
     private fun chooseTarget(anchor: View) {
-        PopupMenu(ctx, anchor).apply {
-            AiTranslate.TARGETS.forEachIndexed { i, t -> menu.add(0, i, i, "中文 → $t") }
-            setOnMenuItemClickListener {
-                AiTranslate.setTarget(ctx, AiTranslate.TARGETS[it.itemId])
-                refresh()
-                true
+        targetMenu?.dismiss()
+        val current = AiTranslate.target(ctx)
+        lateinit var window: PopupWindow
+        val list = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, ctx.dp(6), 0, ctx.dp(6))
+            AiTranslate.TARGETS.forEach { t ->
+                val selected = t == current
+                addView(TextView(ctx).apply {
+                    text = if (selected) "中文 → $t  ✓" else "中文 → $t"
+                    textSize = 15f
+                    setTextColor(if (selected) ThemePresetMod.JADE else theme.popupTextColor)
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(ctx.dp(18), 0, ctx.dp(18), 0)
+                    background = StateListDrawable().apply {
+                        addState(intArrayOf(android.R.attr.state_pressed), ColorDrawable(theme.keyPressHighlightColor))
+                    }
+                    setOnClickListener {
+                        AiTranslate.setTarget(ctx, t)
+                        refresh()
+                        window.dismiss()
+                    }
+                }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ctx.dp(44)))
             }
-        }.show()
+        }
+        val content = ScrollView(ctx).apply {
+            isVerticalScrollBarEnabled = false
+            background = GradientDrawable().apply {
+                cornerRadius = ctx.dp(14f)
+                setColor(theme.popupBackgroundColor)
+                setStroke(ctx.dp(1), theme.dividerColor)
+            }
+            clipToOutline = true
+            addView(list)
+        }
+        val width = ctx.dp(200)
+        list.measure(
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.UNSPECIFIED
+        )
+        val height = minOf(list.measuredHeight, ctx.dp(320))
+        window = PopupWindow(content, width, height, true).apply {
+            elevation = ctx.dp(8f)
+            isOutsideTouchable = true
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setOnDismissListener { targetMenu = null }
+        }
+        targetMenu = window
+        // open upwards over the app, the way the card sits on top of the keyboard
+        window.showAsDropDown(anchor, 0, -(anchor.height + height + ctx.dp(4)))
+        // keep the chosen language in view
+        AiTranslate.TARGETS.indexOf(current).takeIf { it > 0 }?.let { i ->
+            content.post { content.scrollTo(0, list.getChildAt(i).top - ctx.dp(6)) }
+        }
     }
 
     private fun translate() {
