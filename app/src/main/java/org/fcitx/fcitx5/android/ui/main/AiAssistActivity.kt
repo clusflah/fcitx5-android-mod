@@ -292,6 +292,10 @@ class AiAssistActivity : AppCompatActivity() {
         setContentView(ScrollView(this).apply { addView(root) })
         if (styled) {
             AiDialogStyle.styleWindow(window)
+            // sit lower on the screen, nearer the keyboard and the thumb
+            window.attributes = window.attributes.apply {
+                y = resources.displayMetrics.heightPixels / 4
+            }
             AiDialogStyle.apply(root)
             styleChips(formatBar)
             AiDialogStyle.compact(providerSpinner, header.getChildAt(header.childCount - 1) as Button)
