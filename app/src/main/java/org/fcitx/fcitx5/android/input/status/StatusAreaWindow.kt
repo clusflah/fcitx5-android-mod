@@ -38,6 +38,7 @@ import org.fcitx.fcitx5.android.utils.DeviceUtil
 import org.fcitx.fcitx5.android.utils.alpha
 import org.mechdancer.dependency.manager.must
 import splitties.dimensions.dp
+import timber.log.Timber
 import splitties.resources.styledColor
 import splitties.views.backgroundColor
 import splitties.views.dsl.core.add
@@ -89,6 +90,8 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
 
     var popupMenu: PopupMenu? = null
 
+    private var cardMenu: android.widget.PopupWindow? = null
+
     private val adapter: StatusAreaAdapter by lazy {
         object : StatusAreaAdapter() {
             override fun onItemClick(view: View, entry: StatusAreaEntry) {
@@ -96,7 +99,29 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
                     is StatusAreaEntry.Fcitx -> {
                         val actions = entry.action.menu
                         if (actions.isNullOrEmpty()) {
+                            // mod: Rime's schema button without its schema list (seen on the nine-key
+                            // schema) must not be activated; the 键盘选择 panel switches layouts instead
+                            if (entry.action.name == "fcitx-rime-im") {
+                                windowManager.attachWindow(KeyboardPickerWindow())
+                                return
+                            }
                             activateAction(entry.action)
+                            return
+                        }
+                        // mod: card style: the keyboard-colored menu used elsewhere in the keyboard
+                        if (ThemeManager.prefs.cardStyle.getValue()) {
+                            val items = actions.filter {
+                                !it.isSeparator &&
+                                        !(entry.action.name == "fcitx-rime-im" && RimeT9.isT9Schema(it.shortText))
+                            }
+                            if (items.isEmpty()) return
+                            val current = items.indexOfFirst { it.isChecked || it.shortText == entry.action.longText }
+                            cardMenu?.dismiss()
+                            cardMenu = runCatching {
+                                org.fcitx.fcitx5.android.input.bar.ui.CardPopupMenu.show(
+                                    view, theme, items.map { it.shortText }, current
+                                ) { activateAction(items[it]) }
+                            }.onFailure { Timber.w(it, "status area menu") }.getOrNull()
                             return
                         }
                         val popup = PopupMenu(context, view)
@@ -227,5 +252,7 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
     override fun onDetached() {
         popupMenu?.dismiss()
         popupMenu = null
+        cardMenu?.dismiss()
+        cardMenu = null
     }
 }
