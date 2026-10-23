@@ -39,7 +39,8 @@ class PopupStripUi(
 ) : PopupContainerUi(ctx, theme, outerBounds, triggerBounds, onDismissSelf) {
 
     private val cellWidth = ctx.dp(34)
-    private val height = triggerBounds.height() - verticalMargin * 2
+    // not `height`: inside the view DSL blocks below that would be the view's own (still 0) height
+    private val cellHeight = triggerBounds.height() - verticalMargin * 2
     private val initialFocus = focus.coerceIn(0, items.lastIndex)
 
     // the picked cell sits over the key's center, the whole strip kept on screen
@@ -71,7 +72,7 @@ class PopupStripUi(
         }
         outlineProvider = ViewOutlineProvider.BACKGROUND
         elevation = dp(2f)
-        cells.forEach { add(ctx.frameLayout { add(it, lParams(cellWidth, height)) }, lParams()) }
+        cells.forEach { add(ctx.frameLayout { add(it, lParams(cellWidth, cellHeight)) }, lParams()) }
     }
 
     private var focused = -1
