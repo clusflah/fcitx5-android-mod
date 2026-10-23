@@ -26,10 +26,21 @@ import splitties.views.dsl.core.view
 
 class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
 
-    override val root = view(::FlexboxLayout) {
+    /** the buttons, spread out while they fit */
+    private val bar = view(::FlexboxLayout) {
         alignItems = AlignItems.CENTER
         justifyContent = JustifyContent.SPACE_AROUND
     }
+
+    // mod: when the buttons don't fit they keep their size and the row scrolls sideways
+    override val root = android.widget.HorizontalScrollView(ctx).apply {
+        isHorizontalScrollBarEnabled = false
+        isFillViewport = true
+        overScrollMode = View.OVER_SCROLL_NEVER
+        addView(bar, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
+    }
+
+    private fun barParams(size: Int) = FlexboxLayout.LayoutParams(size, size).apply { flexShrink = 0f }
 
     private val prefs = AppPrefs.getInstance().keyboard
 
@@ -48,7 +59,7 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
     ) =
         ToolButton(ctx, icon, theme).also { button ->
             val size = ctx.dp(40)
-            root.addView(button, FlexboxLayout.LayoutParams(size, size))
+            bar.addView(button, barParams(size))
             button.visibility = if (show.getValue() && allowed()) View.VISIBLE else View.GONE
             val listener = ManagedPreference.OnChangeListener<Boolean> { _, v ->
                 button.visibility = if (v && allowed()) View.VISIBLE else View.GONE
@@ -138,7 +149,7 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
             val v = buttonOf[b] ?: return@forEach
             (v.parent as? ViewGroup)?.removeView(v)
             if (b in pinned) pinnedRoot.addView(v, LinearLayout.LayoutParams(size, size))
-            else root.addView(v, FlexboxLayout.LayoutParams(size, size))
+            else bar.addView(v, barParams(size))
         }
     }
 
