@@ -52,7 +52,9 @@ data class ClipboardEntry(
                 false
             }
             return ClipboardEntry(
-                text = if (transformer != null) transformer(str) else str,
+                // mod: sensitive clips (e.g. a generated password) skip the transformers, so plugins
+                // such as clipboard-sync never see or upload them
+                text = if (transformer != null && !sensitive) transformer(str) else str,
                 timestamp = clipData.timestamp(),
                 type = desc.getMimeType(0),
                 sensitive = sensitive
