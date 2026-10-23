@@ -45,7 +45,7 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
     /** mod: a rounded tile with the icon above a grey label, instead of a circle */
     private val card = ThemeManager.prefs.cardStyle.getValue()
 
-    private val cardDrawable = GradientDrawable().apply { cornerRadius = ctx.dp(16f) }
+    private val cardDrawable = GradientDrawable().apply { cornerRadius = ctx.dp(12f) }
 
     private val bkgDrawable = ShapeDrawable(OvalShape())
 
@@ -76,18 +76,18 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
 
     private fun cardContent() = constraintLayout {
         background = cardDrawable
-        add(bkg, lParams(dp(32), dp(32)) {
-            topOfParent(dp(14))
+        add(bkg, lParams(dp(26), dp(26)) {
+            topOfParent(dp(10))
             centerHorizontally()
         })
-        add(icon, lParams(dp(28), dp(28)) {
+        add(icon, lParams(dp(24), dp(24)) {
             centerOn(bkg)
         })
         add(textIcon, lParams(wrapContent, wrapContent) {
             centerOn(bkg)
         })
         add(label, lParams(wrapContent, wrapContent) {
-            below(bkg, dp(8))
+            below(bkg, dp(6))
             centerHorizontally()
         })
     }
@@ -113,8 +113,8 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
 
         init {
             if (card) {
-                add(content, lParams(matchParent, matchParent) { setMargins(dp(6), dp(6), dp(6), dp(6)) })
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(92))
+                add(content, lParams(matchParent, matchParent) { setMargins(dp(4), dp(4), dp(4), dp(4)) })
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(72))
             } else {
                 add(content, lParams(matchParent, matchParent))
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(96))
