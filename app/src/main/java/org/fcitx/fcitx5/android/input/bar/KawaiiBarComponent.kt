@@ -708,7 +708,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 // mod: tap opens Bitwarden; long-press and slide onto 生成用户名 / 生成密码
                 org.fcitx.fcitx5.android.input.bar.ui.DragChooser.attach(
                     passwordManagerButton, theme,
-                    labels = { listOf("生成用户名", "生成密码") },
+                    labels = { listOf("用户名", "密码") },
                     onClick = { if (!PasswordManager.launch(service)) context.toast("没有安装 Bitwarden") },
                     onPick = { generateCredential(password = it == 1) }
                 )
