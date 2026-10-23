@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: LGPL-2.1-or-later
- * mod: the in-keyboard translate card above the toolbar ("中英互译 ∨ … 收起" and a field the keyboard
+ * mod: the in-keyboard translate card above the toolbar ("中外互译 ∨ … 收起" and a field the keyboard
  * types into, see TranslateDraft). 翻译 or the return key translates the draft with the engine chosen
  * in the translate settings and sends the translation to the app. Hidden unless opened from the
  * toolbar's translate button.
@@ -8,10 +8,7 @@
 package org.fcitx.fcitx5.android.input.translate
 
 import android.content.res.ColorStateList
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.StateListDrawable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -22,7 +19,6 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
-import android.widget.ScrollView
 import android.widget.TextView
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
@@ -32,6 +28,7 @@ import org.fcitx.fcitx5.android.data.ai.AiTranslate
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.data.theme.ThemePresetMod
 import org.fcitx.fcitx5.android.input.FcitxInputMethodService
+import org.fcitx.fcitx5.android.input.bar.ui.CardPopupMenu
 import splitties.dimensions.dp
 
 class TranslatePanel(private val service: FcitxInputMethodService, private val theme: Theme) {
@@ -88,7 +85,7 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
                 setColor(theme.keyBackgroundColor)
             }
             clipToOutline = true
-            // header: 文A 中英互译 ∨ ............ 收起
+            // header: 文A 中外互译 ∨ ............ 收起
             addView(LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -143,7 +140,7 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
 
     private fun refresh() {
         val draft = TranslateDraft.text.toString()
-        directionText.text = "中英互译 · ${AiTranslate.directionLabel(ctx, draft).substringBefore('，')}  ∨"
+        directionText.text = "中外互译 · ${AiTranslate.directionLabel(ctx, draft).substringBefore('，')}  ∨"
         val preedit = TranslateDraft.preedit
         field.text = if (draft.isEmpty() && preedit.isEmpty()) "" else SpannableStringBuilder(draft).apply {
             if (preedit.isNotEmpty()) {
@@ -160,59 +157,13 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
     /** The target language list, drawn in the keyboard theme's colors like the card itself. */
     private fun chooseTarget(anchor: View) {
         targetMenu?.dismiss()
-        val current = AiTranslate.target(ctx)
-        lateinit var window: PopupWindow
-        val list = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, ctx.dp(6), 0, ctx.dp(6))
-            AiTranslate.TARGETS.forEach { t ->
-                val selected = t == current
-                addView(TextView(ctx).apply {
-                    text = if (selected) "中文 → $t  ✓" else "中文 → $t"
-                    textSize = 15f
-                    setTextColor(if (selected) ThemePresetMod.JADE else theme.popupTextColor)
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(ctx.dp(18), 0, ctx.dp(18), 0)
-                    background = StateListDrawable().apply {
-                        addState(intArrayOf(android.R.attr.state_pressed), ColorDrawable(theme.keyPressHighlightColor))
-                    }
-                    setOnClickListener {
-                        AiTranslate.setTarget(ctx, t)
-                        refresh()
-                        window.dismiss()
-                    }
-                }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ctx.dp(44)))
-            }
-        }
-        val content = ScrollView(ctx).apply {
-            isVerticalScrollBarEnabled = false
-            background = GradientDrawable().apply {
-                cornerRadius = ctx.dp(14f)
-                setColor(theme.popupBackgroundColor)
-                setStroke(ctx.dp(1), theme.dividerColor)
-            }
-            clipToOutline = true
-            addView(list)
-        }
-        val width = ctx.dp(200)
-        list.measure(
-            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.UNSPECIFIED
-        )
-        val height = minOf(list.measuredHeight, ctx.dp(320))
-        window = PopupWindow(content, width, height, true).apply {
-            elevation = ctx.dp(8f)
-            isOutsideTouchable = true
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            setOnDismissListener { targetMenu = null }
-        }
-        targetMenu = window
-        // open upwards over the app, the way the card sits on top of the keyboard
-        window.showAsDropDown(anchor, 0, -(anchor.height + height + ctx.dp(4)))
-        // keep the chosen language in view
-        AiTranslate.TARGETS.indexOf(current).takeIf { it > 0 }?.let { i ->
-            content.post { content.scrollTo(0, list.getChildAt(i).top - ctx.dp(6)) }
-        }
+        val targets = AiTranslate.TARGETS
+        targetMenu = CardPopupMenu.show(
+            anchor, theme, targets.map { "中文 → $it" }, targets.indexOf(AiTranslate.target(ctx))
+        ) {
+            AiTranslate.setTarget(ctx, targets[it])
+            refresh()
+        }.apply { setOnDismissListener { targetMenu = null } }
     }
 
     private fun translate() {

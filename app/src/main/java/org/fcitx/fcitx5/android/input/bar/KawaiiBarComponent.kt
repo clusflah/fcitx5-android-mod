@@ -273,12 +273,11 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         val prompts = AiConfig.prompts(context)
         if (prompts.isEmpty()) { context.toast("还没有提示词，请在大模型设置里添加"); return }
         val last = AiConfig.lastPrompt(context)
-        val menu = android.widget.PopupMenu(context, anchor)
-        prompts.forEachIndexed { i, p ->
-            menu.menu.add(0, i, i, if (p.id == last) "✓ ${p.name}" else p.name)
-        }
-        menu.setOnMenuItemClickListener { item ->
-            val prompt = prompts[item.itemId]
+        // mod: the same keyboard-colored card as the translate target menu
+        org.fcitx.fcitx5.android.input.bar.ui.CardPopupMenu.show(
+            anchor, theme, prompts.map { it.name }, prompts.indexOfFirst { it.id == last }
+        ) { i ->
+            val prompt = prompts[i]
             AiConfig.setLastPrompt(context, prompt.id)
             val provider = AiConfig.provider(context)
             replaceInPlace(
@@ -286,9 +285,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 status = { "${prompt.name}中…（${provider.label}）" },
                 failure = "${prompt.name}失败"
             ) { text -> AiPromptRunner.run(context, prompt, text) }
-            true
         }
-        menu.show()
     }
 
     /**
