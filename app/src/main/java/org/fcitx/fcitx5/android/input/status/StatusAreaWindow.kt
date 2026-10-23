@@ -173,6 +173,11 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
             }
             layoutManager = gridLayoutManager(4)
             adapter = this@StatusAreaWindow.adapter
+            // mod: room around the tiles, like the panels of common phone keyboards
+            if (ThemeManager.prefs.cardStyle.getValue()) {
+                setPadding(dp(9), dp(4), dp(9), dp(4))
+                clipToPadding = false
+            }
         }
     }
 
