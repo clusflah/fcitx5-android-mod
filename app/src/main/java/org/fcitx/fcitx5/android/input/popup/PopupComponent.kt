@@ -116,6 +116,15 @@ class PopupComponent :
     }
 
     private fun showKeyboard(viewId: Int, keyboard: KeyDef.Popup.Keyboard, bounds: Rect) {
+        // mod: nine-key strip, without the preview bubble
+        if (keyboard is StripPopup) {
+            showingEntryUi[viewId]?.let { dismissPopupEntry(viewId, it) }
+            showPopupContainer(viewId, PopupStripUi(
+                context, theme, rootBounds, bounds, { dismissPopup(viewId) },
+                popupRadius, keyBottomMargin, keyboard.items, keyboard.focus
+            ))
+            return
+        }
         var keys: Array<String>
         var labels: Array<String>
         when (keyboard) {

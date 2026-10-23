@@ -33,13 +33,22 @@ import org.fcitx.fcitx5.android.data.theme.ThemeManager
 import org.fcitx.fcitx5.android.utils.pressHighlightDrawable
 import org.fcitx.fcitx5.android.input.keyboard.KeyDef.Appearance.Variant
 import org.fcitx.fcitx5.android.input.picker.PickerWindow
+import org.fcitx.fcitx5.android.input.popup.StripPopup
 import splitties.dimensions.dp
 import splitties.views.dsl.constraintlayout.lParams
 import splitties.views.dsl.core.add
 import splitties.views.imageResource
 
-/** A letter group key: tap sends the digit; swipe types the digit itself. */
-class T9Key(letters: String, digit: Int, display: String = letters, viewId: Int = -1) : KeyDef(
+/**
+ * A letter group key: tap sends the digit; swipe types the digit itself; long press opens a row of
+ * its letters, lower then upper case, the first capital picked (or [strip] if given).
+ */
+class T9Key(
+    letters: String, digit: Int, display: String = letters, viewId: Int = -1,
+    strip: StripPopup = StripPopup(
+        (letters.lowercase() + letters.uppercase()).map { it.toString() }.toTypedArray(), letters.length
+    )
+) : KeyDef(
     Appearance.Text(
         displayText = display,
         textSize = 20f,
@@ -50,7 +59,7 @@ class T9Key(letters: String, digit: Int, display: String = letters, viewId: Int 
         Behavior.Press(KeyAction.FcitxKeyAction(digit.toString())),
         Behavior.Swipe(KeyAction.SymAction(KeySym(FcitxKeyMapping.FcitxKey_KP_0 + digit), NumLockState))
     ),
-    arrayOf(Popup.AltPreview(display, digit.toString()))
+    arrayOf(Popup.AltPreview(display, digit.toString()), strip)
 )
 
 /** Text key running an arbitrary action. */
@@ -126,7 +135,7 @@ class T9Keyboard(
             listOf(
                 T9Placeholder(LEFT_IDS[0]),
                 // 1: syllable separator while typing (the schema maps it to '), symbol row otherwise
-                T9Key("@#", 1, viewId = SEPARATOR_ID),
+                T9Key("@#", 1, viewId = SEPARATOR_ID, strip = StripPopup(arrayOf("/", "-", "_", "@", "#", "."), 3)),
                 T9Key("ABC", 2),
                 T9Key("DEF", 3),
                 BackspaceKey(SIDE_WIDTH)
