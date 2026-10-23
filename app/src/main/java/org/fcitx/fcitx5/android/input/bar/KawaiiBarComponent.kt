@@ -250,6 +250,33 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
      * (Chinese → the target language in settings, anything else → Chinese). Nothing is replaced if
      * the field changed while waiting for the translation.
      */
+    /**
+     * Long-press on the Bitwarden button: generate a username or password, type it and put it on
+     * the clipboard (marked sensitive: masked by the system and skipped by clipboard plugins, see
+     * ClipboardEntry), so it can still be found if the app doesn't keep it. A password is only
+     * typed into password fields; elsewhere it just goes to the clipboard.
+     */
+    private fun generateCredential(password: Boolean) {
+        val value = if (password) org.fcitx.fcitx5.android.data.password.CredentialGenerator.password()
+        else org.fcitx.fcitx5.android.data.password.CredentialGenerator.username()
+        val clip = android.content.ClipData.newPlainText(if (password) "password" else "username", value)
+        if (password && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            clip.description.extras = android.os.PersistableBundle().apply {
+                putBoolean(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) android.content.ClipDescription.EXTRA_IS_SENSITIVE
+                    else "android.content.extra.IS_SENSITIVE", true
+                )
+            }
+        }
+        runCatching { service.clipboardManager.setPrimaryClip(clip) }
+        if (!password || isPasswordField) {
+            service.commitText(value)
+            context.toast(if (password) "已生成密码并复制到剪贴板" else "已生成用户名并复制到剪贴板")
+        } else {
+            context.toast("这里不是密码框，密码只复制到了剪贴板")
+        }
+    }
+
     private fun translateInPlace() {
         if (isPasswordField) { context.toast("密码框里不翻译"); return }
         val engine = AiTranslate.engine(context)
@@ -678,9 +705,13 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                     context.toast(if (t9.getValue()) "九宫格（Rime 时生效）" else "全键盘")
                     true
                 }
-                passwordManagerButton.setOnClickListener {
-                    if (!PasswordManager.launch(service)) context.toast("没有安装 Bitwarden")
-                }
+                // mod: tap opens Bitwarden; long-press and slide onto 生成用户名 / 生成密码
+                org.fcitx.fcitx5.android.input.bar.ui.DragChooser.attach(
+                    passwordManagerButton, theme,
+                    labels = { listOf("生成用户名", "生成密码") },
+                    onClick = { if (!PasswordManager.launch(service)) context.toast("没有安装 Bitwarden") },
+                    onPick = { generateCredential(password = it == 1) }
+                )
                 moreButton.setOnClickListener {
                     windowManager.attachWindow(StatusAreaWindow())
                 }
