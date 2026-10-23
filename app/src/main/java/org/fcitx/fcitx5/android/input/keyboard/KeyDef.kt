@@ -121,7 +121,8 @@ open class KeyDef(
             data class Preset(val label: String, val transformPunctuation: Boolean = true) :
                 Keyboard()
 
-            class Explicit(val items: Array<String>) : Keyboard()
+            // mod: open for the nine-key strip (input/popup/PopupStripUi.kt)
+            open class Explicit(val items: Array<String>) : Keyboard()
         }
 
         class Menu(val items: Array<Item>) : Popup() {
