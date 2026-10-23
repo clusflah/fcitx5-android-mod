@@ -234,6 +234,18 @@ class T9Keyboard(
     /** Rime input not converted yet, as last read from the preedit */
     private var pendingRaw: String? = null
 
+    /** the code in Rime's input, chosen syllables included; null when nothing is typed */
+    private var typedRaw: String? = null
+
+    /** syllables chosen from the column, in order; their letters start Rime's input */
+    private val chosen = mutableListOf<String>()
+
+    /** a chosen syllable that backspace turned back into digits: highlighted in the column */
+    private var reselect: String? = null
+
+    /** a backspace rewrote the input; further ones wait for Rime's new preedit */
+    private var awaitingPreedit = false
+
     init {
         // the key rows are the children added by BaseKeyboard; constraints need ids
         val rows = (0 until childCount).map { getChildAt(it) }
@@ -286,6 +298,8 @@ class T9Keyboard(
         typing = preedit.isNotEmpty()
         separatorKey?.mainText?.text = if (typing) "'词" else "@#"
         if (typing) symbolStrip?.hide()
+        awaitingPreedit = false
+        syncChosen(T9Pinyin.typedInput(preedit))
         val raw = T9Pinyin.pendingInput(preedit)
         if (raw == pendingRaw) return
         pendingRaw = raw
@@ -294,12 +308,67 @@ class T9Keyboard(
             showMarks()
             return
         }
+        // the syllable backspace gave back, while its digits are still the ones being chosen
+        val digits = raw!!.dropWhile { it !in '2'..'9' }
+        val highlighted = reselect?.takeIf { digits == T9Pinyin.encode(it) }
         columnList.removeAllViews()
         options.forEach { syllable ->
-            columnList.addView(columnItem(syllable) { choose(syllable) }.apply { minHeight = dp(42) },
-                LinearLayout.LayoutParams(MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            columnList.addView(columnItem(syllable) { choose(syllable) }.apply {
+                minHeight = dp(42)
+                if (syllable == highlighted) {
+                    setBackgroundColor(theme.keyBackgroundColor)
+                    setTextColor(theme.keyTextColor)
+                    foreground = pressHighlightDrawable(theme.keyPressHighlightColor)
+                }
+            }, LinearLayout.LayoutParams(MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }
         leftColumn.scrollTo(0, 0)
+    }
+
+    /** Keep [chosen] matching the letters at the start of Rime's input (e.g. after a word was picked). */
+    private fun syncChosen(raw: String?) {
+        typedRaw = raw
+        val letters = raw?.takeWhile { it !in '2'..'9' }.orEmpty()
+        if (letters.isEmpty()) {
+            chosen.clear()
+            if (raw == null) reselect = null
+        } else if (chosen.joinToString("") != letters) {
+            chosen.clear()
+            // letters typed some other way (or a ' separator): read them as pinyin
+            if ('\'' !in letters) T9Pinyin.spell(letters)?.let { chosen.addAll(it) }
+        }
+    }
+
+    private fun backspace() = keyActionListener?.onKeyAction(
+        KeyAction.SymAction(KeySym(FcitxKeyMapping.FcitxKey_BackSpace)), KeyActionListener.Source.Keyboard
+    )
+
+    /**
+     * Backspace over a chosen syllable gives it back as digits, so it can be chosen again from the
+     * column (where it shows highlighted): deleting the last digit after "zen me" + 7 leaves
+     * "zen" + 63 rather than "zenme"; with every syllable chosen, the last one goes back to its
+     * digits minus the last one, as if that digit had been deleted.
+     * @return false to let the backspace through unchanged
+     */
+    private fun backspaceOverChosen(): Boolean {
+        if (awaitingPreedit) return true
+        val raw = typedRaw ?: return false
+        if (chosen.isEmpty() || '\'' in raw) return false
+        val digits = raw.length - raw.indexOfFirst { it in '2'..'9' }.let { if (it < 0) raw.length else it }
+        val last = chosen.last()
+        val typeBack = when (digits) {
+            // the only digit goes; the syllable before it becomes digits again
+            1 -> T9Pinyin.encode(last).also { backspace() }
+            // nothing left to choose: the last chosen syllable loses its last letter
+            0 -> T9Pinyin.encode(last).dropLast(1)
+            else -> return false
+        }
+        repeat(last.length) { backspace() }
+        typeBack.forEach { sendKey(it.toString()) }
+        chosen.removeAt(chosen.lastIndex)
+        reselect = last.takeIf { typeBack.length == last.length }
+        awaitingPreedit = true
+        return true
     }
 
     /** Replace the digits the syllable covers with its letters: delete from the end, retype. */
@@ -307,6 +376,8 @@ class T9Keyboard(
         val raw = pendingRaw ?: return
         val (delete, type) = T9Pinyin.replacement(raw, syllable) ?: return
         val listener = keyActionListener ?: return
+        chosen.add(syllable)
+        reselect = null
         repeat(delete) {
             listener.onKeyAction(
                 KeyAction.SymAction(KeySym(FcitxKeyMapping.FcitxKey_BackSpace)), KeyActionListener.Source.Keyboard
@@ -330,6 +401,10 @@ class T9Keyboard(
                 return
             }
         }
+        // backspace over a chosen syllable: give it back as digits to choose again
+        if (typing && action is KeyAction.SymAction &&
+            action.sym.sym == FcitxKeyMapping.FcitxKey_BackSpace && backspaceOverChosen()
+        ) return
         // 1 with nothing typed: toggle the symbol row instead of sending it to Rime
         if (action is KeyAction.FcitxKeyAction && action.act == "1" && !typing) {
             val strip = symbolStrip

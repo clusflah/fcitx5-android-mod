@@ -59,6 +59,15 @@ object T9Pinyin {
         return tail.replace(" ", "").takeIf { raw -> raw.any { it in '2'..'9' } }
     }
 
+    /**
+     * Like [pendingInput], but also when every syllable has been chosen already (no digits left):
+     * the code still in Rime's input, or null when there is none.
+     */
+    fun typedInput(preedit: String): String? {
+        val tail = preedit.takeLastWhile { it == ' ' || it == '\'' || it in 'a'..'z' || it in '0'..'9' }
+        return tail.replace(" ", "").takeIf { raw -> raw.any { it in 'a'..'z' || it in '2'..'9' } }
+    }
+
     /** Index in [raw] of the first digit, i.e. where the syllables not chosen yet start. */
     private fun digitStart(raw: String) = raw.indexOfFirst { it in '2'..'9' }
 

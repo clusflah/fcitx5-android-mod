@@ -69,6 +69,12 @@ abstract class BaseKeyboard(
 
     private val hapticOnRepeat by prefs.keyboard.hapticOnRepeat
 
+    /**
+     * mod: Rime has input being typed (set by KeyboardWindow). Rime's ← → move the caret a whole
+     * syllable; its keypad ← → move it one letter, so swiping on space uses those meanwhile.
+     */
+    var rimeComposing = false
+
     var popupActionListener: PopupActionListener? = null
 
     private val selectionSwipeThreshold = dp(10f)
@@ -171,8 +177,12 @@ abstract class BaseKeyboard(
                         GestureType.Move -> when (val count = event.countX) {
                             0 -> false
                             else -> {
-                                val sym =
-                                    if (count > 0) FcitxKeyMapping.FcitxKey_Right else FcitxKeyMapping.FcitxKey_Left
+                                val sym = when {
+                                    rimeComposing && count > 0 -> 0xff98 // KP_Right
+                                    rimeComposing -> 0xff96 // KP_Left
+                                    count > 0 -> FcitxKeyMapping.FcitxKey_Right
+                                    else -> FcitxKeyMapping.FcitxKey_Left
+                                }
                                 val action = KeyAction.SymAction(KeySym(sym), KeyStates.Virtual)
                                 repeat(count.absoluteValue) {
                                     onAction(action)
