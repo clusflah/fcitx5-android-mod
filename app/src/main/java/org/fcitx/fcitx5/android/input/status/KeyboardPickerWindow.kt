@@ -54,10 +54,10 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
         card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
-                cornerRadius = context.dp(20f)
+                cornerRadius = context.dp(16f)
                 setColor(theme.popupBackgroundColor)
             }
-            val p = context.dp(10)
+            val p = context.dp(6)
             setPadding(p, p, p, p)
         }
         return ScrollView(context).apply {
@@ -114,7 +114,9 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
         tiles.chunked(COLUMNS).forEach { row ->
             card.addView(LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
-                row.forEach { addView(tileView(it), LinearLayout.LayoutParams(0, context.dp(92), 1f)) }
+                row.forEach { addView(tileView(it), LinearLayout.LayoutParams(0, context.dp(66), 1f).apply {
+                    setMargins(context.dp(2), context.dp(2), context.dp(2), context.dp(2))
+                }) }
                 // keep the last row's tiles the same width as the others
                 repeat(COLUMNS - row.size) { addView(View(context), LinearLayout.LayoutParams(0, 0, 1f)) }
             })
@@ -127,22 +129,28 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             background = GradientDrawable().apply {
-                cornerRadius = context.dp(16f)
+                cornerRadius = context.dp(12f)
                 setColor(if (tile.selected) theme.keyBackgroundColor else android.graphics.Color.TRANSPARENT)
             }
             foreground = pressHighlightDrawable(theme.keyPressHighlightColor)
             addView(ImageView(context).apply {
                 setImageResource(tile.icon)
                 imageTintList = ColorStateList.valueOf(color)
-            }, LinearLayout.LayoutParams(context.dp(30), context.dp(30)))
+            }, LinearLayout.LayoutParams(context.dp(24), context.dp(24)).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+            })
+            // full width and centered, so the label sits right under the icon whatever its length
             addView(TextView(context).apply {
                 text = tile.label
-                textSize = 13f
+                textSize = 12f
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
+                gravity = Gravity.CENTER_HORIZONTAL
+                textAlignment = View.TEXT_ALIGNMENT_CENTER
+                includeFontPadding = false
                 setTextColor(if (tile.selected) color else theme.altKeyTextColor)
-                setPadding(context.dp(4), context.dp(8), context.dp(4), 0)
-            })
+                setPadding(context.dp(2), context.dp(6), context.dp(2), 0)
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             setOnClickListener {
                 InputFeedbacks.hapticFeedback(it)
                 tile.onClick()
