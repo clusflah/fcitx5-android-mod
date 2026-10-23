@@ -27,6 +27,7 @@ import splitties.views.dsl.constraintlayout.centerHorizontally
 import splitties.views.dsl.constraintlayout.centerOn
 import splitties.views.dsl.constraintlayout.constraintLayout
 import splitties.views.dsl.constraintlayout.lParams
+import splitties.views.dsl.constraintlayout.matchConstraints
 import splitties.views.dsl.constraintlayout.topOfParent
 import splitties.views.dsl.core.Ui
 import splitties.views.dsl.core.add
@@ -45,7 +46,7 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
     /** mod: a rounded tile with the icon above a grey label, instead of a circle */
     private val card = ThemeManager.prefs.cardStyle.getValue()
 
-    private val cardDrawable = GradientDrawable().apply { cornerRadius = ctx.dp(12f) }
+    private val cardDrawable = GradientDrawable().apply { cornerRadius = ctx.dp(18f) }
 
     private val bkgDrawable = ShapeDrawable(OvalShape())
 
@@ -71,24 +72,27 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
     val label = textView {
         textSize = 12f
         gravity = gravityCenter
+        maxLines = 1
+        ellipsize = android.text.TextUtils.TruncateAt.END
         setTextColor(if (card) theme.altKeyTextColor else theme.keyTextColor)
     }
 
     private fun cardContent() = constraintLayout {
         background = cardDrawable
-        add(bkg, lParams(dp(26), dp(26)) {
-            topOfParent(dp(10))
+        add(bkg, lParams(dp(28), dp(28)) {
+            topOfParent(dp(14))
             centerHorizontally()
         })
-        add(icon, lParams(dp(24), dp(24)) {
+        add(icon, lParams(dp(26), dp(26)) {
             centerOn(bkg)
         })
         add(textIcon, lParams(wrapContent, wrapContent) {
             centerOn(bkg)
         })
-        add(label, lParams(wrapContent, wrapContent) {
-            below(bkg, dp(6))
+        add(label, lParams(matchConstraints, wrapContent) {
+            below(bkg, dp(8))
             centerHorizontally()
+            setMargins(dp(4), dp(8), dp(4), 0)
         })
     }
 
@@ -113,8 +117,8 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
 
         init {
             if (card) {
-                add(content, lParams(matchParent, matchParent) { setMargins(dp(4), dp(4), dp(4), dp(4)) })
-                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(72))
+                add(content, lParams(matchParent, matchParent) { setMargins(dp(7), dp(7), dp(7), dp(7)) })
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(92))
             } else {
                 add(content, lParams(matchParent, matchParent))
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(96))
@@ -123,9 +127,12 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
     }
 
     fun setEntry(entry: StatusAreaEntry) {
+        // mod: a tile shows only the current side of a "current → next" switch, on / off by color
+        val shown = if (card) StatusSwitchLabel.of(entry.label) else StatusSwitchLabel.Shown(entry.label, null)
+        val on = entry.active || shown.on == true
         val contentColor = when {
             // mod: on a tile the active state is a green icon and label
-            card && entry.active -> theme.genericActiveBackgroundColor
+            card && on -> theme.genericActiveBackgroundColor
             card -> theme.keyTextColor
             entry.active -> theme.genericActiveForegroundColor
             else -> theme.keyTextColor
@@ -139,18 +146,27 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
         } else {
             icon.visibility = View.GONE
             textIcon.visibility = View.VISIBLE
-            textIcon.text = getFirstCharacter(entry.label)
+            textIcon.text = getFirstCharacter(shown.label)
             textIcon.setTextColor(contentColor)
         }
         if (card) {
             bkgDrawable.paint.color = android.graphics.Color.TRANSPARENT
-            cardDrawable.setColor(theme.popupBackgroundColor)
-            label.setTextColor(if (entry.active) theme.genericActiveBackgroundColor else theme.altKeyTextColor)
+            // light tiles on the keyboard color; switched-on ones get a green tint
+            cardDrawable.setColor(
+                if (on) blend(theme.keyBackgroundColor, theme.genericActiveBackgroundColor, 0.16f)
+                else theme.keyBackgroundColor
+            )
+            label.setTextColor(if (on) theme.genericActiveBackgroundColor else theme.altKeyTextColor)
         } else {
             bkgDrawable.paint.color =
                 if (entry.active) theme.genericActiveBackgroundColor else theme.keyBackgroundColor
         }
-        label.text = entry.label
+        label.text = shown.label
+    }
+
+    private fun blend(base: Int, tint: Int, amount: Float): Int {
+        fun ch(shift: Int) = ((base shr shift and 0xff) * (1 - amount) + (tint shr shift and 0xff) * amount).toInt()
+        return (0xff shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
     }
 
     private fun getFirstCharacter(s: String): String {
