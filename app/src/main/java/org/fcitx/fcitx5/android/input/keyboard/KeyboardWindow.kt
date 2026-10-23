@@ -267,7 +267,11 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     }
 
     private fun updateT9Preedit() {
-        (currentKeyboard as? T9Keyboard)?.onPreeditUpdate(panelPreedit.ifEmpty { clientPreedit })
+        val preedit = panelPreedit.ifEmpty { clientPreedit }
+        // mod: swiping on space moves Rime's caret one letter at a time (see BaseKeyboard)
+        currentKeyboard?.rimeComposing = preedit.isNotEmpty() &&
+                fcitx.runImmediately { inputMethodEntryCached }.uniqueName == RimeT9.RIME
+        (currentKeyboard as? T9Keyboard)?.onPreeditUpdate(preedit)
     }
 
     override fun onPunctuationUpdate(mapping: Map<String, String>) {
