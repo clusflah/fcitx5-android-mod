@@ -128,7 +128,8 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
 
     fun setEntry(entry: StatusAreaEntry) {
         // mod: a tile shows only the current side of a "current → next" switch, on / off by color
-        val shown = if (card) StatusSwitchLabel.of(entry.label) else StatusSwitchLabel.Shown(entry.label, null)
+        val shown = if (card) StatusSwitchLabel.of(entry.label, (entry as? StatusAreaEntry.Fcitx)?.action?.name)
+        else StatusSwitchLabel.Shown(entry.label, null)
         val on = entry.active || shown.on == true
         val contentColor = when {
             // mod: on a tile the active state is a green icon and label
@@ -146,7 +147,7 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
         } else {
             icon.visibility = View.GONE
             textIcon.visibility = View.VISIBLE
-            textIcon.text = getFirstCharacter(shown.label)
+            textIcon.text = shown.icon ?: getFirstCharacter(shown.label)
             textIcon.setTextColor(contentColor)
         }
         if (card) {

@@ -207,9 +207,11 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
     }
 
     override fun onStatusAreaUpdate(actions: Array<Action>) {
+        // mod: some Rime switches are left off the panel (StatusSwitchLabel)
+        val shown = actions.filterNot { StatusSwitchLabel.hidden(it.name) }
         adapter.entries = arrayOf(
             *staticEntries,
-            *Array(actions.size) { StatusAreaEntry.fromAction(actions[it]) }
+            *Array(shown.size) { StatusAreaEntry.fromAction(shown[it]) }
         )
     }
 
