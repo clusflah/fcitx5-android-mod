@@ -72,7 +72,9 @@ object CardPopupMenu {
             View.MeasureSpec.UNSPECIFIED
         )
         val height = minOf(list.measuredHeight, ctx.dp(320))
-        window = PopupWindow(content, width, height, true).apply {
+        // not focusable: a focusable window would take the focus from the app's text field, and the
+        // keyboard closes with it; a tap outside still dismisses it
+        window = PopupWindow(content, width, height, false).apply {
             elevation = ctx.dp(8f)
             isOutsideTouchable = true
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
