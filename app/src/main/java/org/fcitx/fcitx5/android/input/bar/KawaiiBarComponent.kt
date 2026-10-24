@@ -598,6 +598,11 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         else VoicePushToTalk.start(service, tapMode = true)
     }
 
+    /** mod: a toolbar button's tap (键盘选择, AI 联想), run from its tile in the 更多 panel */
+    fun runToolbarButton(b: ToolbarButton) {
+        idleUi.buttonsUi.button(b)?.performClick()
+    }
+
     private val idleUi: IdleUi by lazy {
         IdleUi(context, theme, popup, commonKeyActionListener).apply {
             menuButton.setOnClickListener {
