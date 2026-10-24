@@ -166,6 +166,11 @@ class TextKeyboard(
 
     override fun onInputMethodUpdate(ime: InputMethodEntry) {
         space.mainText.text = buildString {
+            // mod: Rime shows just its schema's name (白霜拼音), not "中州韵 (白)"
+            if (ime.uniqueName == "rime" && ime.subMode.name.isNotEmpty()) {
+                append(ime.subMode.name)
+                return@buildString
+            }
             append(ime.displayName)
             ime.subMode.run { label.ifEmpty { name.ifEmpty { null } } }?.let { append(" ($it)") }
         }
