@@ -43,9 +43,10 @@ object UserDataManager {
         val exportTime: Long
     )
 
-    private fun writeFileTree(srcDir: File, destPrefix: String, dest: ZipOutputStream) {
+    /** @param skip top-level folders of [srcDir] to leave out */
+    private fun writeFileTree(srcDir: File, destPrefix: String, dest: ZipOutputStream, skip: Set<String> = emptySet()) {
         dest.putNextEntry(ZipEntry("$destPrefix/"))
-        srcDir.walkTopDown().forEach { f ->
+        srcDir.walkTopDown().onEnter { it.relativeTo(srcDir).path !in skip }.forEach { f ->
             val related = f.relativeTo(srcDir)
             if (related.path != "") {
                 if (f.isDirectory) {
@@ -71,7 +72,8 @@ object UserDataManager {
             // databases
             writeFileTree(dataBasesDir, "databases", zipStream)
             // external
-            writeFileTree(externalDir, "external", zipStream)
+            // mod: not the offline voice models (hundreds of MB, downloaded again from the settings)
+            writeFileTree(externalDir, "external", zipStream, skip = setOf("models"))
             // common phrases (常用语)
             File(appContext.filesDir, COMMON_PHRASES).takeIf { it.isFile }?.let { f ->
                 zipStream.putNextEntry(ZipEntry("files/"))
