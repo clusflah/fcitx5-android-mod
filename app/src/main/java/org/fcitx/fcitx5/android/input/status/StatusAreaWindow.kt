@@ -20,6 +20,8 @@ import org.fcitx.fcitx5.android.daemon.launchOnReady
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.theme.ThemeManager
 import org.fcitx.fcitx5.android.input.FcitxInputMethodService
+import org.fcitx.fcitx5.android.input.bar.KawaiiBarComponent
+import org.fcitx.fcitx5.android.input.bar.ToolbarButton
 import org.fcitx.fcitx5.android.input.bar.ui.ToolButton
 import org.fcitx.fcitx5.android.input.broadcast.InputBroadcastReceiver
 import org.fcitx.fcitx5.android.input.keyboard.RimeT9
@@ -56,6 +58,23 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
     private val windowManager: InputWindowManager by manager.must()
 
     private val editorInfoInspector by AppPrefs.getInstance().internal.editorInfoInspector
+
+    private val bar: KawaiiBarComponent by manager.must()
+
+    /** mod: tiles first in the panel: 键盘选择, AI 联想 (green while on) and 编辑工具栏 */
+    private fun toolEntries(): List<StatusAreaEntry> {
+        val prefs = AppPrefs.getInstance().keyboard
+        return listOf(
+            StatusAreaEntry.Tool(ToolbarButton.T9, context.getString(R.string.keyboard_picker), ToolbarButton.T9.icon, false),
+            StatusAreaEntry.Tool(
+                ToolbarButton.AiPredict, context.getString(R.string.ai_predict), ToolbarButton.AiPredict.icon,
+                prefs.aiPredictAuto.getValue()
+            ),
+            StatusAreaEntry.Tool(null, "编辑工具栏", R.drawable.ic_baseline_edit_24, false)
+        )
+    }
+
+    private var lastActions: Array<Action> = arrayOf()
 
     private val staticEntries by lazy {
         arrayOf(
@@ -96,6 +115,15 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
         object : StatusAreaAdapter() {
             override fun onItemClick(view: View, entry: StatusAreaEntry) {
                 when (entry) {
+                    is StatusAreaEntry.Tool -> {
+                        if (entry.button == null) {
+                            windowManager.attachWindow(ToolbarEditWindow())
+                            return
+                        }
+                        bar.runToolbarButton(entry.button)
+                        // AI 联想 toggles in place: show its new color
+                        if (entry.button == ToolbarButton.AiPredict) onStatusAreaUpdate(lastActions)
+                    }
                     is StatusAreaEntry.Fcitx -> {
                         val actions = entry.action.menu
                         if (actions.isNullOrEmpty()) {
@@ -208,8 +236,10 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
 
     override fun onStatusAreaUpdate(actions: Array<Action>) {
         // mod: some Rime switches are left off the panel (StatusSwitchLabel)
+        lastActions = actions
         val shown = actions.filterNot { StatusSwitchLabel.hidden(it.name) }
         adapter.entries = arrayOf(
+            *toolEntries().toTypedArray(),
             *staticEntries,
             *Array(shown.size) { StatusAreaEntry.fromAction(shown[it]) }
         )

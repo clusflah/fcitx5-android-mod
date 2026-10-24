@@ -27,6 +27,10 @@ sealed class StatusAreaEntry(
     class Fcitx(val action: Action, label: String, icon: Int, active: Boolean) :
         StatusAreaEntry(label, icon, active)
 
+    /** mod: a toolbar button's tile, tapping it does what the button does; null [button] opens 编辑工具栏 */
+    class Tool(val button: org.fcitx.fcitx5.android.input.bar.ToolbarButton?, label: String, icon: Int, active: Boolean) :
+        StatusAreaEntry(label, icon, active)
+
     companion object {
         private fun drawableFromIconName(icon: String) = when (icon) {
             // androidkeyboard

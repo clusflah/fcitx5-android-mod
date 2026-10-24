@@ -141,6 +141,8 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
         ToolbarButton.Voice to voiceButton,
     )
 
+    fun button(b: ToolbarButton): View? = buttonOf[b]
+
     /** the order chosen in Settings; pinned buttons go to [pinnedRoot] (same relative order) */
     private fun applyLayout() {
         val pinned = ToolbarButton.pinned(prefs.toolbarPinnedButtons.getValue())
