@@ -69,7 +69,7 @@ object VoicePushToTalk {
         }
         val offline = engine() == VoiceEngine.SenseVoice
         if (offline && !OfflineVoice.isReady(svc)) {
-            listener?.invoke("离线语音模型还没有下载，请在设置 → 语音模型中下载")
+            listener?.invoke("离线语音模型 ${OfflineVoice.current.name} 还没有下载，请在设置 → 语音模型中下载")
             svc.startActivity(Intent(svc, OfflineVoiceActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
@@ -119,19 +119,22 @@ object VoicePushToTalk {
         recognizeJob = svc.lifecycleScope.launch {
             try {
                 var fellBack = false
-                val text = when (engine()) {
-                    VoiceEngine.Azure -> try {
-                        AzureSpeech.recognize(config(), wav)
+                val engine = engine()
+                val cloudName = CloudSpeech.engine(engine)?.name ?: engine.name
+                val text = when (engine) {
+                    VoiceEngine.SenseVoice -> OfflineVoice.recognize(svc, wav)
+                    else -> try {
+                        if (engine == VoiceEngine.Azure) AzureSpeech.recognize(config(), wav)
+                        else CloudSpeech.recognize(engine, wav)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        // Azure unreachable (or misconfigured): recognize the same recording offline
+                        // service unreachable (or misconfigured): recognize the same recording offline
                         if (!AppPrefs.getInstance().voice.offlineFallback.getValue() || !OfflineVoice.isReady(svc)) throw e
-                        listener?.invoke("Azure 不可用，改用离线识别…")
+                        listener?.invoke("$cloudName 不可用，改用离线识别…")
                         fellBack = true
                         OfflineVoice.recognize(svc, wav)
                     }
-                    VoiceEngine.SenseVoice -> OfflineVoice.recognize(svc, wav)
                 }
                 if (text.isEmpty()) {
                     listener?.invoke("没有听清，请再试一次")
@@ -145,7 +148,7 @@ object VoicePushToTalk {
                 } else text
                 svc.commitText(corrected)
                 if (fellBack) {
-                    listener?.invoke("Azure 不可用，已用离线识别")
+                    listener?.invoke("$cloudName 不可用，已用离线识别")
                     hideLater(svc, 2000)
                 } else {
                     listener?.invoke(null)

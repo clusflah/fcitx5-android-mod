@@ -5,10 +5,15 @@
     <string name="azure_voice_enabled_summary">Hold space to talk, release to recognize and type (overrides the space long-press behavior). Choose the engine in Settings → Voice models</string>
     <string name="voice_engine">Speech recognition engine</string>
     <string name="voice_engine_azure">Azure (cloud, needs a key)</string>
-    <string name="voice_engine_sensevoice">SenseVoice (offline, free)</string>
+    <string name="voice_engine_sensevoice">On-device model (offline, free)</string>
+    <string name="voice_engine_doubao">Volcengine Doubao</string>
+    <string name="voice_engine_qwen">Alibaba Qwen3-ASR</string>
+    <string name="voice_engine_elevenlabs">ElevenLabs</string>
+    <string name="voice_engine_deepgram">Deepgram</string>
+    <string name="voice_engine_openai">OpenAI compatible</string>
     <string name="offline_voice">Voice models</string>
     <string name="offline_fallback">Fall back to offline models</string>
-    <string name="offline_fallback_summary">If Azure recognition fails, recognize the same recording with offline SenseVoice (model must be downloaded); if online translation fails, use offline translation (Offline Translator must be installed). Only ever falls back from online to offline</string>
+    <string name="offline_fallback_summary">If online recognition fails, recognize the same recording with the current offline model (must be downloaded); if online translation fails, use offline translation (Offline Translator must be installed). Only ever falls back from online to offline</string>
     <string name="azure_speech_key">Azure Speech key</string>
     <string name="azure_speech_region">Azure region (e.g. eastasia)</string>
     <string name="azure_stt_language">Recognition language (e.g. zh-CN)</string>

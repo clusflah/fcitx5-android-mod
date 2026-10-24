@@ -459,6 +459,28 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         val azureTtsEndpoint = string(R.string.azure_tts_endpoint, "azure_tts_endpoint", "")
     }
 
+    /** mod: offline model choice and the other cloud engines' settings, edited on the 语音模型 page */
+    inner class VoiceMore : ManagedPreferenceInternal(sharedPreferences) {
+        /** OfflineVoice.Model id */
+        val offlineModel = string("offline_voice_model", "sensevoice")
+        val doubaoAppId = string("voice_doubao_app_id", "")
+        val doubaoKey = string("voice_doubao_key", "")
+        val qwenKey = string("voice_qwen_key", "")
+        val qwenBaseUrl = string("voice_qwen_base_url", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+        val qwenModel = string("voice_qwen_model", "qwen3-asr-flash")
+        val qwenLanguage = string("voice_qwen_language", "")
+        val elevenKey = string("voice_eleven_key", "")
+        val elevenModel = string("voice_eleven_model", "scribe_v2")
+        val elevenLanguage = string("voice_eleven_language", "")
+        val deepgramKey = string("voice_deepgram_key", "")
+        val deepgramModel = string("voice_deepgram_model", "nova-3")
+        val deepgramLanguage = string("voice_deepgram_language", "multi")
+        val openaiKey = string("voice_openai_key", "")
+        val openaiBaseUrl = string("voice_openai_base_url", "https://api.openai.com/v1")
+        val openaiModel = string("voice_openai_model", "whisper-1")
+        val openaiLanguage = string("voice_openai_language", "")
+    }
+
     private val providers = mutableListOf<ManagedPreferenceProvider>()
 
     fun <T : ManagedPreferenceProvider> registerProvider(
@@ -476,6 +498,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
     val internal = Internal().register()
     val keyboard = Keyboard().register()
     val voice = Voice().register()
+    val voiceMore = VoiceMore().register()
     val candidates = Candidates().register()
     val clipboard = Clipboard().register()
     val symbols = Symbols().register()

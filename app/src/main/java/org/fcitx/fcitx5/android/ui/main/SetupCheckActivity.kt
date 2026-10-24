@@ -199,16 +199,20 @@ class SetupCheckActivity : AppCompatActivity() {
             return
         }
         if (voice.voiceEngine.getValue() == VoiceEngine.SenseVoice) {
+            val model = OfflineVoice.current
             if (OfflineVoice.isReady(this)) {
-                row(Status.Ok, "离线语音模型", "已安装（${OfflineVoice.sizeMb(this)} MB）。")
+                row(Status.Ok, "离线语音模型", "${model.name} 已安装（${OfflineVoice.sizeMb(this)} MB）。")
             } else {
-                row(Status.Bad, "离线语音模型", "语音识别引擎是离线的 SenseVoice，但模型没有下载（备份不包含模型）。", "下载模型") {
+                row(Status.Bad, "离线语音模型", "语音识别用的是离线模型 ${model.name}，但模型没有下载（备份不包含模型）。", "下载模型") {
                     startActivity(Intent(this, OfflineVoiceActivity::class.java))
                 }
             }
-        } else if (voice.azureSpeechKey.getValue().isBlank()) {
-            row(Status.Bad, "语音输入", "已开启，但没有填写 Azure 语音密钥（设置 → 语音模型）。", "打开语音模型") {
-                startActivity(Intent(this, OfflineVoiceActivity::class.java))
+        } else {
+            val cloud = org.fcitx.fcitx5.android.input.voice.CloudSpeech.engine(voice.voiceEngine.getValue())
+            if (cloud != null && !cloud.configured) {
+                row(Status.Bad, "语音输入", "已开启，但没有填写 ${cloud.name} 的密钥（设置 → 语音模型）。", "打开语音模型") {
+                    startActivity(Intent(this, OfflineVoiceActivity::class.java))
+                }
             }
         }
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
