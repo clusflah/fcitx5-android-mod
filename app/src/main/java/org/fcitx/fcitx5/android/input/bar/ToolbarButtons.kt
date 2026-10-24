@@ -24,7 +24,7 @@ enum class ToolbarButton(
     AiAssist("ai_assist", R.drawable.ic_ai_assist, R.string.ai_assist, { it.showAiAssistButton }),
     AiPredict("ai_predict", R.drawable.ic_ai_predict, R.string.ai_predict, { it.showAiPredictButton }),
     Translate("translate", R.drawable.ic_translate, R.string.ai_translate, { it.showTranslateButton }),
-    T9("t9", R.drawable.ic_t9, R.string.t9_keyboard, { it.showT9Button }),
+    T9("t9", R.drawable.ic_t9, R.string.keyboard_picker, { it.showT9Button }),
     PasswordManager("bitwarden", R.drawable.ic_password_key, R.string.toolbar_button_bitwarden, { it.showPasswordManagerButton }),
     More("more", R.drawable.ic_baseline_more_horiz_24, R.string.status_area, { it.showMoreButton }),
     Voice("voice", R.drawable.ic_baseline_keyboard_voice_24, R.string.toolbar_button_voice, { it.showVoiceInputButton });
