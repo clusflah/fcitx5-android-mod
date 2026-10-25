@@ -134,8 +134,8 @@ val PopupPreset: Map<String, Array<String>> = hashMapOf(
     // Punctuation
     //
     "." to arrayOf(",", "?", "!", ":", ";", "_", "%", "$", "^", "&"),
-    // mod: long press on the "，。" key (CommaPeriodKey)
-    ",." to arrayOf(",", ".", "?", "!", "@", ":", ";", "~", "\"", "'"),
+    // mod: long press on the "，。" key (CommaPeriodKey); the first one is pre-selected, so release = "。"
+    ",." to arrayOf(".", ",", "?", "!", "@", ":", ";", "~", "\"", "'"),
     "-" to arrayOf("—", "–", "·"),
     "?" to arrayOf("¿", "‽"),
     "'" to arrayOf("‘", "’", "‚", "›", "‹"),
