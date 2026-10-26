@@ -25,10 +25,16 @@ object ModFreshInstall {
      */
     fun applyDefaults(ctx: Context) {
         val sp = sp(ctx)
+        val kb = AppPrefs.getInstance().keyboard
+        // everyone, once: the 26-key layout's expanded candidates look like the 九宫格's (5×5,
+        // 词频 / 单字); an older setting of 网格 / 流式 is switched over, and can be picked again
+        if (!sp.getBoolean("keypad_candidates", false)) {
+            sp.edit().putBoolean("keypad_candidates", true).apply()
+            kb.expandedCandidateStyle.setValue(org.fcitx.fcitx5.android.input.candidates.expanded.ExpandedCandidateStyle.Keypad)
+        }
         if (sp.getBoolean("defaults_applied", false)) return
         sp.edit().putBoolean("defaults_applied", true).apply()
         if (!isFresh(ctx)) return
-        val kb = AppPrefs.getInstance().keyboard
         kb.showUndoButton.setValue(false)
         kb.showRedoButton.setValue(false)
         kb.showAiPredictButton.setValue(false)
