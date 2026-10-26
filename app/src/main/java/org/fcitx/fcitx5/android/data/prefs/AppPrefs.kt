@@ -140,8 +140,22 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             switch(R.string.reset_keyboard_on_focus_change, "reset_keyboard_on_focus_change", true)
         val expandToolbarByDefault =
             switch(R.string.expand_toolbar_by_default, "expand_toolbar_by_default", false)
+        // mod: AI 联想's switch, delay and chain limit are edited on the 大模型 page (AiSettingsActivity),
+        // the voice switches on the 语音模型 page; this page only links there
         val aiPredictAuto =
-            switch(R.string.ai_predict_auto, "ai_predict_auto", false, R.string.ai_predict_auto_summary)
+            ManagedPreference.PBool(sharedPreferences, "ai_predict_auto", false).apply { register() }
+
+        init {
+            ManagedPreferenceUi.Link(
+                R.string.ai_predict_link, "ai_predict_link", R.string.ai_predict_link_summary,
+                "org.fcitx.fcitx5.android.ui.main.AiSettingsActivity"
+            ).registerUi()
+            ManagedPreferenceUi.Link(
+                R.string.voice_input_link, "voice_input_link", R.string.voice_input_link_summary,
+                "org.fcitx.fcitx5.android.ui.main.OfflineVoiceActivity"
+            ).registerUi()
+        }
+
         val otpCodeEnabled =
             switch(R.string.otp_code_enabled, "otp_code_enabled", false, R.string.otp_code_enabled_summary)
         val otpClipboard =
@@ -182,14 +196,11 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             ).registerUi()
         }
 
-        val aiPredictDelay = int(
-            R.string.ai_predict_delay, "ai_predict_delay",
-            50, 0, 1000, "ms", 10
-        ) { aiPredictAuto.getValue() }
-        val aiPredictChainLimit = int(
-            R.string.ai_predict_chain_limit, "ai_predict_chain_limit",
-            2, 0, 10
-        ) { aiPredictAuto.getValue() }
+        // mod: 400 ms (was 50): one request per pause, not per key
+        val aiPredictDelay =
+            ManagedPreference.PInt(sharedPreferences, "ai_predict_delay", 400).apply { register() }
+        val aiPredictChainLimit =
+            ManagedPreference.PInt(sharedPreferences, "ai_predict_chain_limit", 2).apply { register() }
         val inlineSuggestions = switch(R.string.inline_suggestions, "inline_suggestions", true)
         val toolbarNumRowOnPassword =
             switch(R.string.toolbar_num_row_on_password, "toolbar_num_row_on_password", true)
@@ -205,8 +216,9 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         val preferredVoiceInput =
             ManagedPreference.PString(sharedPreferences, "preferred_voice_input", "").apply { register() }
 
+        /** mod: shown on the 语音模型 page ([Voice]) */
         val azureVoiceEnabled =
-            switch(R.string.azure_voice_enabled, "azure_voice_enabled", false, R.string.azure_voice_enabled_summary)
+            ManagedPreference.PBool(sharedPreferences, "azure_voice_enabled", false).apply { register() }
 
         val expandKeypressArea =
             switch(R.string.expand_keypress_area, "expand_keypress_area", false)
@@ -437,6 +449,16 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
      * in [Keyboard], so existing values carry over). SenseVoice download items are added by the page.
      */
     inner class Voice : ManagedPreferenceCategory(R.string.offline_voice, sharedPreferences) {
+        init {
+            // mod: the two ways to start voice input, kept as Keyboard prefs (same keys) but edited here
+            ManagedPreferenceUi.Switch(
+                R.string.azure_voice_enabled, "azure_voice_enabled", false, R.string.azure_voice_enabled_summary
+            ).registerUi()
+            ManagedPreferenceUi.Switch(
+                R.string.voice_toolbar_button, "show_voice_input_button", false, R.string.voice_toolbar_button_summary
+            ).registerUi()
+        }
+
         /** Azure (cloud) or SenseVoice (offline) */
         val voiceEngine = enumList(
             R.string.voice_engine, "voice_engine",

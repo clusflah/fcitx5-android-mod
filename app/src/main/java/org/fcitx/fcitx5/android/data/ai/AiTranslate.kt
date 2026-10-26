@@ -91,6 +91,11 @@ object AiTranslate {
      */
     suspend fun translateDetailed(ctx: Context, text: String, engine: TranslateEngine = engine(ctx)): Result {
         val userText = prompt(targetFor(ctx, text), text)
+        // nothing goes to bilibili before the one-time notice is accepted
+        if (engine == TranslateEngine.IndexTranslate && !CloudConsent.granted(ctx, CloudConsent.Kind.IndexTranslate)) {
+            CloudConsent.request(ctx, CloudConsent.Kind.IndexTranslate)
+            throw AiException("请先看一下弹出的说明")
+        }
         return when (engine) {
             TranslateEngine.IndexTranslate -> try {
                 Result(AiClient.chatKeyless(INDEX_BASE_URL, INDEX_MODEL, userText))

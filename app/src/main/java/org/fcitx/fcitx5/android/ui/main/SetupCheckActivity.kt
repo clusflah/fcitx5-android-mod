@@ -196,7 +196,7 @@ class SetupCheckActivity : AppCompatActivity() {
         val kb = AppPrefs.getInstance().keyboard
         val voice = AppPrefs.getInstance().voice
         if (!kb.azureVoiceEnabled.getValue() && !kb.showVoiceInputButton.getValue()) {
-            row(Status.Info, "语音输入", "未开启（设置 → 虚拟键盘 → 按住空格语音输入 / 显示语音输入按钮）。")
+            row(Status.Info, "语音输入", "未开启（设置 → 语音模型 → 按住空格语音输入 / 工具栏显示 🎤 按钮）。")
             return
         }
         if (voice.voiceEngine.getValue() == VoiceEngine.SenseVoice) {

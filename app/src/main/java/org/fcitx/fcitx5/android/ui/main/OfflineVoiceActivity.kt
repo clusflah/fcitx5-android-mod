@@ -187,8 +187,16 @@ class VoiceModelFragment : ManagedPreferenceFragment(AppPrefs.getInstance().voic
 
     private fun download(m: OfflineVoice.Model) {
         val ctx = requireContext()
+        // mod: hundreds of MB; say so when the phone is on mobile data
+        val metered = runCatching {
+            (ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager)
+                .isActiveNetworkMetered
+        }.getOrDefault(false)
         AlertDialog.Builder(ctx)
-            .setTitle("选择下载源（约 ${m.sizeMb} MB）")
+            .setTitle(
+                if (metered) "约 ${m.sizeMb} MB，当前在用移动数据，建议连 Wi-Fi 再下载。选择下载源："
+                else "选择下载源（约 ${m.sizeMb} MB）"
+            )
             .setItems(OfflineVoice.SOURCES.map { it.first }.toTypedArray()) { _, which ->
                 OfflineVoice.startDownload(ctx, m, OfflineVoice.SOURCES[which].second)
                 Toast.makeText(ctx, "已开始下载，通知栏可以看到进度", Toast.LENGTH_SHORT).show()

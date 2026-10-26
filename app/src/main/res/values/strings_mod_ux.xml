@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- mod: settings layout, search and onboarding -->
+<resources>
+    <string name="ai_predict_link">AI suggestions</string>
+    <string name="ai_predict_link_summary">On / off, delay and limits are on the AI assistant page</string>
+    <string name="voice_input_link">Voice input</string>
+    <string name="voice_input_link_summary">Hold space to talk, the toolbar mic and the recognition engine are on the voice page</string>
+    <string name="voice_toolbar_button">Show 🎤 on the toolbar</string>
+    <string name="voice_toolbar_button_summary">Tap to start talking, tap again to recognize; hidden in password fields</string>
+    <string name="toolbar_clipboard_phrase">Clipboard / common phrases (long press: phrases)</string>
+    <string name="settings_search">Search settings</string>
+    <string name="settings_search_hint">e.g. vibration, voice, translate</string>
+    <string name="settings_group_typing">Typing and keyboard</string>
+    <string name="settings_group_voice_ai">Voice and AI</string>
+    <string name="settings_group_clipboard">Clipboard and phrases</string>
+    <string name="settings_group_look">Look</string>
+    <string name="settings_group_more">Moving phones and more</string>
+    <string name="settings_voice_summary">Hold space to talk, offline and online engines</string>
+    <string name="settings_ai_summary">LLM keys, AI suggestions, translation, and where your text goes</string>
+    <string name="mod_welcome">Getting started</string>
+</resources>

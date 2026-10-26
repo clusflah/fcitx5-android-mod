@@ -20,6 +20,10 @@ object AiSuggest {
                 "5. 每行一个，共 5 行，不要编号、引号或标点符号。"
 
     suspend fun predict(ctx: Context, before: String): List<String> {
+        if (!CloudConsent.granted(ctx, CloudConsent.Kind.AiPredict)) {
+            CloudConsent.request(ctx, CloudConsent.Kind.AiPredict)
+            throw AiException("请先看一下弹出的说明")
+        }
         val provider = AiConfig.predictProvider(ctx) ?: AiConfig.provider(ctx)
         // small local models: shorter context is faster; Qwen3 understands /no_think
         val input = if (provider == AiProvider.Local) before.takeLast(80) + " /no_think"

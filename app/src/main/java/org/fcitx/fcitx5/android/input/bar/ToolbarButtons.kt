@@ -20,7 +20,7 @@ enum class ToolbarButton(
     Undo("undo", R.drawable.ic_baseline_undo_24, R.string.undo, { it.showUndoButton }),
     Redo("redo", R.drawable.ic_baseline_redo_24, R.string.redo, { it.showRedoButton }),
     CursorMove("cursor", R.drawable.ic_cursor_move, R.string.text_editing, { it.showCursorMoveButton }),
-    Clipboard("clipboard", R.drawable.ic_clipboard, R.string.clipboard, { it.showClipboardButton }),
+    Clipboard("clipboard", R.drawable.ic_clipboard, R.string.toolbar_clipboard_phrase, { it.showClipboardButton }),
     AiAssist("ai_assist", R.drawable.ic_ai_assist, R.string.ai_assist, { it.showAiAssistButton }),
     AiPredict("ai_predict", R.drawable.ic_ai_predict, R.string.ai_predict, { it.showAiPredictButton }),
     Translate("translate", R.drawable.ic_translate, R.string.ai_translate, { it.showTranslateButton }),

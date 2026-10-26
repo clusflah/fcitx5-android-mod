@@ -27,6 +27,8 @@ import org.fcitx.fcitx5.android.data.ai.AiPrompt
 import org.fcitx.fcitx5.android.data.ai.AiProvider
 import org.fcitx.fcitx5.android.data.ai.AiTranslate
 import org.fcitx.fcitx5.android.data.ai.TranslateEngine
+import org.fcitx.fcitx5.android.data.ai.CloudConsent
+import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import splitties.dimensions.dp
 
 class AiSettingsActivity : AppCompatActivity() {
@@ -36,6 +38,14 @@ class AiSettingsActivity : AppCompatActivity() {
     private lateinit var translateSpinner: Spinner
     private lateinit var targetSpinner: Spinner
     private lateinit var fields: Map<AiProvider, Triple<EditText, EditText, EditText>>
+    private lateinit var predictAutoBox: android.widget.CheckBox
+    private lateinit var predictDestination: TextView
+    private lateinit var translateDestination: TextView
+
+    private companion object {
+        val PREDICT_DELAYS = listOf(200, 400, 600, 800, 1000)
+        val PREDICT_CHAINS = listOf(0, 1, 2, 3, 5)
+    }
     private lateinit var promptList: LinearLayout
     private var prompts = mutableListOf<AiPrompt>()
 
@@ -67,7 +77,28 @@ class AiSettingsActivity : AppCompatActivity() {
         }
         box.addView(providerSpinner)
 
-        box.addView(header("AI 联想使用的模型"))
+        box.addView(header("AI 联想"))
+        val kb = AppPrefs.getInstance().keyboard
+        predictAutoBox = android.widget.CheckBox(this).apply {
+            text = "打字停顿后自动联想"
+            isChecked = kb.aiPredictAuto.getValue()
+            setOnCheckedChangeListener { _, checked ->
+                if (checked && !CloudConsent.granted(context, CloudConsent.Kind.AiPredict)) {
+                    // the notice switches it on when accepted (onResume picks that up)
+                    isChecked = false
+                    save() // the notice names the provider chosen here
+                    CloudConsent.request(context, CloudConsent.Kind.AiPredict)
+                } else kb.aiPredictAuto.setValue(checked)
+            }
+        }
+        box.addView(predictAutoBox)
+        box.addView(choiceRow("停顿多久后联想", PREDICT_DELAYS.map { "$it 毫秒" }, PREDICT_DELAYS.indexOf(
+            PREDICT_DELAYS.minByOrNull { kotlin.math.abs(it - kb.aiPredictDelay.getValue()) }
+        )) { kb.aiPredictDelay.setValue(PREDICT_DELAYS[it]) })
+        box.addView(choiceRow("连续点选几次后暂停", PREDICT_CHAINS.map { if (it == 0) "不限" else "$it 次" },
+            PREDICT_CHAINS.indexOf(kb.aiPredictChainLimit.getValue()).coerceAtLeast(0)
+        ) { kb.aiPredictChainLimit.setValue(PREDICT_CHAINS[it]) })
+        box.addView(TextView(this).apply { text = "使用的模型"; textSize = 13f; setPadding(0, dp(8), 0, 0) })
         predictSpinner = Spinner(this).apply {
             adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item,
                 listOf("与默认模型相同") + AiProvider.entries.map { it.label })
@@ -88,6 +119,8 @@ class AiSettingsActivity : AppCompatActivity() {
             text = "联想要求快，留空时默认使用该服务最快的模型；助手默认使用最好的模型。" +
                     "本地模型留空时与下面填写的模型相同。"
         })
+        predictDestination = destinationLabel()
+        box.addView(predictDestination)
 
         // ---- 图片生成 ----
         box.addView(header("图片生成"))
@@ -121,6 +154,8 @@ class AiSettingsActivity : AppCompatActivity() {
             setSelection(TranslateEngine.all.indexOfFirst { it.id == AiTranslate.engine(context).id }.coerceAtLeast(0))
         }
         box.addView(translateSpinner)
+        translateDestination = destinationLabel()
+        box.addView(translateDestination)
         box.addView(TextView(this).apply { text = "中文翻译成"; textSize = 13f; setPadding(0, dp(8), 0, 0) })
         targetSpinner = Spinner(this).apply {
             adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, AiTranslate.TARGETS)
@@ -187,6 +222,12 @@ class AiSettingsActivity : AppCompatActivity() {
         providerSpinner.onItemSelectedListener = onSelect
         predictSpinner.onItemSelectedListener = onSelect
         refreshPredictModelField()
+        translateSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) =
+                refreshDestinations()
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+        refreshDestinations()
         imageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) =
                 refreshImageModelField()
@@ -221,8 +262,57 @@ class AiSettingsActivity : AppCompatActivity() {
         predictSpinner.selectedItemPosition.takeIf { it > 0 }?.let { AiProvider.entries[it - 1] }
             ?: AiProvider.entries[providerSpinner.selectedItemPosition]
 
+    private fun destinationLabel() = TextView(this).apply {
+        textSize = 12f
+        setPadding(0, dp(4), 0, 0)
+    }
+
+    /** where the text goes for the provider [p], with the address typed in above (not saved yet) */
+    private fun destinationOf(p: AiProvider): String {
+        val typed = fields[p]?.third?.text?.toString()?.trim().orEmpty()
+        val url = typed.ifEmpty { p.defaultBaseUrl }
+        val host = runCatching { android.net.Uri.parse(url).host }.getOrNull() ?: url
+        return if (host == "127.0.0.1" || host == "localhost") "数据去向：只在这台手机上（$host）"
+        else "数据去向：发到 ${p.label}（$host），按你的 API 额度计费"
+    }
+
+    private fun refreshDestinations() {
+        if (!::fields.isInitialized) return
+        predictDestination.text = destinationOf(selectedPredictProvider())
+        translateDestination.text = when (val e = TranslateEngine.all[translateSpinner.selectedItemPosition]) {
+            TranslateEngine.IndexTranslate -> "数据去向：发到 B 站（index-translate.bilibili.com），免费，没有公布隐私政策；只在你点翻译时发送"
+            TranslateEngine.Offline -> "数据去向：只在这台手机上（Offline Translator App）"
+            is TranslateEngine.Provider -> destinationOf(e.provider)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // the AI 联想 notice may have switched it on
+        if (::predictAutoBox.isInitialized) {
+            predictAutoBox.isChecked = AppPrefs.getInstance().keyboard.aiPredictAuto.getValue()
+        }
+    }
+
+    /** a label and a dropdown, saved as soon as an item is picked */
+    private fun choiceRow(label: String, items: List<String>, selected: Int, onPick: (Int) -> Unit) =
+        LinearLayout(this).apply {
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            addView(TextView(context).apply { text = label; textSize = 14f }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(Spinner(context).apply {
+                adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, items)
+                setSelection(selected.coerceAtLeast(0))
+                onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) =
+                        onPick(position)
+                    override fun onNothingSelected(parent: AdapterView<*>?) {}
+                }
+            })
+        }
+
     /** Show the AI 联想 model of the provider currently selected for prediction. */
     private fun refreshPredictModelField() {
+        refreshDestinations()
         shownPredictProvider?.let { predictModels[it] = predictModelField.text.toString() }
         val p = selectedPredictProvider()
         if (p == shownPredictProvider) return

@@ -126,6 +126,7 @@ class FcitxApplication : Application() {
         Timber.d("isDirectBootMode=$isDirectBootMode")
 
         AppPrefs.init(sharedPrefs)
+        if (!isDirectBootMode) org.fcitx.fcitx5.android.data.prefs.ModFreshInstall.applyDefaults(ctx) // mod
         // record last pid for crash logs
         AppPrefs.getInstance().internal.pid.apply {
             val currentPid = Process.myPid()

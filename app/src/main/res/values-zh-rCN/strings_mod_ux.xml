@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- mod: settings layout, search and onboarding -->
+<resources>
+    <string name="ai_predict_link">AI 联想</string>
+    <string name="ai_predict_link_summary">开关、停顿时间和连续次数都在 大模型助手 页面</string>
+    <string name="voice_input_link">语音输入</string>
+    <string name="voice_input_link_summary">按住空格说话、工具栏 🎤 和识别引擎都在 语音模型 页面</string>
+    <string name="voice_toolbar_button">工具栏显示 🎤 按钮</string>
+    <string name="voice_toolbar_button_summary">点一下开始说话，再点一下识别；密码框里不显示</string>
+    <string name="toolbar_clipboard_phrase">剪贴板 / 常用语（长按进常用语）</string>
+    <string name="settings_search">搜索设置</string>
+    <string name="settings_search_hint">例如：振动、语音、翻译、高度</string>
+    <string name="settings_group_typing">输入与键盘</string>
+    <string name="settings_group_voice_ai">语音与 AI</string>
+    <string name="settings_group_clipboard">剪贴板与常用语</string>
+    <string name="settings_group_look">外观</string>
+    <string name="settings_group_more">换机与其他</string>
+    <string name="settings_voice_summary">按住空格说话、离线和在线识别引擎</string>
+    <string name="settings_ai_summary">大模型 Key、AI 联想、中外互译，以及文字发到哪里</string>
+    <string name="mod_welcome">快速上手</string>
+</resources>
