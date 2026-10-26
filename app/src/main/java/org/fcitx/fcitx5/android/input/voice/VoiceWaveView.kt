@@ -14,13 +14,13 @@ import splitties.dimensions.dp
 import kotlin.math.abs
 import kotlin.math.sin
 
-class VoiceWaveView(context: Context, color: Int) : View(context) {
+class VoiceWaveView(context: Context, color: Int, barDp: Float = 6f) : View(context) {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color }
     private val rect = RectF()
-    private val barWidth = dp(6f)
-    private val gap = dp(6f)
-    private val minHeight = dp(6f)
+    private val barWidth = dp(barDp)
+    private val gap = dp(barDp)
+    private val minHeight = dp(barDp)
 
     /** smoothed 0..1 */
     private var level = 0f

@@ -25,8 +25,12 @@ import org.fcitx.fcitx5.android.ui.main.VoicePermissionActivity
 
 object VoicePushToTalk {
 
-    /** status text for the toolbar; null hides it */
+    /** status text for the toolbar; null hides it. While [isRecording] it is just the short hint
+     *  on how to finish, shown next to a waveform fed by [levelListener]. */
     var listener: ((String?) -> Unit)? = null
+
+    /** microphone level while recording, about 0..0.3 when speaking */
+    var levelListener: ((Float) -> Unit)? = null
 
     private var service: FcitxInputMethodService? = null
     private var recorder: PcmRecorder? = null
@@ -55,7 +59,7 @@ object VoicePushToTalk {
      * 🎤 button ([tapMode] = true: tap it again to finish).
      */
     fun start(svc: FcitxInputMethodService, tapMode: Boolean = false) {
-        stopHint = if (tapMode) "再点 🎤 结束" else "松开发送"
+        stopHint = if (tapMode) "再点结束" else "松开发送"
         if (recorder != null) return
         if (ContextCompat.checkSelfPermission(svc, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
@@ -101,16 +105,14 @@ object VoicePushToTalk {
                 android.widget.Toast.LENGTH_LONG
             ).show()
         }
-        listener?.invoke("🎤 正在聆听… $stopHint")
-        // reflect volume, and stop automatically at the 60 s limit
+        listener?.invoke(stopHint)
+        // feed the waveform, and stop automatically at the 60 s limit
         watchJob = svc.lifecycleScope.launch {
-            val bars = arrayOf("▁", "▂", "▃", "▄", "▅", "▆", "▇")
             while (isActive) {
                 val rec = recorder ?: break
                 if (!rec.isRunning) { release(); break }
-                val i = (rec.level * 3f * bars.size).toInt().coerceIn(0, bars.size - 1)
-                listener?.invoke("🎤 ${bars[i]} 正在聆听… $stopHint")
-                delay(120)
+                levelListener?.invoke(rec.level)
+                delay(60)
             }
         }
     }
