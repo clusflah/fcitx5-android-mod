@@ -516,7 +516,14 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             isAiFresh -> IdleUi.State.AiSuggestion
             isClipboardFresh -> IdleUi.State.Clipboard
             isCapabilityFlagsPassword && !isKeyboardLayoutNumber && numberRowState != NumberRowState.ForceHide -> IdleUi.State.NumberRow
-            // mod: the toolbar no longer folds away (so expandToolbarByDefault is unused); its first button is 更多
+            /**
+             * state matrix:
+             *                               expandToolbarByDefault
+             *                          |   \   |    true |   false
+             * isToolbarManuallyToggled |  true |   Empty | Toolbar
+             *                          | false | Toolbar |   Empty
+             */
+            expandToolbarByDefault == isToolbarManuallyToggled -> IdleUi.State.Empty
             else -> IdleUi.State.Toolbar
         }
         if (newState == idleUi.currentState) return
@@ -609,8 +616,12 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         IdleUi(context, theme, popup, commonKeyActionListener).apply {
             menuButton.setOnClickListener {
                 when (idleUi.currentState) {
-                    // mod: opens 更多 (it used to fold / unfold the toolbar)
-                    IdleUi.State.Empty, IdleUi.State.Toolbar -> {
+                    IdleUi.State.Empty -> {
+                        isToolbarManuallyToggled = !expandToolbarByDefault
+                        evalIdleUiState(fromUser = true)
+                    }
+                    // mod: on the open toolbar it is 更多 (long press folds the toolbar)
+                    IdleUi.State.Toolbar -> {
                         windowManager.attachWindow(StatusAreaWindow())
                     }
                     else -> {
@@ -627,6 +638,13 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 if (clipboardTimeoutJob != null) {
                     launchClipboardTimeoutJob()
                 }
+            }
+            // mod: long press on 更多 folds the toolbar (tap the › that replaces it to unfold)
+            menuButton.setOnLongClickListener {
+                if (idleUi.currentState != IdleUi.State.Toolbar) return@setOnLongClickListener false
+                isToolbarManuallyToggled = expandToolbarByDefault
+                evalIdleUiState(fromUser = true)
+                true
             }
             buttonsUi.voiceButton.setOnClickListener(modVoiceInputCallback)
             hideKeyboardButton.apply {

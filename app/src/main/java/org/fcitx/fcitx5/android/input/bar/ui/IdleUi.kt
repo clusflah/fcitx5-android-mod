@@ -67,8 +67,8 @@ class IdleUi(
         if (ctx.resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_LTR) 1f else -1f
     }
 
-    /** mod: the first button opens 更多; over a suggestion strip it is › (back to the toolbar) */
-    private val menuButtonIsMore get() = currentState == State.Toolbar || currentState == State.Empty
+    /** mod: on the open toolbar the first button is 更多; folded or over a suggestion strip it is › */
+    private val menuButtonIsMore get() = currentState == State.Toolbar
 
     private val menuButtonRotation
         get() = when {
