@@ -158,6 +158,11 @@ class MainActivity : AppCompatActivity() {
         needNotifications = grantResults.getOrNull(0) == PackageManager.PERMISSION_GRANTED
     }
 
+    override fun onResume() {
+        super.onResume()
+        ModWelcomeActivity.maybeShow(this) // mod: 快速上手, once after a fresh install
+    }
+
     override fun onStop() {
         viewModel.fcitx.runIfReady {
             save()

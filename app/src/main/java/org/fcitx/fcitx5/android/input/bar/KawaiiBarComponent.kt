@@ -66,6 +66,7 @@ import org.fcitx.fcitx5.android.data.ai.AiSuggest
 import org.fcitx.fcitx5.android.data.ai.AiConfig
 import org.fcitx.fcitx5.android.data.ai.AiPromptRunner
 import org.fcitx.fcitx5.android.data.ai.AiTranslate
+import org.fcitx.fcitx5.android.data.ai.CloudConsent
 import org.fcitx.fcitx5.android.data.otp.OtpCode
 import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
 import org.fcitx.fcitx5.android.data.password.PasswordManager
@@ -368,6 +369,8 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         if (!aiPredictAuto.getValue() || aiBlocked || otpTypedThisSession || isInlineSuggestionPresent ||
             !preeditEmpty || !candidatesEmpty
         ) return
+        // mod: not before the one-time notice was accepted (asked when switching it on, not while typing)
+        if (!CloudConsent.granted(context, CloudConsent.Kind.AiPredict)) return
         // after this many suggestions tapped in a row, wait for the user to type again
         val chainLimit = prefs.keyboard.aiPredictChainLimit.getValue()
         if (chainLimit > 0 && aiChainCount > chainLimit) {
@@ -411,6 +414,12 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
 
     @Keep
     private val onAiPredictAutoListener = ManagedPreference.OnChangeListener<Boolean> { _, on ->
+        if (on && !CloudConsent.granted(context, CloudConsent.Kind.AiPredict)) {
+            // mod: explain where the text goes first; the notice switches it back on when accepted
+            aiPredictAuto.setValue(false)
+            CloudConsent.request(context, CloudConsent.Kind.AiPredict)
+            return@OnChangeListener
+        }
         if (on) scheduleAiPredict() else clearAiSuggestion()
         idleUi.buttonsUi.aiPredictButton.alpha = if (on) 1f else 0.4f
     }
@@ -610,6 +619,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                     IdleUi.State.Empty -> {
                         isToolbarManuallyToggled = !expandToolbarByDefault
                         evalIdleUiState(fromUser = true)
+                        org.fcitx.fcitx5.android.data.prefs.ModFreshInstall.toolbarHint(context)
                     }
                     IdleUi.State.Toolbar -> {
                         isToolbarManuallyToggled = expandToolbarByDefault
@@ -651,9 +661,18 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 clipboardButton.setOnClickListener {
                     windowManager.attachWindow(ClipboardWindow())
                 }
+                // mod: long press goes straight to 常用语
+                clipboardButton.setOnLongClickListener {
+                    windowManager.attachWindow(CommonPhraseWindow())
+                    true
+                }
                 aiPredictButton.alpha = if (aiPredictAuto.getValue()) 1f else 0.4f
                 aiPredictButton.setOnClickListener {
                     val on = !aiPredictAuto.getValue()
+                    if (on && !CloudConsent.granted(context, CloudConsent.Kind.AiPredict)) {
+                        CloudConsent.request(context, CloudConsent.Kind.AiPredict)
+                        return@setOnClickListener
+                    }
                     aiPredictAuto.setValue(on)
                     context.toast(if (on) "AI 联想：已开启（打字停顿后自动出现）" else "AI 联想：已关闭")
                 }
@@ -691,8 +710,13 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 aiAssistButton.setOnClickListener {
                     val clip = runCatching {
                         service.clipboardManager.primaryClip?.takeIf { it.itemCount > 0 }
+                            // mod: never offer a copied password (its preview shows on the paste button)
+                            ?.takeUnless { c ->
+                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+                                        c.description.extras?.getBoolean("android.content.extra.IS_SENSITIVE") == true
+                            }
                             ?.getItemAt(0)?.coerceToText(service)?.toString()
-                    }.getOrNull() ?: ClipboardManager.lastEntry?.text
+                    }.getOrNull() ?: ClipboardManager.lastEntry?.takeUnless { it.sensitive }?.text
                     service.startActivity(
                         android.content.Intent(service, AiAssistActivity::class.java).apply {
                             addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -912,6 +936,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         ClipboardManager.addOnUpdateListener(onClipboardUpdateListener)
         clipboardSuggestion.registerOnChangeListener(onClipboardSuggestionUpdateListener)
         clipboardItemTimeout.registerOnChangeListener(onClipboardTimeoutUpdateListener)
+        CloudConsent.granted(context, CloudConsent.Kind.AiPredict) // settles who had it on before the notice existed
         aiPredictAuto.registerOnChangeListener(onAiPredictAutoListener)
         otpCodeEnabled.registerOnChangeListener(onOtpCodeEnabledListener)
         // a new SMS arrived: offer its code, or fill it into the code field the user is waiting in

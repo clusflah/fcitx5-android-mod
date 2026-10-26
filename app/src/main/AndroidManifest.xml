@@ -41,6 +41,8 @@
     <uses-permission android:name="${applicationId}.permission.PLUGIN" />
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- mod: warn before a big voice model download on mobile data -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- 短信验证码: read new verification SMS locally; requested only when the feature is turned on -->
     <uses-permission android:name="android.permission.READ_SMS" />
@@ -164,6 +166,13 @@
             android:theme="@style/Theme.DialogTheme" />
 
         <activity
+            android:name=".ui.main.CloudConsentActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=".ui.main.CloudConsentActivity"
+            android:theme="@style/Theme.DialogTheme" />
+
+        <activity
             android:name=".ui.main.AiAssistActivity"
             android:excludeFromRecents="true"
             android:exported="false"
@@ -189,6 +198,19 @@
             android:exported="false"
             android:label="@string/setup_check"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
+
+        <activity
+            android:name=".ui.main.ModWelcomeActivity"
+            android:exported="false"
+            android:label="@string/mod_welcome"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
+
+        <activity
+            android:name=".ui.main.SettingsSearchActivity"
+            android:exported="false"
+            android:label="@string/settings_search"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+            android:windowSoftInputMode="stateVisible|adjustResize" />
 
         <activity
             android:name=".ui.main.AiSettingsActivity"

@@ -36,6 +36,16 @@ abstract class ManagedPreferenceFragment(private val preferenceProvider: Managed
             }
     }
 
+    override fun onViewCreated(view: android.view.View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        // mod: a settings search result points at an item on this page
+        val key = org.fcitx.fcitx5.android.ui.main.SettingsSearchActivity.pendingScrollKey
+        if (key != null && findPreference<Preference>(key) != null) {
+            org.fcitx.fcitx5.android.ui.main.SettingsSearchActivity.pendingScrollKey = null
+            scrollToPreference(key)
+        }
+    }
+
     override fun onStop() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             AppPrefs.getInstance().syncToDeviceEncryptedStorage()

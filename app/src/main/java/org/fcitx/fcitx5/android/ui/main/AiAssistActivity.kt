@@ -185,13 +185,12 @@ class AiAssistActivity : AppCompatActivity() {
 
         // input
         input = EditText(this).apply {
-            hint = if (translateMode) "输入要翻译的内容" else "输入内容（已自动填入剪贴板）"
+            hint = if (translateMode) "输入要翻译的内容" else "输入内容，或点下面的“粘贴剪贴板”"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             minLines = 2; maxLines = 6; gravity = Gravity.TOP
-            setText(
-                if (translateMode) intent.getStringExtra(EXTRA_TEXT) ?: ""
-                else intent.getStringExtra(EXTRA_CLIPBOARD) ?: ""
-            )
+            // mod: the clipboard is no longer filled in by itself (it may be unrelated, or private);
+            // the paste button below shows what it holds
+            setText(if (translateMode) intent.getStringExtra(EXTRA_TEXT) ?: "" else "")
         }
         if (translateMode) {
             input.addTextChangedListener(object : android.text.TextWatcher {
@@ -212,7 +211,12 @@ class AiAssistActivity : AppCompatActivity() {
         }
         root.addView(input, LinearLayout.LayoutParams(-1, -2))
         val inputActions = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        inputActions.addView(smallButton("粘贴剪贴板") { readClipboard()?.let { input.setText(it) } })
+        val clip = intent.getStringExtra(EXTRA_CLIPBOARD)?.takeIf { it.isNotBlank() }
+        val pasteLabel = clip?.let { c ->
+            val one = c.replace('\n', ' ').trim()
+            "粘贴剪贴板：" + if (one.length > 10) one.take(10) + "…" else one
+        } ?: "粘贴剪贴板"
+        inputActions.addView(smallButton(pasteLabel) { (readClipboard() ?: clip)?.let { input.setText(it) } })
         inputActions.addView(smallButton("清空") { input.setText("") })
         inputActions.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         progress = ProgressBar(this).apply { visibility = View.GONE }

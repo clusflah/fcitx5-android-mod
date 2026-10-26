@@ -90,6 +90,17 @@ object VoicePushToTalk {
         service = svc
         recorder = r
         startedAt = SystemClock.elapsedRealtime()
+        // mod: feel that recording started, and say once how to switch hold-to-talk off
+        svc.window.window?.decorView?.performHapticFeedback(
+            if (android.os.Build.VERSION.SDK_INT >= 30) android.view.HapticFeedbackConstants.CONFIRM
+            else android.view.HapticFeedbackConstants.LONG_PRESS
+        )
+        if (!tapMode && org.fcitx.fcitx5.android.data.prefs.ModFreshInstall.once(svc, "push_to_talk")) {
+            android.widget.Toast.makeText(
+                svc, "按住空格说话，松开就识别。不需要的话，在 设置 → 语音模型 里关掉“按住空格语音输入”",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
         listener?.invoke("🎤 正在聆听… $stopHint")
         // reflect volume, and stop automatically at the 60 s limit
         watchJob = svc.lifecycleScope.launch {

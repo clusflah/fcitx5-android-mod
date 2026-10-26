@@ -24,6 +24,7 @@ import org.fcitx.fcitx5.android.utils.addCategory
 import org.fcitx.fcitx5.android.utils.addPreference
 import org.fcitx.fcitx5.android.utils.item
 import org.fcitx.fcitx5.android.utils.navigateWithAnim
+import splitties.resources.styledColor
 
 class MainFragment : PaddingPreferenceFragment() {
 
@@ -40,6 +41,13 @@ class MainFragment : PaddingPreferenceFragment() {
 
     private inner class AboutMenuProvider : MenuProvider {
         override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+            // mod: search all settings
+            menu.item(
+                R.string.settings_search, R.drawable.ic_baseline_search_24,
+                requireContext().styledColor(android.R.attr.colorControlNormal), true
+            ) {
+                startActivity(Intent(requireContext(), SettingsSearchActivity::class.java))
+            }
             menu.item(R.string.faq) {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Const.faqUrl)))
             }
@@ -66,28 +74,12 @@ class MainFragment : PaddingPreferenceFragment() {
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         preferenceScreen = preferenceManager.createPreferenceScreen(requireContext()).apply {
-            addCategory("Fcitx") {
-                addDestinationPreference(
-                    R.string.global_options,
-                    R.drawable.ic_baseline_tune_24,
-                    SettingsRoute.GlobalConfig
-                )
+            // mod: grouped by what people want to do, instead of "Fcitx" / "Android"
+            addCategory(R.string.settings_group_typing) {
                 addDestinationPreference(
                     R.string.input_methods,
                     R.drawable.ic_baseline_language_24,
                     SettingsRoute.InputMethodList
-                )
-                addDestinationPreference(
-                    R.string.addons,
-                    R.drawable.ic_baseline_extension_24,
-                    SettingsRoute.AddonList
-                )
-            }
-            addCategory("Android") {
-                addDestinationPreference(
-                    R.string.theme,
-                    R.drawable.ic_baseline_palette_24,
-                    SettingsRoute.Theme
                 )
                 addDestinationPreference(
                     R.string.virtual_keyboard,
@@ -100,34 +92,60 @@ class MainFragment : PaddingPreferenceFragment() {
                     SettingsRoute.CandidatesWindow
                 )
                 addDestinationPreference(
-                    R.string.clipboard,
-                    R.drawable.ic_clipboard,
-                    SettingsRoute.Clipboard
-                )
-                addPreference(R.string.setup_check, icon = R.drawable.ic_baseline_settings_24) {
-                    startActivity(Intent(requireContext(), SetupCheckActivity::class.java))
-                }
-                addPreference(R.string.common_phrase, icon = R.drawable.ic_common_phrase) {
-                    startActivity(Intent(requireContext(), CommonPhraseActivity::class.java))
-                }
-                addPreference(R.string.ai_assist, icon = R.drawable.ic_ai_assist) {
-                    startActivity(Intent(requireContext(), AiSettingsActivity::class.java))
-                }
-                addPreference(R.string.offline_voice, icon = R.drawable.ic_baseline_keyboard_voice_24) {
-                    startActivity(Intent(requireContext(), OfflineVoiceActivity::class.java))
-                }
-                addPreference(R.string.rime_grammar, icon = R.drawable.ic_baseline_auto_awesome_24) {
-                    startActivity(Intent(requireContext(), RimeGrammarActivity::class.java))
-                }
-                addDestinationPreference(
                     R.string.emoji_and_symbols,
                     R.drawable.ic_baseline_emoji_symbols_24,
                     SettingsRoute.Symbol
                 )
+                addPreference(R.string.rime_grammar, icon = R.drawable.ic_baseline_auto_awesome_24) {
+                    startActivity(Intent(requireContext(), RimeGrammarActivity::class.java))
+                }
+            }
+            addCategory(R.string.settings_group_voice_ai) {
+                addPreference(R.string.offline_voice, R.string.settings_voice_summary, R.drawable.ic_baseline_keyboard_voice_24) {
+                    startActivity(Intent(requireContext(), OfflineVoiceActivity::class.java))
+                }
+                addPreference(R.string.ai_assist, R.string.settings_ai_summary, R.drawable.ic_ai_assist) {
+                    startActivity(Intent(requireContext(), AiSettingsActivity::class.java))
+                }
+            }
+            addCategory(R.string.settings_group_clipboard) {
+                addDestinationPreference(
+                    R.string.clipboard,
+                    R.drawable.ic_clipboard,
+                    SettingsRoute.Clipboard
+                )
+                addPreference(R.string.common_phrase, icon = R.drawable.ic_common_phrase) {
+                    startActivity(Intent(requireContext(), CommonPhraseActivity::class.java))
+                }
+            }
+            addCategory(R.string.settings_group_look) {
+                addDestinationPreference(
+                    R.string.theme,
+                    R.drawable.ic_baseline_palette_24,
+                    SettingsRoute.Theme
+                )
+            }
+            addCategory(R.string.settings_group_more) {
+                addPreference(R.string.mod_welcome, icon = R.drawable.ic_baseline_info_24) {
+                    startActivity(Intent(requireContext(), ModWelcomeActivity::class.java))
+                }
+                addPreference(R.string.setup_check, icon = R.drawable.ic_baseline_settings_24) {
+                    startActivity(Intent(requireContext(), SetupCheckActivity::class.java))
+                }
                 addDestinationPreference(
                     R.string.plugins,
                     R.drawable.ic_baseline_android_24,
                     SettingsRoute.Plugin
+                )
+                addDestinationPreference(
+                    R.string.global_options,
+                    R.drawable.ic_baseline_tune_24,
+                    SettingsRoute.GlobalConfig
+                )
+                addDestinationPreference(
+                    R.string.addons,
+                    R.drawable.ic_baseline_extension_24,
+                    SettingsRoute.AddonList
                 )
                 addDestinationPreference(
                     R.string.advanced,
