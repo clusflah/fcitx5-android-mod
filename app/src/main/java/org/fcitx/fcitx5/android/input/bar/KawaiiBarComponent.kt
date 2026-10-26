@@ -242,7 +242,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
 
     private fun showTranslateStatus(text: String?) {
         translateStatus = text
-        if (text != null) idleUi.voiceStatus.text = text
+        if (text != null) idleUi.voiceStatus.showText(text)
         evalIdleUiState()
     }
 
@@ -949,9 +949,12 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         OtpCodeManager.listener = { refreshOtp(autoFill = true) }
         VoicePushToTalk.listener = { text ->
             isVoiceStatus = text != null
-            if (text != null) idleUi.voiceStatus.text = text
+            if (text != null) {
+                if (VoicePushToTalk.isRecording) idleUi.voiceStatus.showWave(text) else idleUi.voiceStatus.showText(text)
+            }
             evalIdleUiState()
         }
+        VoicePushToTalk.levelListener = { idleUi.voiceStatus.setLevel(it) }
     }
 
     override fun onStartInput(info: EditorInfo, capFlags: CapabilityFlags) {
