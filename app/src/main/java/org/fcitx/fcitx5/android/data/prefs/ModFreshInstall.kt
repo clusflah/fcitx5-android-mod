@@ -7,7 +7,6 @@ package org.fcitx.fcitx5.android.data.prefs
 
 import android.content.Context
 import android.content.SharedPreferences
-import org.fcitx.fcitx5.android.utils.toast
 
 object ModFreshInstall {
 
@@ -41,12 +40,5 @@ object ModFreshInstall {
         if (sp.getBoolean("hint_$key", false)) return false
         sp.edit().putBoolean("hint_$key", true).apply()
         return true
-    }
-
-    /** the first time the toolbar is opened */
-    fun toolbarHint(ctx: Context) {
-        if (once(ctx, "toolbar")) {
-            ctx.toast("长按工具栏按钮有更多功能；在 更多 → 编辑工具栏 里增删、排序按钮", android.widget.Toast.LENGTH_LONG)
-        }
     }
 }

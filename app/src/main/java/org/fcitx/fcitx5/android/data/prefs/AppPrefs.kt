@@ -138,8 +138,9 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         }
         val focusChangeResetKeyboard =
             switch(R.string.reset_keyboard_on_focus_change, "reset_keyboard_on_focus_change", true)
+        // mod: no longer shown, the toolbar is always there (its first button opens 更多)
         val expandToolbarByDefault =
-            switch(R.string.expand_toolbar_by_default, "expand_toolbar_by_default", false)
+            ManagedPreference.PBool(sharedPreferences, "expand_toolbar_by_default", false).apply { register() }
         // mod: AI 联想's switch, delay and chain limit are edited on the 大模型 page (AiSettingsActivity),
         // the voice switches on the 语音模型 page; this page only links there
         val aiPredictAuto =

@@ -67,14 +67,16 @@ class IdleUi(
         if (ctx.resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_LTR) 1f else -1f
     }
 
+    /** mod: the first button opens 更多; over a suggestion strip it is › (back to the toolbar) */
+    private val menuButtonIsMore get() = currentState == State.Toolbar || currentState == State.Empty
+
     private val menuButtonRotation
         get() = when {
-            inPrivate -> 0f
-            currentState == State.Toolbar -> 90f * translateDirection
+            inPrivate || menuButtonIsMore -> 0f
             else -> -90f * translateDirection
         }
 
-    val menuButton = ToolButton(ctx, R.drawable.ic_baseline_expand_more_24, theme).apply {
+    val menuButton = ToolButton(ctx, R.drawable.ic_toolbar_more, theme).apply {
         iconRotation = menuButtonRotation
     }
 
@@ -170,6 +172,7 @@ class IdleUi(
     private fun updateMenuButtonIcon() {
         menuButton.setIcon(
             if (inPrivate) R.drawable.ic_view_private
+            else if (menuButtonIsMore) R.drawable.ic_toolbar_more
             else R.drawable.ic_baseline_expand_more_24
         )
     }
@@ -177,7 +180,7 @@ class IdleUi(
     private fun updateMenuButtonContentDescription() {
         menuButton.contentDescription = when {
             inPrivate -> ctx.getString(R.string.private_mode)
-            currentState == State.Toolbar -> ctx.getString(R.string.hide_toolbar)
+            menuButtonIsMore -> ctx.getString(R.string.status_area)
             else -> ctx.getString(R.string.expand_toolbar)
         }
     }
@@ -273,7 +276,8 @@ class IdleUi(
             popup.dismissAll()
         }
         currentState = state
+        updateMenuButtonIcon()
         updateMenuButtonContentDescription()
-        updateMenuButtonRotation(instant = !fromUser)
+        updateMenuButtonRotation(instant = true)
     }
 }

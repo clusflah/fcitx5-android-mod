@@ -516,14 +516,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             isAiFresh -> IdleUi.State.AiSuggestion
             isClipboardFresh -> IdleUi.State.Clipboard
             isCapabilityFlagsPassword && !isKeyboardLayoutNumber && numberRowState != NumberRowState.ForceHide -> IdleUi.State.NumberRow
-            /**
-             * state matrix:
-             *                               expandToolbarByDefault
-             *                          |   \   |    true |   false
-             * isToolbarManuallyToggled |  true |   Empty | Toolbar
-             *                          | false | Toolbar |   Empty
-             */
-            expandToolbarByDefault == isToolbarManuallyToggled -> IdleUi.State.Empty
+            // mod: the toolbar no longer folds away (so expandToolbarByDefault is unused); its first button is 更多
             else -> IdleUi.State.Toolbar
         }
         if (newState == idleUi.currentState) return
@@ -616,14 +609,9 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         IdleUi(context, theme, popup, commonKeyActionListener).apply {
             menuButton.setOnClickListener {
                 when (idleUi.currentState) {
-                    IdleUi.State.Empty -> {
-                        isToolbarManuallyToggled = !expandToolbarByDefault
-                        evalIdleUiState(fromUser = true)
-                        org.fcitx.fcitx5.android.data.prefs.ModFreshInstall.toolbarHint(context)
-                    }
-                    IdleUi.State.Toolbar -> {
-                        isToolbarManuallyToggled = expandToolbarByDefault
-                        evalIdleUiState(fromUser = true)
+                    // mod: opens 更多 (it used to fold / unfold the toolbar)
+                    IdleUi.State.Empty, IdleUi.State.Toolbar -> {
+                        windowManager.attachWindow(StatusAreaWindow())
                     }
                     else -> {
                         isToolbarManuallyToggled = !expandToolbarByDefault

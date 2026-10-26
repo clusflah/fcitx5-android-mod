@@ -107,7 +107,8 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
             contentDescription = "Bitwarden"
         }
 
-    val moreButton = toolButton(R.drawable.ic_baseline_more_horiz_24, prefs.showMoreButton).apply {
+    // mod: 更多 is the first button of the bar (IdleUi.menuButton), so never shown in the row
+    val moreButton = toolButton(R.drawable.ic_toolbar_more, prefs.showMoreButton, { false }).apply {
         contentDescription = ctx.getString(R.string.status_area)
     }
 
