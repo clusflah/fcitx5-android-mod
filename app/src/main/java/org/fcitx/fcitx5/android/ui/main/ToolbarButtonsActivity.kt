@@ -43,6 +43,7 @@ class ToolbarButtonsActivity : AppCompatActivity() {
     }
 
     private fun order() = ToolbarButton.ordered(prefs.toolbarButtonOrder.getValue())
+        .filter { it != ToolbarButton.More } // mod: 更多 is always the first button, not in the row
 
     private fun pinned() = ToolbarButton.pinned(prefs.toolbarPinnedButtons.getValue())
 

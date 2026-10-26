@@ -619,11 +619,10 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                     IdleUi.State.Empty -> {
                         isToolbarManuallyToggled = !expandToolbarByDefault
                         evalIdleUiState(fromUser = true)
-                        org.fcitx.fcitx5.android.data.prefs.ModFreshInstall.toolbarHint(context)
                     }
+                    // mod: on the open toolbar it is 更多 (long press folds the toolbar)
                     IdleUi.State.Toolbar -> {
-                        isToolbarManuallyToggled = expandToolbarByDefault
-                        evalIdleUiState(fromUser = true)
+                        windowManager.attachWindow(StatusAreaWindow())
                     }
                     else -> {
                         isToolbarManuallyToggled = !expandToolbarByDefault
@@ -639,6 +638,13 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 if (clipboardTimeoutJob != null) {
                     launchClipboardTimeoutJob()
                 }
+            }
+            // mod: long press on 更多 folds the toolbar (tap the › that replaces it to unfold)
+            menuButton.setOnLongClickListener {
+                if (idleUi.currentState != IdleUi.State.Toolbar) return@setOnLongClickListener false
+                isToolbarManuallyToggled = expandToolbarByDefault
+                evalIdleUiState(fromUser = true)
+                true
             }
             buttonsUi.voiceButton.setOnClickListener(modVoiceInputCallback)
             hideKeyboardButton.apply {
