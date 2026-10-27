@@ -187,7 +187,7 @@ class AiAssistActivity : AppCompatActivity() {
 
         // input
         input = EditText(this).apply {
-            hint = if (translateMode) "输入要翻译的内容" else "输入内容，或点下面的“粘贴剪贴板”"
+            hint = if (translateMode) "输入要翻译的内容" else "输入内容，或点下面的“粘贴”"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             minLines = 2; maxLines = 6; gravity = Gravity.TOP
             // mod: the clipboard is no longer filled in by itself (it may be unrelated, or private);
@@ -216,15 +216,21 @@ class AiAssistActivity : AppCompatActivity() {
         val clip = intent.getStringExtra(EXTRA_CLIPBOARD)?.takeIf { it.isNotBlank() }
         val pasteLabel = clip?.let { c ->
             val one = c.replace('\n', ' ').trim()
-            "粘贴剪贴板：" + if (one.length > 10) one.take(10) + "…" else one
-        } ?: "粘贴剪贴板"
+            "粘贴：" + if (one.length > 10) one.take(10) + "…" else one
+        } ?: "粘贴"
         // 粘贴 / 清空 take what 画图 and 发送 leave; a long clipboard preview is cut with "…"
         // (wrap_content inside the slot: shrinks only when the row is too narrow)
         val leftActions = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        leftActions.addView(smallButton(pasteLabel) { (readClipboard() ?: clip)?.let { input.setText(it) } }.apply {
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        }, LinearLayout.LayoutParams(-2, -2, 1f))
+        // nothing to paste (clipboard empty or cleared): no 粘贴 button; this app is the input method,
+        // so reading the clipboard here shows no "pasted from clipboard" notice
+        if (clip != null || readClipboard() != null) {
+            leftActions.addView(smallButton(pasteLabel) { (readClipboard() ?: clip)?.let { input.setText(it) } }.apply {
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            }, LinearLayout.LayoutParams(-2, -2, 1f))
+        } else if (!translateMode) {
+            input.hint = "输入内容"
+        }
         leftActions.addView(smallButton("清空") { input.setText("") })
         inputActions.addView(android.widget.FrameLayout(this).apply { addView(leftActions, -2, -2) },
             LinearLayout.LayoutParams(0, -2, 1f))
