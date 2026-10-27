@@ -25,7 +25,7 @@ import kotlin.math.roundToInt
 
 class FloatingKeyboard(
     private val context: Context,
-    theme: Theme,
+    private val theme: Theme,
     /** called when the geometry changed and the keyboard has to be laid out again */
     private val onGeometryChange: () -> Unit
 ) {

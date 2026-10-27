@@ -55,6 +55,7 @@ class ToolbarEditWindow : InputWindow.ExtendedInputWindow<ToolbarEditWindow>() {
     private fun label(b: ToolbarButton) = when (b) {
         ToolbarButton.PasswordManager -> "Bitwarden"
         ToolbarButton.Voice -> "语音输入"
+        ToolbarButton.Floating -> "悬浮键盘"
         ToolbarButton.Clipboard -> "剪贴板"
         else -> context.getString(b.label)
     }
