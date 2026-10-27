@@ -96,6 +96,50 @@ object MarkdownImages {
         else -> null
     }
 
+    /**
+     * For editors that turn Markdown images into pictures (日迹): each picture becomes a line
+     * ![](address), web pictures keep their address, ours get a content:// uri the editor's app
+     * is granted read access to. Returns null when the reply has no picture.
+     */
+    fun exportWithImageLinks(text: CharSequence): Pair<String, List<android.net.Uri>>? {
+        val out = SpannableStringBuilder(text)
+        val images = out.getSpans(0, out.length, MarkdownText.Image::class.java)
+        val uris = ArrayList<android.net.Uri>()
+        // Markdown format: the reply as written, with our pictures still as file:// addresses
+        if (images.isEmpty()) {
+            if (!localImage.containsMatchIn(out)) return null
+            val md = localImage.replace(out) { m ->
+                contentUri(m.groupValues[1])?.also { uris.add(it) }?.let { "($it)" } ?: m.value
+            }
+            return md to uris
+        }
+        images.sortedByDescending { out.getSpanStart(it) }.forEach { img ->
+            val start = out.getSpanStart(img)
+            val end = out.getSpanEnd(img)
+            if (start < 0) return@forEach
+            val address = when {
+                isWeb(img.url) -> img.url
+                img.url.startsWith("file://") -> contentUri(img.url)?.also { uris.add(it) }?.toString()
+                else -> null
+            }
+            val line = if (address != null) "![](${address})" else img.alt.ifBlank { MarkdownText.IMAGE_PLACEHOLDER }
+            // on a line of its own, the way Markdown images are recognised
+            val before = if (start > 0 && out[start - 1] != '\n') "\n" else ""
+            val after = if (end < out.length && out[end] != '\n') "\n" else ""
+            out.replace(start, end, before + line + after)
+        }
+        return out.toString() to uris
+    }
+
+    private val localImage = Regex("""\((file://[^)\s]*/$CACHE_DIR/[^)\s]+)\)""")
+
+    /** one of our cached pictures (file://…) as a content:// uri other apps can be granted */
+    private fun contentUri(fileUrl: String): android.net.Uri? = runCatching {
+        androidx.core.content.FileProvider.getUriForFile(
+            appContext, "${appContext.packageName}.ai.images", File(fileUrl.removePrefix("file://"))
+        )
+    }.getOrNull()
+
     private fun isWeb(url: String) =
         url.startsWith("https://", ignoreCase = true) || url.startsWith("http://", ignoreCase = true)
 

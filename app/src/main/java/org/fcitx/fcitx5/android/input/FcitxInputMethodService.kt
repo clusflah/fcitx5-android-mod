@@ -761,6 +761,8 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
     private val aiHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var aiText: CharSequence? = null
     private var aiImage: Pair<android.net.Uri, String>? = null
+    /** the reply with its pictures as ![](address) lines, for [AiPendingCommit.IMAGE_LINK_APPS] */
+    private var aiImageText: Pair<String, List<android.net.Uri>>? = null
     private var aiDeadline = 0L
     private var aiCommittedTo: android.view.inputmethod.InputConnection? = null
 
@@ -779,6 +781,14 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
                 aiImage = null
                 commitAiImage(ic, info, uri, mime)
                 return
+            }
+            // mod: 日迹 turns ![](address) lines into pictures; let it read ours
+            aiImageText?.let { (withImages, uris) ->
+                aiImageText = null
+                if (aiText != null && info.packageName in AiPendingCommit.IMAGE_LINK_APPS) {
+                    uris.forEach { runCatching { grantUriPermission(info.packageName, it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
+                    aiText = withImages
+                }
             }
             val text = aiText ?: return
             if (ic.commitText(text, 1)) {
@@ -815,6 +825,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         if (info == null || info.packageName == packageName || info.isTypeNull()) return
         AiPendingCommit.take()?.let {
             aiText = it
+            aiImageText = AiPendingCommit.takeImageText()
             aiDeadline = android.os.SystemClock.elapsedRealtime() + 4000
         }
         AiPendingCommit.takeImage()?.let {
