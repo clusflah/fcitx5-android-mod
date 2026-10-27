@@ -176,6 +176,7 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         val showT9Button = toolbarSwitch("show_t9_button")
         val showPasswordManagerButton = toolbarSwitch("show_password_manager_button")
         val showMoreButton = toolbarSwitch("show_more_button")
+        val showFloatingButton = toolbarSwitch("show_floating_button")
 
         /** mod: the toolbar 🎤; records with the mod's own voice input */
         val showVoiceInputButton =
@@ -317,6 +318,22 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             keyboardBottomPadding = primary
             keyboardBottomPaddingLandscape = secondary
         }
+
+        /** mod: in landscape the keyboard floats over the app, see input/FloatingKeyboard.kt */
+        val floatingKeyboardLandscape = switch(
+            R.string.floating_keyboard_landscape, "floating_keyboard_landscape", false,
+            R.string.floating_keyboard_landscape_summary
+        )
+
+        // where the floating keyboard sits and how big it is, in px; -1 until the user moves or resizes it
+        val floatingKeyboardX =
+            ManagedPreference.PInt(sharedPreferences, "floating_keyboard_x", -1).apply { register() }
+        val floatingKeyboardBottom =
+            ManagedPreference.PInt(sharedPreferences, "floating_keyboard_bottom", -1).apply { register() }
+        val floatingKeyboardWidth =
+            ManagedPreference.PInt(sharedPreferences, "floating_keyboard_width", -1).apply { register() }
+        val floatingKeyboardHeight =
+            ManagedPreference.PInt(sharedPreferences, "floating_keyboard_height", -1).apply { register() }
 
         val horizontalCandidateStyle = enumList(
             R.string.horizontal_candidate_style,
