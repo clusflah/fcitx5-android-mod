@@ -11,4 +11,6 @@
     <string name="toolbar_button_floating">悬浮键盘（仅横屏显示）</string>
     <string name="floating_keyboard_landscape">横屏悬浮键盘</string>
     <string name="floating_keyboard_landscape_summary">横屏时键盘悬浮在应用上方：拖动底部横条移动位置，拖动底部两角调整大小，可缩小到适合单手操作。工具栏的悬浮按钮也能开关</string>
+    <string name="check_update">检查更新</string>
+    <string name="check_update_summary">从 GitHub 下载这个修改版的最新版本并安装</string>
 </resources>

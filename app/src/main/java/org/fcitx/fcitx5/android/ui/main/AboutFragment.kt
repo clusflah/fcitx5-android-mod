@@ -39,6 +39,12 @@ class AboutFragment : PaddingPreferenceFragment() {
             addCategory(R.string.version) {
                 isIconSpaceReserved = false
                 addPreference(R.string.current_version, Const.versionName)
+                // mod: in-app update
+                if (org.fcitx.fcitx5.android.data.update.ModUpdate.supported(requireContext())) {
+                    addPreference(R.string.check_update, R.string.check_update_summary) {
+                        org.fcitx.fcitx5.android.data.update.ModUpdate.updater(requireContext()).checkNow(requireActivity())
+                    }
+                }
                 addPreference(R.string.build_git_hash, BuildConfig.BUILD_GIT_HASH) {
                     val commit = BuildConfig.BUILD_GIT_HASH.substringBefore('-')
                     val uri = Uri.parse("${Const.githubRepo}/commit/${commit}")
