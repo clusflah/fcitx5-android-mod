@@ -196,4 +196,23 @@ class FloatingKeyboard(
     }
 
     val handle: View = Handle()
+
+    companion object {
+        /**
+         * Where the floating keyboard sits across the screen, (left, width) in px, or null when it isn't
+         * floating. Used by windows the keyboard opens (the AI assistant) to take the same size.
+         */
+        fun horizontalBounds(context: Context): Pair<Int, Int>? {
+            val prefs = AppPrefs.getInstance().keyboard
+            if (context.resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE ||
+                !prefs.floatingKeyboardLandscape.getValue()
+            ) return null
+            val screen = context.resources.displayMetrics.widthPixels
+            val width = (prefs.floatingKeyboardWidth.getValue().takeIf { it > 0 }
+                ?: min(context.dp(400), screen / 2)).coerceAtMost(screen)
+            val x = (prefs.floatingKeyboardX.getValue().takeIf { it >= 0 }
+                ?: (screen - width - context.dp(24))).coerceIn(0, max(0, screen - width))
+            return x to width
+        }
+    }
 }
