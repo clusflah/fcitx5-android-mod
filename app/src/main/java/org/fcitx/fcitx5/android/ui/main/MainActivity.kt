@@ -78,6 +78,10 @@ class MainActivity : AppCompatActivity() {
         }
         processIntent(intent)
         checkNotificationPermission()
+        // mod: offer a new release (at most one check a day)
+        if (savedInstanceState == null && org.fcitx.fcitx5.android.data.update.ModUpdate.supported(this)) {
+            org.fcitx.fcitx5.android.data.update.ModUpdate.updater(this).autoCheck(this)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
