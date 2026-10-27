@@ -311,15 +311,35 @@ class AiAssistActivity : AppCompatActivity() {
         root.addView(resultBox)
 
         setContentView(ScrollView(this).apply { addView(root) })
+        // mod: keyboard floating (landscape): the card is as wide as the keyboard, on the other side
+        // of the screen so the keyboard doesn't cover it when typing into the card
+        val floating = org.fcitx.fcitx5.android.input.FloatingKeyboard.horizontalBounds(this)
+        if (floating != null) {
+            val (kbX, kbWidth) = floating
+            val screen = resources.displayMetrics.widthPixels
+            val margin = dp(16)
+            val left = when {
+                kbX >= kbWidth + margin -> kbX - kbWidth - margin            // room on the left of the keyboard
+                screen - kbX - kbWidth >= kbWidth + margin -> kbX + kbWidth + margin
+                else -> kbX
+            }
+            window.setLayout(kbWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
+            window.attributes = window.attributes.apply {
+                gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                x = left
+            }
+        }
         if (styled) {
             AiDialogStyle.styleWindow(window)
             // sit lower on the screen, nearer the keyboard and the thumb: a quarter of the screen
             // below the middle, less half the card's own height once it is measured
             val lower = resources.displayMetrics.heightPixels / 4
-            window.attributes = window.attributes.apply { y = lower }
-            window.decorView.post {
-                window.attributes = window.attributes.apply {
-                    y = (lower - window.decorView.height / 2).coerceAtLeast(0)
+            if (floating == null) {
+                window.attributes = window.attributes.apply { y = lower }
+                window.decorView.post {
+                    window.attributes = window.attributes.apply {
+                        y = (lower - window.decorView.height / 2).coerceAtLeast(0)
+                    }
                 }
             }
             AiDialogStyle.apply(root)
