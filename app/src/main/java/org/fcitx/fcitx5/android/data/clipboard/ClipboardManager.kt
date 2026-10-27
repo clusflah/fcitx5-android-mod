@@ -135,7 +135,7 @@ object ClipboardManager : ClipboardManager.OnPrimaryClipChangedListener,
 
     /**
      * mod: the current clip was deleted from the history, so empty the system clipboard too;
-     * otherwise the toolbar suggestion and the assistant's 粘贴剪贴板 would still offer it
+     * otherwise the toolbar suggestion and the assistant's 粘贴 button would still offer it
      */
     private fun forgetCurrent() {
         lastEntry = null
