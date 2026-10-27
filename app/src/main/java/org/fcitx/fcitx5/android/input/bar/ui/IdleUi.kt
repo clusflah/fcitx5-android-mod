@@ -99,13 +99,8 @@ class IdleUi(
     /** latest SMS verification code */
     val otpCodeUi = OtpCodeUi(ctx, theme)
 
-    /** push-to-talk progress ("正在聆听… 松开发送" / "识别中…") */
-    val voiceStatus = android.widget.TextView(ctx).apply {
-        textSize = 15f
-        gravity = Gravity.CENTER
-        isSingleLine = true
-        setTextColor(theme.keyTextColor)
-    }
+    /** push-to-talk progress (waveform while listening, "识别中…") */
+    val voiceStatus = org.fcitx.fcitx5.android.input.voice.VoiceStatusView(ctx, theme)
 
     private val animator = ViewAnimator(ctx).apply {
         add(emptyBar, lParams(matchParent, matchParent))
