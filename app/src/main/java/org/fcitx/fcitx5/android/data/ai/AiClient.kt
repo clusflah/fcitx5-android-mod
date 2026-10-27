@@ -67,7 +67,14 @@ object AiClient {
                 buildString {
                     for (i in 0 until parts.length()) {
                         val p = parts.getJSONObject(i)
-                        if (!p.optBoolean("thought")) append(p.optString("text"))
+                        if (p.optBoolean("thought")) continue
+                        append(p.optString("text"))
+                        // mod: a picture in the answer (image models) goes in as a Markdown image
+                        val data = p.optJSONObject("inlineData") ?: p.optJSONObject("inline_data")
+                        val mime = data?.let { it.optString("mimeType").ifEmpty { it.optString("mime_type") } }.orEmpty()
+                        if (data != null && mime.startsWith("image/")) {
+                            MarkdownImages.saveInline(data.optString("data"), mime)?.let { append("\n\n![](").append(it).append(")\n\n") }
+                        }
                     }
                 }.trim()
             }

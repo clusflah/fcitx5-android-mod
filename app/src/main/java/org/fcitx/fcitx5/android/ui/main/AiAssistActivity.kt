@@ -15,6 +15,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.SpannableStringBuilder
 import android.text.Spanned
+import android.text.style.ImageSpan
 import android.text.style.RelativeSizeSpan
 import android.text.style.StrikethroughSpan
 import android.text.style.StyleSpan
@@ -53,6 +54,7 @@ import org.fcitx.fcitx5.android.data.ai.AiPrompt
 import org.fcitx.fcitx5.android.data.ai.AiPromptRunner
 import org.fcitx.fcitx5.android.data.ai.AiProvider
 import org.fcitx.fcitx5.android.data.ai.AiTranslate
+import org.fcitx.fcitx5.android.data.ai.MarkdownImages
 import org.fcitx.fcitx5.android.data.ai.MarkdownText
 import org.fcitx.fcitx5.android.data.ai.TranslateEngine
 import org.fcitx.fcitx5.android.utils.clipboardManager
@@ -216,9 +218,16 @@ class AiAssistActivity : AppCompatActivity() {
             val one = c.replace('\n', ' ').trim()
             "粘贴剪贴板：" + if (one.length > 10) one.take(10) + "…" else one
         } ?: "粘贴剪贴板"
-        inputActions.addView(smallButton(pasteLabel) { (readClipboard() ?: clip)?.let { input.setText(it) } })
-        inputActions.addView(smallButton("清空") { input.setText("") })
-        inputActions.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        // 粘贴 / 清空 take what 画图 and 发送 leave; a long clipboard preview is cut with "…"
+        // (wrap_content inside the slot: shrinks only when the row is too narrow)
+        val leftActions = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        leftActions.addView(smallButton(pasteLabel) { (readClipboard() ?: clip)?.let { input.setText(it) } }.apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }, LinearLayout.LayoutParams(-2, -2, 1f))
+        leftActions.addView(smallButton("清空") { input.setText("") })
+        inputActions.addView(android.widget.FrameLayout(this).apply { addView(leftActions, -2, -2) },
+            LinearLayout.LayoutParams(0, -2, 1f))
         progress = ProgressBar(this).apply { visibility = View.GONE }
         inputActions.addView(progress, LinearLayout.LayoutParams(dp(28), dp(28)))
         imageBtn = smallButton("画图") { generateImage() }.apply {
@@ -276,10 +285,12 @@ class AiAssistActivity : AppCompatActivity() {
             text = "输入"
             setOnClickListener {
                 if (lastWasImage) { insertImage(); return@setOnClickListener }
-                val t: CharSequence = if (format == FORMAT_RICH) styledCopy(output.text) else output.text.toString()
+                // pictures in the reply go in as their web address (or "[图片]"); text fields take text only
+                val exported = MarkdownImages.exportText(output.text)
+                val t: CharSequence = if (format == FORMAT_RICH) styledCopy(exported) else exported.toString()
                 if (t.isNotEmpty()) {
                     // backup: also put it on the clipboard in case the target app ignores it
-                    runCatching { clipboardManager.setPrimaryClip(clipOf(t)) }
+                    runCatching { clipboardManager.setPrimaryClip(clipOf(output.text)) }
                     if (intent.hasExtra(EXTRA_CLIPBOARD) || intent.hasExtra(EXTRA_TEXT)) {
                         AiPendingCommit.set(t)
                     } else {
@@ -374,11 +385,40 @@ class AiAssistActivity : AppCompatActivity() {
     private fun showReply() {
         output.setText(
             when (format) {
-                FORMAT_PLAIN -> MarkdownText.toPlain(rawReply)
-                FORMAT_RICH -> MarkdownText.render(rawReply)
+                // pictures show in 纯文本 too, only the text styles are dropped
+                FORMAT_PLAIN -> MarkdownText.render(rawReply, images = true).also { sb ->
+                    sb.getSpans(0, sb.length, Any::class.java).forEach { if (it !is MarkdownText.Image) sb.removeSpan(it) }
+                }
+                FORMAT_RICH -> MarkdownText.render(rawReply, images = true)
                 else -> rawReply
             }
         )
+        loadReplyImages()
+    }
+
+    /** mod: put the reply's pictures where their "[图片]" stands, as they arrive */
+    private fun loadReplyImages() {
+        val text = output.text
+        val maxWidth = (output.width - output.paddingLeft - output.paddingRight).takeIf { it > 0 }
+            ?: (resources.displayMetrics.widthPixels - dp(64))
+        val maxHeight = dp(320)
+        text.getSpans(0, text.length, MarkdownText.Image::class.java).forEach { img ->
+            lifecycleScope.launch {
+                val bitmap = MarkdownImages.load(img.url, maxWidth) ?: return@launch
+                val e = output.text
+                val start = e.getSpanStart(img)
+                val end = e.getSpanEnd(img)
+                // the reply was replaced or edited away meanwhile
+                if (start < 0 || e.subSequence(start, end).toString() != MarkdownText.IMAGE_PLACEHOLDER) return@launch
+                val scale = minOf(1f, maxWidth.toFloat() / bitmap.width, maxHeight.toFloat() / bitmap.height)
+                val drawable = android.graphics.drawable.BitmapDrawable(resources, bitmap).apply {
+                    setBounds(0, 0, (bitmap.width * scale).toInt().coerceAtLeast(1), (bitmap.height * scale).toInt().coerceAtLeast(1))
+                }
+                e.replace(start, end, "\uFFFC")
+                e.setSpan(img, start, start + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                e.setSpan(ImageSpan(drawable, img.url), start, start + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
     }
 
     /** Only the styles the Markdown renderer adds, without the EditText's own spans. */
@@ -387,7 +427,7 @@ class AiAssistActivity : AppCompatActivity() {
         if (text is Spanned) {
             text.getSpans(0, text.length, Any::class.java).forEach { sp ->
                 if (sp is StyleSpan || sp is RelativeSizeSpan || sp is TypefaceSpan ||
-                    sp is StrikethroughSpan || sp is URLSpan
+                    sp is StrikethroughSpan || sp is URLSpan || sp is ImageSpan
                 ) copy.setSpan(sp, text.getSpanStart(sp), text.getSpanEnd(sp), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
         }
@@ -396,9 +436,11 @@ class AiAssistActivity : AppCompatActivity() {
 
     /** Rich text mode also puts HTML on the clipboard, so pasting into notes / mail keeps the formatting. */
     private fun clipOf(text: CharSequence): ClipData {
-        val plain = text.toString()
+        val plain = MarkdownImages.exportText(text).toString()
         if (format != FORMAT_RICH) return ClipData.newPlainText("ai", plain)
-        val html = HtmlCompat.toHtml(styledCopy(text) as Spanned, HtmlCompat.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE)
+        // web pictures stay pictures (<img>) for apps that paste HTML
+        val styled = styledCopy(MarkdownImages.exportText(text, keepWebImages = true))
+        val html = HtmlCompat.toHtml(styled as Spanned, HtmlCompat.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE)
         return ClipData.newHtmlText("ai", plain, html)
     }
 
