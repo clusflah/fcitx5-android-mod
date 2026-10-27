@@ -4,6 +4,8 @@
  * The result's plain string (toString()) has no Markdown markers left: lists become "• ",
  * headings / bold / code lose their symbols, tables become "a | b" rows.
  * Its spans (bold, italic, heading size, monospace, strikethrough, links) give the rich preview.
+ * With images = true, ![alt](url) becomes "[图片]" marked with an [Image] span, which the
+ * assistant replaces with the picture once it is loaded (MarkdownImages).
  */
 package org.fcitx.fcitx5.android.data.ai
 
@@ -18,6 +20,11 @@ import android.text.style.URLSpan
 
 object MarkdownText {
 
+    /** where a picture goes: the text it covers is replaced by the image when it loads */
+    class Image(val url: String, val alt: String)
+
+    const val IMAGE_PLACEHOLDER = "[图片]"
+
     private val fence = Regex("""^\s*(```|~~~)""")
     private val heading = Regex("""^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$""")
     private val rule = Regex("""^\s{0,3}([-*_])(\s*\1){2,}\s*$""")
@@ -29,7 +36,7 @@ object MarkdownText {
     private val br = Regex("""<br\s*/?>""", RegexOption.IGNORE_CASE)
 
     /** Rendered text; call toString() for the plain version. */
-    fun render(md: String): SpannableStringBuilder {
+    fun render(md: String, images: Boolean = false): SpannableStringBuilder {
         val out = SpannableStringBuilder()
         val lines = md.replace("\r\n", "\n").replace(br, "\n").split('\n')
         var blank = 0
@@ -66,7 +73,7 @@ object MarkdownText {
             if (h != null) {
                 val level = h.groupValues[1].length
                 val start = out.length
-                inline(h.groupValues[2], out)
+                inline(h.groupValues[2], out, images)
                 span(out, StyleSpan(Typeface.BOLD), start)
                 val size = when (level) { 1 -> 1.3f; 2 -> 1.2f; 3 -> 1.1f; else -> 1f }
                 if (size != 1f) span(out, RelativeSizeSpan(size), start)
@@ -81,17 +88,17 @@ object MarkdownText {
             if (q != null) {
                 out.append("│ ")
                 val start = out.length
-                inline(q.groupValues[1], out)
+                inline(q.groupValues[1], out, images)
                 span(out, StyleSpan(Typeface.ITALIC), start)
                 i++; continue
             }
 
             if (line.contains('|') && i + 1 < lines.size && tableSep.matches(lines[i + 1])) {
                 // header row, separator, then body rows
-                tableRow(line, out, header = true)
+                tableRow(line, out, header = true, images)
                 i += 2
                 while (i < lines.size && lines[i].contains('|') && lines[i].isNotBlank()) {
-                    out.append('\n'); tableRow(lines[i], out, header = false); i++
+                    out.append('\n'); tableRow(lines[i], out, header = false, images); i++
                 }
                 continue
             }
@@ -103,9 +110,9 @@ object MarkdownText {
                 val t = task.matchEntire(body)
                 if (t != null) {
                     out.append(if (t.groupValues[1] == " ") "☐ " else "☑ ")
-                    inline(t.groupValues[2], out)
+                    inline(t.groupValues[2], out, images)
                 } else {
-                    out.append("• "); inline(body, out)
+                    out.append("• "); inline(body, out, images)
                 }
                 i++; continue
             }
@@ -113,11 +120,11 @@ object MarkdownText {
             val o = ordered.matchEntire(line)
             if (o != null) {
                 out.append(indent(o.groupValues[1])).append(o.groupValues[2]).append(". ")
-                inline(o.groupValues[4], out)
+                inline(o.groupValues[4], out, images)
                 i++; continue
             }
 
-            inline(line.trim(), out)
+            inline(line.trim(), out, images)
             i++
         }
         return out
@@ -130,7 +137,7 @@ object MarkdownText {
         return "  ".repeat(n.coerceAtMost(4))
     }
 
-    private fun tableRow(line: String, out: SpannableStringBuilder, header: Boolean) {
+    private fun tableRow(line: String, out: SpannableStringBuilder, header: Boolean, images: Boolean) {
         var s = line.trim()
         if (s.startsWith('|')) s = s.substring(1)
         if (s.endsWith('|') && !s.endsWith("\\|")) s = s.dropLast(1)
@@ -138,7 +145,7 @@ object MarkdownText {
         val start = out.length
         cells.forEachIndexed { k, c ->
             if (k > 0) out.append(" | ")
-            inline(c, out)
+            inline(c, out, images)
         }
         if (header) span(out, StyleSpan(Typeface.BOLD), start)
     }
@@ -150,7 +157,7 @@ object MarkdownText {
     private fun isWordChar(c: Char?) = c != null && c.isLetterOrDigit() && c.code < 0x2E80
 
     /** Inline Markdown: escapes, `code`, **bold**, *italic*, ~~strike~~, [links](url), ![images](url). */
-    private fun inline(s: String, out: SpannableStringBuilder) {
+    private fun inline(s: String, out: SpannableStringBuilder, images: Boolean = false) {
         var i = 0
         while (i < s.length) {
             val c = s[i]
@@ -181,7 +188,7 @@ object MarkdownText {
                         (c != '_' || (!isWordChar(prev) && !isWordChar(s.getOrNull(end + 2))))
                 if (ok) {
                     val start = out.length
-                    inline(s.substring(i + 2, end), out)
+                    inline(s.substring(i + 2, end), out, images)
                     span(out, if (c == '~') StrikethroughSpan() else StyleSpan(Typeface.BOLD), start)
                     i = end + 2; continue
                 }
@@ -202,7 +209,7 @@ object MarkdownText {
                     (c != '_' || !isWordChar(s.getOrNull(end + 1)))
                 ) {
                     val start = out.length
-                    inline(s.substring(i + 1, end), out)
+                    inline(s.substring(i + 1, end), out, images)
                     span(out, StyleSpan(Typeface.ITALIC), start)
                     i = end + 1; continue
                 }
@@ -217,7 +224,10 @@ object MarkdownText {
                     val label = s.substring(open + 1, close)
                     val url = s.substring(close + 2, urlEnd).trim().substringBefore(' ')
                     val start = out.length
-                    if (image) {
+                    if (image && images && url.isNotEmpty()) {
+                        out.append(IMAGE_PLACEHOLDER)
+                        span(out, Image(url, label), start)
+                    } else if (image) {
                         inline(label, out)
                     } else if (label.isBlank() || label == url) {
                         out.append(url)
