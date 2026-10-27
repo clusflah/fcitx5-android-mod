@@ -164,12 +164,23 @@ object AiPendingCommit {
     private var text: CharSequence? = null
     private var time = 0L
 
+    /** apps whose editor turns ![](address) lines into pictures (日迹); they get [imageText] instead */
+    val IMAGE_LINK_APPS = setOf("app.birthdayreminder")
+
+    /** the reply with its pictures as ![](address) lines, and the content:// uris among them */
+    var imageText: Pair<String, List<android.net.Uri>>? = null
+        private set
+
     /** May be styled (rich text mode); apps that support it keep bold etc. */
-    fun set(t: CharSequence) { text = t; time = SystemClock.elapsedRealtime() }
+    fun set(t: CharSequence, withImages: Pair<String, List<android.net.Uri>>? = null) {
+        text = t; imageText = withImages; time = SystemClock.elapsedRealtime()
+    }
 
     fun take(): CharSequence? {
         val t = text ?: return null
         text = null
         return if (SystemClock.elapsedRealtime() - time < 60_000) t else null
     }
+
+    fun takeImageText(): Pair<String, List<android.net.Uri>>? = imageText.also { imageText = null }
 }
