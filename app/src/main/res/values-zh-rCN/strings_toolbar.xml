@@ -8,4 +8,7 @@
     <string name="toolbar_button_pin">常驻右侧</string>
     <string name="toolbar_button_unpin">取消常驻</string>
     <string name="card_style">圆形按钮与卡片式面板</string>
+    <string name="toolbar_button_floating">悬浮键盘（仅横屏显示）</string>
+    <string name="floating_keyboard_landscape">横屏悬浮键盘</string>
+    <string name="floating_keyboard_landscape_summary">横屏时键盘悬浮在应用上方：拖动底部横条移动位置，拖动底部两角调整大小，可缩小到适合单手操作。工具栏的悬浮按钮也能开关</string>
 </resources>

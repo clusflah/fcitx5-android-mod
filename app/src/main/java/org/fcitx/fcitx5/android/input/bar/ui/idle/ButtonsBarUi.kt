@@ -121,6 +121,13 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
             contentDescription = ctx.getString(R.string.switch_to_voice_input)
         }
 
+    /** mod: floats the keyboard (FloatingKeyboard); only offered in landscape */
+    val floatingButton = toolButton(R.drawable.ic_floating_keyboard, prefs.showFloatingButton, {
+        ctx.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    }).apply {
+        contentDescription = ctx.getString(R.string.floating_keyboard_landscape)
+    }
+
     fun setVoiceAllowed(allowed: Boolean) {
         voiceAllowed = allowed
         voiceButton.visibility =
@@ -140,6 +147,7 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
         ToolbarButton.PasswordManager to passwordManagerButton,
         ToolbarButton.More to moreButton,
         ToolbarButton.Voice to voiceButton,
+        ToolbarButton.Floating to floatingButton,
     )
 
     fun button(b: ToolbarButton): View? = buttonOf[b]

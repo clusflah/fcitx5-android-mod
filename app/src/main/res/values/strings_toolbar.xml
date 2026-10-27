@@ -8,4 +8,7 @@
     <string name="toolbar_button_pin">Pin to the right</string>
     <string name="toolbar_button_unpin">Unpin</string>
     <string name="card_style">Round buttons and card panels</string>
+    <string name="toolbar_button_floating">Floating keyboard (landscape only)</string>
+    <string name="floating_keyboard_landscape">Floating keyboard in landscape</string>
+    <string name="floating_keyboard_landscape_summary">In landscape the keyboard floats over the app: drag the bar at its bottom to move it, drag a bottom corner to resize it. The toolbar button toggles it too.</string>
 </resources>

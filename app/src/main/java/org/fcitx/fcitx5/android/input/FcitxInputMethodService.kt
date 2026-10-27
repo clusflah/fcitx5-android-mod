@@ -11,6 +11,7 @@ import android.content.pm.ActivityInfo
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
@@ -609,7 +610,23 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
 
     private var inputViewLocation = intArrayOf(0, 0)
 
+    private val floatingBounds = Rect()
+
     override fun onComputeInsets(outInsets: Insets) {
+        // mod: a floating keyboard leaves the app its whole window and only takes touches on itself
+        val floating = inputView?.takeIf { inputDeviceMgr.isVirtualKeyboard }
+            ?.floatingKeyboardBounds(floatingBounds)
+        if (floating != null) {
+            val n = decorView.findViewById<View>(android.R.id.navigationBarBackground)?.height ?: 0
+            val h = decorView.height - n
+            outInsets.apply {
+                contentTopInsets = h
+                visibleTopInsets = h
+                touchableInsets = Insets.TOUCHABLE_INSETS_REGION
+                touchableRegion.set(floating)
+            }
+            return
+        }
         if (inputDeviceMgr.isVirtualKeyboard) {
             inputView?.keyboardView?.getLocationInWindow(inputViewLocation)
             outInsets.apply {

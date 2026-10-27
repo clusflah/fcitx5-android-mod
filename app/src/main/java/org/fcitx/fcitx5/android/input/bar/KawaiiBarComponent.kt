@@ -750,6 +750,10 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 moreButton.setOnClickListener {
                     windowManager.attachWindow(StatusAreaWindow())
                 }
+                floatingButton.setOnClickListener {
+                    val floating = AppPrefs.getInstance().keyboard.floatingKeyboardLandscape
+                    floating.setValue(!floating.getValue())
+                }
             }
             // the strip shows a code if there is one, otherwise the SMS permission prompt
             otpCodeUi.onCodeClick = {
