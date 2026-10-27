@@ -41,6 +41,8 @@
     <uses-permission android:name="${applicationId}.permission.PLUGIN" />
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- mod: in-app update installs the downloaded release -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- mod: warn before a big voice model download on mobile data -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -183,6 +185,17 @@
             android:windowSoftInputMode="stateHidden|adjustResize" />
 
         <!-- images made by the AI assistant, for inserting / sharing -->
+        <!-- mod: in-app update, the downloaded APK goes to the system installer -->
+        <provider
+            android:name=".data.update.UpdateFileProvider"
+            android:authorities="${applicationId}.update"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
+
         <provider
             android:name=".data.ai.AiImageFileProvider"
             android:authorities="${applicationId}.ai.images"

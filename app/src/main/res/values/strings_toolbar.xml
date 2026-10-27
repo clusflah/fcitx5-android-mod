@@ -11,4 +11,6 @@
     <string name="toolbar_button_floating">Floating keyboard (landscape only)</string>
     <string name="floating_keyboard_landscape">Floating keyboard in landscape</string>
     <string name="floating_keyboard_landscape_summary">In landscape the keyboard floats over the app: drag the bar at its bottom to move it, drag a bottom corner to resize it. The toolbar button toggles it too.</string>
+    <string name="check_update">Check for updates</string>
+    <string name="check_update_summary">Download the latest release of this fork from GitHub and install it</string>
 </resources>
