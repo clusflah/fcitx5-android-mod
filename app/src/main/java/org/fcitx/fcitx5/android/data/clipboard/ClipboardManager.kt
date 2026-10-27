@@ -117,6 +117,7 @@ object ClipboardManager : ClipboardManager.OnPrimaryClipChangedListener,
 
     suspend fun delete(id: Int) {
         clbDao.markAsDeleted(id)
+        if (id == lastEntry?.id) forgetCurrent()
         updateItemCount()
     }
 
@@ -127,8 +128,24 @@ object ClipboardManager : ClipboardManager.OnPrimaryClipChangedListener,
             clbDao.findAllIds()
         }
         clbDao.markAsDeleted(*ids)
+        lastEntry?.let { if (it.id in ids) forgetCurrent() }
         updateItemCount()
         return ids
+    }
+
+    /**
+     * mod: the current clip was deleted from the history, so empty the system clipboard too;
+     * otherwise the toolbar suggestion and the assistant's 粘贴剪贴板 would still offer it
+     */
+    private fun forgetCurrent() {
+        lastEntry = null
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                clipboardManager.clearPrimaryClip()
+            } else {
+                clipboardManager.setPrimaryClip(android.content.ClipData.newPlainText("", ""))
+            }
+        }
     }
 
     suspend fun undoDelete(vararg ids: Int) {

@@ -216,9 +216,16 @@ class AiAssistActivity : AppCompatActivity() {
             val one = c.replace('\n', ' ').trim()
             "粘贴剪贴板：" + if (one.length > 10) one.take(10) + "…" else one
         } ?: "粘贴剪贴板"
-        inputActions.addView(smallButton(pasteLabel) { (readClipboard() ?: clip)?.let { input.setText(it) } })
-        inputActions.addView(smallButton("清空") { input.setText("") })
-        inputActions.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        // 粘贴 / 清空 take what 画图 and 发送 leave; a long clipboard preview is cut with "…"
+        // (wrap_content inside the slot: shrinks only when the row is too narrow)
+        val leftActions = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        leftActions.addView(smallButton(pasteLabel) { (readClipboard() ?: clip)?.let { input.setText(it) } }.apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }, LinearLayout.LayoutParams(-2, -2, 1f))
+        leftActions.addView(smallButton("清空") { input.setText("") })
+        inputActions.addView(android.widget.FrameLayout(this).apply { addView(leftActions, -2, -2) },
+            LinearLayout.LayoutParams(0, -2, 1f))
         progress = ProgressBar(this).apply { visibility = View.GONE }
         inputActions.addView(progress, LinearLayout.LayoutParams(dp(28), dp(28)))
         imageBtn = smallButton("画图") { generateImage() }.apply {
