@@ -221,10 +221,16 @@ class AiAssistActivity : AppCompatActivity() {
         // 粘贴 / 清空 take what 画图 and 发送 leave; a long clipboard preview is cut with "…"
         // (wrap_content inside the slot: shrinks only when the row is too narrow)
         val leftActions = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        leftActions.addView(smallButton(pasteLabel) { (readClipboard() ?: clip)?.let { input.setText(it) } }.apply {
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        }, LinearLayout.LayoutParams(-2, -2, 1f))
+        // nothing to paste (clipboard empty or cleared): no 粘贴 button; this app is the input method,
+        // so reading the clipboard here shows no "pasted from clipboard" notice
+        if (clip != null || readClipboard() != null) {
+            leftActions.addView(smallButton(pasteLabel) { (readClipboard() ?: clip)?.let { input.setText(it) } }.apply {
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            }, LinearLayout.LayoutParams(-2, -2, 1f))
+        } else if (!translateMode) {
+            input.hint = "输入内容"
+        }
         leftActions.addView(smallButton("清空") { input.setText("") })
         inputActions.addView(android.widget.FrameLayout(this).apply { addView(leftActions, -2, -2) },
             LinearLayout.LayoutParams(0, -2, 1f))
