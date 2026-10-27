@@ -187,7 +187,7 @@ class AiAssistActivity : AppCompatActivity() {
 
         // input
         input = EditText(this).apply {
-            hint = if (translateMode) "输入要翻译的内容" else "输入内容，或点下面的“粘贴剪贴板”"
+            hint = if (translateMode) "输入要翻译的内容" else "输入内容，或点下面的“粘贴”"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             minLines = 2; maxLines = 6; gravity = Gravity.TOP
             // mod: the clipboard is no longer filled in by itself (it may be unrelated, or private);
@@ -216,8 +216,8 @@ class AiAssistActivity : AppCompatActivity() {
         val clip = intent.getStringExtra(EXTRA_CLIPBOARD)?.takeIf { it.isNotBlank() }
         val pasteLabel = clip?.let { c ->
             val one = c.replace('\n', ' ').trim()
-            "粘贴剪贴板：" + if (one.length > 10) one.take(10) + "…" else one
-        } ?: "粘贴剪贴板"
+            "粘贴：" + if (one.length > 10) one.take(10) + "…" else one
+        } ?: "粘贴"
         // 粘贴 / 清空 take what 画图 and 发送 leave; a long clipboard preview is cut with "…"
         // (wrap_content inside the slot: shrinks only when the row is too narrow)
         val leftActions = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
