@@ -27,7 +27,8 @@ enum class ToolbarButton(
     T9("t9", R.drawable.ic_t9, R.string.keyboard_picker, { it.showT9Button }),
     PasswordManager("bitwarden", R.drawable.ic_password_key, R.string.toolbar_button_bitwarden, { it.showPasswordManagerButton }),
     More("more", R.drawable.ic_baseline_more_horiz_24, R.string.status_area, { it.showMoreButton }),
-    Voice("voice", R.drawable.ic_baseline_keyboard_voice_24, R.string.toolbar_button_voice, { it.showVoiceInputButton });
+    Voice("voice", R.drawable.ic_baseline_keyboard_voice_24, R.string.toolbar_button_voice, { it.showVoiceInputButton }),
+    Floating("floating", R.drawable.ic_floating_keyboard, R.string.toolbar_button_floating, { it.showFloatingButton });
 
     companion object {
         fun pinned(saved: String): Set<ToolbarButton> {

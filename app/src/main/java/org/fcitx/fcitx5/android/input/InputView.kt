@@ -8,8 +8,10 @@ package org.fcitx.fcitx5.android.input
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.graphics.Point
+import android.graphics.Rect
 import android.os.Build
 import android.view.View
+import android.view.ViewOutlineProvider
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InlineSuggestionsResponse
@@ -56,6 +58,7 @@ import splitties.views.dsl.constraintlayout.constraintLayout
 import splitties.views.dsl.constraintlayout.endOfParent
 import splitties.views.dsl.constraintlayout.endToStartOf
 import splitties.views.dsl.constraintlayout.lParams
+import splitties.views.dsl.constraintlayout.matchConstraints
 import splitties.views.dsl.constraintlayout.startOfParent
 import splitties.views.dsl.constraintlayout.startToEndOf
 import splitties.views.dsl.constraintlayout.topOfParent
@@ -152,7 +155,26 @@ class InputView(
         keyboardBottomPadding,
         keyboardBottomPaddingLandscape,
         keyboardHeightPercentBase,
+        keyboardPrefs.floatingKeyboardLandscape,
     )
+
+    // mod: landscape floating keyboard, see FloatingKeyboard
+    private val floating = FloatingKeyboard(service, theme) { updateKeyboardSize() }
+
+    /** the floating keyboard's bounds in the window (all that takes touches), or null when docked */
+    fun floatingKeyboardBounds(out: Rect): Rect? {
+        if (!floating.enabled || !keyboardView.isLaidOut) return null
+        keyboardView.getLocationInWindow(floatingLocation)
+        out.set(
+            floatingLocation[0], floatingLocation[1],
+            floatingLocation[0] + keyboardView.width, floatingLocation[1] + keyboardView.height
+        )
+        return out
+    }
+
+    private val floatingLocation = intArrayOf(0, 0)
+
+    private var navBarBottomInset = 0
 
     private val keyboardHeightPx: Int
         get() {
@@ -270,18 +292,24 @@ class InputView(
                 endToStartOf(rightPaddingSpace)
                 bottomOfParent()
             })
+            add(floating.handle, lParams(matchConstraints, floating.handleHeight) {
+                centerHorizontally()
+                bottomOfParent()
+            })
         }
 
-        updateKeyboardSize()
-
-        add(preedit.ui.root, lParams(matchParent, wrapContent) {
+        add(preedit.ui.root, lParams(matchConstraints, wrapContent) {
             above(keyboardView)
-            centerHorizontally()
+            // mod: follow the keyboard when it floats
+            startToStart = keyboardView.id
+            endToEnd = keyboardView.id
         })
         add(keyboardView, lParams(matchParent, wrapContent) {
             centerHorizontally()
             bottomOfParent()
         })
+
+        updateKeyboardSize()
         add(popup.root, lParams(matchParent, matchParent) {
             centerVertically()
             centerHorizontally()
@@ -292,11 +320,30 @@ class InputView(
     }
 
     private fun updateKeyboardSize() {
+        if (floating.enabled) {
+            updateFloatingKeyboard()
+            return
+        }
+        floating.handle.visibility = GONE
+        keyboardView.apply {
+            updateLayoutParams<LayoutParams> {
+                width = LayoutParams.MATCH_PARENT
+                leftToLeft = unset
+                leftMargin = 0
+                bottomMargin = 0
+                centerHorizontally()
+            }
+            outlineProvider = ViewOutlineProvider.BACKGROUND
+            clipToOutline = false
+            elevation = 0f
+        }
+        popup.root.elevation = 0f
         windowManager.view.updateLayoutParams {
             height = keyboardHeightPx
         }
-        bottomPaddingSpace.updateLayoutParams {
+        bottomPaddingSpace.updateLayoutParams<LayoutParams> {
             height = keyboardBottomPaddingPx
+            bottomMargin = navBarBottomInset
         }
         val sidePadding = keyboardSidePaddingPx
         if (sidePadding == 0) {
@@ -329,9 +376,54 @@ class InputView(
         kawaiiBar.view.setPadding(sidePadding, 0, sidePadding, 0)
     }
 
-    override fun onApplyWindowInsets(insets: WindowInsets): WindowInsets {
+    /** mod: a small keyboard with rounded corners where the user left it, the bar at its bottom moves / resizes it */
+    private fun updateFloatingKeyboard() {
+        floating.fit(width, height)
+        floating.handle.visibility = VISIBLE
+        keyboardView.apply {
+            updateLayoutParams<LayoutParams> {
+                width = floating.keyboardWidth
+                startToStart = unset
+                endToEnd = unset
+                leftToLeft = LayoutParams.PARENT_ID
+                leftMargin = floating.keyboardX
+                bottomMargin = floating.keyboardBottom
+            }
+            outlineProvider = floating.outlineProvider
+            clipToOutline = true
+            elevation = floating.elevation
+        }
+        // key previews must stay above the raised keyboard
+        popup.root.elevation = floating.elevation * 2
+        windowManager.view.updateLayoutParams<LayoutParams> {
+            height = floating.keysHeight
+            startToEnd = unset
+            endToStart = unset
+            startOfParent()
+            endOfParent()
+        }
+        leftPaddingSpace.visibility = GONE
+        rightPaddingSpace.visibility = GONE
         bottomPaddingSpace.updateLayoutParams<LayoutParams> {
-            bottomMargin = getNavBarBottomInset(insets)
+            height = floating.handleHeight
+            bottomMargin = 0
+        }
+        preedit.ui.root.setPadding(0, 0, 0, 0)
+        kawaiiBar.view.setPadding(0, 0, 0, 0)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        // keep the floating keyboard inside the window; not during this layout pass
+        if (floating.enabled) post { updateKeyboardSize() }
+    }
+
+    override fun onApplyWindowInsets(insets: WindowInsets): WindowInsets {
+        navBarBottomInset = getNavBarBottomInset(insets)
+        if (!floating.enabled) {
+            bottomPaddingSpace.updateLayoutParams<LayoutParams> {
+                bottomMargin = navBarBottomInset
+            }
         }
         return insets
     }
