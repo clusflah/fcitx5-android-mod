@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="ai_images" path="ai_images/" />
+    <!-- pictures inside assistant replies (MarkdownImages), handed to 日迹 on 输入 -->
+    <cache-path name="ai_reply_images" path="ai_reply_images/" />
 </paths>

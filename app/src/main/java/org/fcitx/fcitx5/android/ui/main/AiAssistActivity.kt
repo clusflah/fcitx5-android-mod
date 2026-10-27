@@ -292,7 +292,7 @@ class AiAssistActivity : AppCompatActivity() {
                     // backup: also put it on the clipboard in case the target app ignores it
                     runCatching { clipboardManager.setPrimaryClip(clipOf(output.text)) }
                     if (intent.hasExtra(EXTRA_CLIPBOARD) || intent.hasExtra(EXTRA_TEXT)) {
-                        AiPendingCommit.set(t)
+                        AiPendingCommit.set(t, MarkdownImages.exportWithImageLinks(output.text))
                     } else {
                         // opened from settings: no editor to type into
                         Toast.makeText(this@AiAssistActivity, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
