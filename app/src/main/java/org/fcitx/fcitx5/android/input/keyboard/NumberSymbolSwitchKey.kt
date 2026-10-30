@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: LGPL-2.1-or-later
- * The "?123" key of the 26-key layout: tap for the number keyboard, long-press for the symbol picker.
+ * The "?123" key of the 26-key layout: tap for the symbol picker, long-press for the number keyboard.
  * Kept in its own file so the upstream TextKeyboard layout only changes by one line.
  */
 package org.fcitx.fcitx5.android.input.keyboard
@@ -13,20 +13,19 @@ class NumberSymbolSwitchKey(
     percentWidth: Float = 0.15f,
     variant: Variant = Variant.Alternative
 ) : KeyDef(
-    // "123" with a small "!?#" hint, like the symbol hints on letter keys
+    // "!?#" with a small "123" hint (the long-press action), like the symbol hints on letter keys
     Appearance.AltText(
-        displayText = "123",
-        altText = "!?#",
+        displayText = "!?#",
+        altText = "123",
         textSize = 16f,
         textStyle = Typeface.BOLD,
         percentWidth = percentWidth,
         variant = variant
     ),
     setOf(
-        // always the number keyboard; upstream's "" means "the last one used", which made tap
-        // open the symbol picker too after it had been used once
-        Behavior.Press(KeyAction.LayoutSwitchAction(NumberKeyboard.Name)),
         // same action as the "!?#" key on the number keyboard
-        Behavior.LongPress(KeyAction.LayoutSwitchAction(PickerWindow.Key.Symbol.name))
+        Behavior.Press(KeyAction.LayoutSwitchAction(PickerWindow.Key.Symbol.name)),
+        // always the number keyboard; upstream's "" means "the last one used"
+        Behavior.LongPress(KeyAction.LayoutSwitchAction(NumberKeyboard.Name))
     )
 )
