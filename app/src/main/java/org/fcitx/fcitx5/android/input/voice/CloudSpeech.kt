@@ -45,7 +45,7 @@ object CloudSpeech {
                     )
                 ),
                 Engine(
-                    VoiceEngine.Doubao, "火山豆包", "字节跳动豆包语音 · 录音文件极速版，中文口语效果好", listOf(
+                    VoiceEngine.Doubao, "火山豆包", "字节跳动豆包语音，中文口语效果好；新账号开通「流式语音识别 2.0」即可", listOf(
                         Field("Access Key / API Key", p.doubaoKey, "新版控制台只填 API Key", secret = true),
                         Field("App ID（旧版控制台）", p.doubaoAppId, "新版控制台留空"),
                     )
@@ -166,10 +166,18 @@ object CloudSpeech {
         }
     }
 
-    /** 豆包语音 录音文件识别大模型 极速版: one call, the result is in the body, status in a header */
+    /** keys whose account has no 极速版 (new accounts only get the 2.0 services): go straight to [VolcStream] */
+    @Volatile
+    private var doubaoNoTurbo: String? = null
+
+    /**
+     * 豆包语音 录音文件识别大模型 极速版: one call, the result is in the body, status in a header.
+     * 极速版 is a 1.0 service new accounts can't get (45000030); then 流式语音识别 2.0 does it instead.
+     */
     private fun doubao(key: String, appId: String, wav: ByteArray): String {
         val auth = if (appId.isNotEmpty()) mapOf("X-Api-App-Key" to appId, "X-Api-Access-Key" to key)
         else mapOf("X-Api-Key" to key)
+        if (doubaoNoTurbo == key) return VolcStream.recognize(auth, key, wav.copyOfRange(minOf(44, wav.size), wav.size))
         val body = JSONObject()
             .put("user", JSONObject().put("uid", "fcitx5-android"))
             .put("audio", JSONObject().put("data", Base64.encodeToString(wav, Base64.NO_WRAP)))
@@ -187,6 +195,10 @@ object CloudSpeech {
             "20000000", null -> {}
             // silence
             "20000003" -> return ""
+            VolcStream.NOT_GRANTED_CODE -> {
+                doubaoNoTurbo = key
+                return VolcStream.recognize(auth, key, wav.copyOfRange(minOf(44, wav.size), wav.size))
+            }
             else -> throw CloudSpeechException("火山豆包返回错误 $status ${r.header("X-Api-Message").orEmpty()}")
         }
         return r.ok("火山豆包").optJSONObject("result")?.optString("text").orEmpty().trim()
