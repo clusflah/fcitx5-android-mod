@@ -106,7 +106,7 @@
   | Dolphin base | 99 MB | 东亚、东南亚多种语言及中文方言 |
 
   都是 Hugging Face 上 k2-fsa 导出的 sherpa-onnx 版本（int8）。FireRedASR（int8 约 1.7 GB）太大、Qwen3-ASR 还没有 sherpa-onnx 的下载版本，所以没有加。
-- **在线模型（需要密钥）**：点一个服务打开设置（密钥、模型、语言等），“保存并使用”就切过去。可选 **Azure**、**火山豆包**（录音文件极速版，新版控制台只填 API Key，旧版填 Access Key + App ID）、**阿里百炼 Qwen3-ASR**（`qwen3-asr-flash`）、**ElevenLabs**（Scribe）、**Deepgram**（Nova；中文用 `nova-2` + `zh`）、**OpenAI 兼容**（`/audio/transcriptions`，也可以填 Groq、硅基流动等的地址和模型）。录音会发到所选服务，按服务商的价格收费。
+- **在线模型（需要密钥）**：点一个服务打开设置（密钥、模型、语言等），“保存并使用”就切过去。可选 **Azure**、**火山豆包**（新版控制台只填 API Key，旧版填 Access Key + App ID；用录音文件识别极速版，新账号开通不了极速版时自动改用「流式语音识别 2.0」）、**阿里百炼 Qwen3-ASR**（`qwen3-asr-flash`）、**ElevenLabs**（Scribe）、**Deepgram**（Nova；中文用 `nova-2` + `zh`）、**OpenAI 兼容**（`/audio/transcriptions`，也可以填 Groq、硅基流动等的地址和模型）。录音会发到所选服务，按服务商的价格收费。
 - 最下面是 Azure 的“朗读识别结果”设置。以前填好的 Azure 密钥、区域等都会保留（在 在线模型 → Azure 里改）。
 
 - **大模型纠错**（设置 → 语音模型 →“语音输入后用大模型纠错”，默认关闭）：识别出文字后，先交给默认大模型的**快速模型**（就是 AI 联想用的那个）修正同音字、错别字和标点，再输入。状态栏会短暂显示“纠错中…”。
