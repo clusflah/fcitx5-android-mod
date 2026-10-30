@@ -428,6 +428,8 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
     fun commitText(text: String, cursor: Int = -1) {
         if (org.fcitx.fcitx5.android.input.translate.TranslateDraft.commit(text)) return
         val ic = currentInputConnection ?: return
+        // mod: brackets and quotes come in pairs
+        if (cursor == -1 && AutoPair.commit(this, ic, currentInputEditorInfo, text)) return
         // when composing text equals commit content, finish composing text as-is
         if (composing.isNotEmpty() && composingText.toString() == text) {
             val c = if (cursor == -1) text.length else cursor
