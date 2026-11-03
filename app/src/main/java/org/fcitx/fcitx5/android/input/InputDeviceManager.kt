@@ -5,6 +5,7 @@
 
 package org.fcitx.fcitx5.android.input
 
+import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
@@ -88,6 +89,9 @@ class InputDeviceManager(private val onChange: (Boolean) -> Unit) {
      * @return should force show input views on hardware key down
      */
     fun evaluateOnKeyDown(e: KeyEvent, service: FcitxInputMethodService): Boolean {
+        // mod: keys injected by apps (adb, Tasker / AutoInput, remote-control tools) come from the
+        // virtual keyboard device, not a real keyboard: they must not hide the virtual keyboard
+        if (e.deviceId == KeyCharacterMap.VIRTUAL_KEYBOARD || e.device?.isVirtual == true) return false
         if (startedInputView) {
             // filter out back/home/volume buttons and combination keys
             if (e.unicodeChar != 0) {
@@ -132,6 +136,20 @@ class InputDeviceManager(private val onChange: (Boolean) -> Unit) {
                 if (toolType == MotionEvent.TOOL_TYPE_FINGER || toolType == MotionEvent.TOOL_TYPE_STYLUS) true else isVirtualKeyboard
             FloatingCandidatesMode.Disabled -> true
         }
+    }
+
+    /**
+     * mod: the app explicitly asked to show the keyboard, i.e. the user tapped a text field.
+     * Apps built with Compose report neither [evaluateOnViewClicked] nor
+     * [evaluateOnUpdateEditorToolType], so without this a single physical key press leaves the
+     * virtual keyboard hidden in every app until the input method restarts.
+     * @return the InputView needs to start input for the current editor
+     */
+    fun evaluateOnExplicitShow(): Boolean {
+        if (isVirtualKeyboard || candidatesViewMode != FloatingCandidatesMode.InputDevice) return false
+        isVirtualKeyboard = true
+        // not started yet: onStartInputView follows and starts it
+        return startedInputView
     }
 
     /**
