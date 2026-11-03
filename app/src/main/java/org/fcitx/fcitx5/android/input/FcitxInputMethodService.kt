@@ -688,6 +688,14 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         return forwardKeyEvent(event) || super.onKeyUp(keyCode, event)
     }
 
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean {
+        // mod: tapping a text field after a physical key press brings the virtual keyboard back
+        if (flags and android.view.inputmethod.InputMethod.SHOW_EXPLICIT != 0 && inputDeviceMgr.evaluateOnExplicitShow()) {
+            currentInputEditorInfo?.let { inputView?.startInput(it, capabilityFlags, true) }
+        }
+        return super.onShowInputRequested(flags, configChange)
+    }
+
     // Added in API level 14, deprecated in 29
     // it's needed because editors still use it even on API 36
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
