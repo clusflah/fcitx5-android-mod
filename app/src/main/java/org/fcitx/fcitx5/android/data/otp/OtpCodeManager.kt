@@ -21,7 +21,9 @@ data class OtpCode(
     val code: String,
     val source: String,
     val receivedAt: Long,
-    val maxAgeMs: Long = OtpCodeManager.MAX_AGE_MS
+    val maxAgeMs: Long = OtpCodeManager.MAX_AGE_MS,
+    /** from an SMS (not the clipboard): typing it can mark that SMS as read */
+    val fromSms: Boolean = false
 )
 
 object OtpCodeManager {
@@ -108,7 +110,7 @@ object OtpCodeManager {
                 while (found == null && n++ < 5 && c.moveToNext()) {
                     val body = c.getString(1) ?: continue
                     val code = extract(body) ?: continue
-                    found = OtpCode(code, sourceOf(body, c.getString(0)), c.getLong(2))
+                    found = OtpCode(code, sourceOf(body, c.getString(0)), c.getLong(2), fromSms = true)
                 }
                 found
             }
