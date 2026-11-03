@@ -69,6 +69,7 @@ import org.fcitx.fcitx5.android.data.ai.AiTranslate
 import org.fcitx.fcitx5.android.data.ai.CloudConsent
 import org.fcitx.fcitx5.android.data.otp.OtpCode
 import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
+import org.fcitx.fcitx5.android.data.otp.OtpNotificationListener
 import org.fcitx.fcitx5.android.data.password.PasswordManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -223,6 +224,22 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
         clearAiSuggestion()
         service.commitText(code.code)
         showOtp(null)
+        if (code.fromSms && otpMarkRead.getValue()) markSmsRead(code)
+    }
+
+    private val otpMarkRead = prefs.keyboard.otpMarkRead
+    private var markReadAccessHinted = false
+
+    /** 替用户点短信通知上的「标为已读」；没有通知使用权时提示一次 */
+    private fun markSmsRead(code: OtpCode) {
+        if (!OtpNotificationListener.hasAccess(context)) {
+            if (!markReadAccessHinted) {
+                markReadAccessHinted = true
+                android.widget.Toast.makeText(context, R.string.otp_mark_read_needs_access, android.widget.Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+        service.lifecycleScope.launch(Dispatchers.Default) { OtpNotificationListener.markRead(context, code.code) }
     }
 
     private fun isFieldEmpty(): Boolean = runCatching {

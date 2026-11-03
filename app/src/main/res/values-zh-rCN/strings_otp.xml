@@ -6,6 +6,9 @@
     <string name="otp_clipboard_summary">复制了 6–8 位数字验证码时（例如 Bitwarden 自动填充后复制的两步验证码），像短信验证码一样显示在工具栏上</string>
     <string name="otp_auto_fill">验证码智能自动填入</string>
     <string name="otp_auto_fill_summary">当前输入框看起来是验证码框时，自动填入 1 分钟内收到或复制的验证码（每个验证码只填一次）</string>
+    <string name="otp_mark_read">填入后把短信标为已读</string>
+    <string name="otp_mark_read_summary">输入短信里的验证码后，替你点一下短信通知上的“标为已读”。需要通知使用权（设置检查 → 短信验证码）</string>
+    <string name="otp_mark_read_needs_access">要把短信标为已读，请允许输入法的通知使用权</string>
     <string name="otp_permission_granted">已允许读取短信，新的验证码会显示在工具栏上</string>
     <string name="otp_permission_denied">读取短信权限被拒绝</string>
 </resources>

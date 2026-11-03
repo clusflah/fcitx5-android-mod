@@ -31,6 +31,7 @@ import org.fcitx.fcitx5.android.daemon.FcitxDaemon
 import org.fcitx.fcitx5.android.data.ai.AiConfig
 import org.fcitx.fcitx5.android.data.ai.AiProvider
 import org.fcitx.fcitx5.android.data.otp.OtpCodeManager
+import org.fcitx.fcitx5.android.data.otp.OtpNotificationListener
 import org.fcitx.fcitx5.android.data.password.PasswordManager
 import org.fcitx.fcitx5.android.input.voice.OfflineVoice
 import org.fcitx.fcitx5.android.input.voice.VoiceEngine
@@ -237,6 +238,19 @@ class SetupCheckActivity : AppCompatActivity() {
         } else {
             row(Status.Bad, "短信验证码", "已开启，但还没有读取短信的权限。", "允许读取短信") {
                 startActivity(Intent(this, SmsPermissionActivity::class.java))
+            }
+        }
+        if (!AppPrefs.getInstance().keyboard.otpMarkRead.getValue()) return
+        if (OtpNotificationListener.hasAccess(this)) {
+            row(Status.Ok, "短信标为已读", "已有通知使用权，填入短信验证码后会把那条短信标为已读。")
+        } else {
+            row(Status.Bad, "短信标为已读", "已开启，但还没有通知使用权。", "允许通知使用权") {
+                val intent = if (android.os.Build.VERSION.SDK_INT >= 30)
+                    Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                        .putExtra(android.provider.Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, OtpNotificationListener.component(this).flattenToString())
+                else Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                runCatching { startActivity(intent) }
+                    .onFailure { startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
             }
         }
     }

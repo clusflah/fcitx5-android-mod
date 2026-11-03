@@ -162,6 +162,8 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             switch(R.string.otp_clipboard, "otp_clipboard", true, R.string.otp_clipboard_summary)
         val otpAutoFill =
             switch(R.string.otp_auto_fill, "otp_auto_fill", false, R.string.otp_auto_fill_summary)
+        val otpMarkRead =
+            switch(R.string.otp_mark_read, "otp_mark_read", false, R.string.otp_mark_read_summary)
         // ---- toolbar shortcuts: shown / hidden and ordered on one page (ToolbarButtonsActivity) ----
         private fun toolbarSwitch(key: String) =
             ManagedPreference.PBool(sharedPreferences, key, true).apply { register() }
