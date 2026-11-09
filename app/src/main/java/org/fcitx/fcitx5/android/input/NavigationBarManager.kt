@@ -96,7 +96,8 @@ class NavigationBarManager {
         }
         if (shouldUpdateNavbarBackground) {
             window.setNavbarBackgroundColor(
-                if (!keyBorder && theme is Theme.Builtin) theme.keyboardColor else theme.backgroundColor
+                if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.seeThrough }) Color.TRANSPARENT
+                else if (!keyBorder && theme is Theme.Builtin) theme.keyboardColor else theme.backgroundColor
             )
         }
     }

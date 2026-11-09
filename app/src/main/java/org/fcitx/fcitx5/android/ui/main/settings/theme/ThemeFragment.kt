@@ -20,6 +20,7 @@ import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.launch
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.data.theme.ThemeManager
+import org.fcitx.fcitx5.android.ui.main.SettingsSearchActivity
 import splitties.dimensions.dp
 import splitties.resources.styledColor
 import splitties.views.backgroundColor
@@ -68,10 +69,11 @@ class ThemeFragment : Fragment() {
 
         viewPager = ViewPager2(this).apply {
             adapter = object : FragmentStateAdapter(this@ThemeFragment) {
-                override fun getItemCount() = 2
+                override fun getItemCount() = 3
                 override fun createFragment(position: Int): Fragment = when (position) {
                     0 -> ThemeListFragment()
-                    else -> ThemeSettingsFragment()
+                    1 -> ThemeSettingsFragment()
+                    else -> GlassSettingsFragment()
                 }
             }
         }
@@ -80,10 +82,20 @@ class ThemeFragment : Fragment() {
             tab.text = getString(
                 when (position) {
                     0 -> R.string.theme
-                    else -> R.string.configure
+                    1 -> R.string.configure
+                    else -> R.string.liquid_glass
                 }
             )
         }.attach()
+
+        SettingsSearchActivity.pendingScrollKey?.let { key ->
+            when {
+                ThemeManager.glassPrefs.managedPreferences.containsKey(key) ->
+                    viewPager.setCurrentItem(2, false)
+                ThemeManager.prefs.managedPreferences.containsKey(key) ->
+                    viewPager.setCurrentItem(1, false)
+            }
+        }
 
         val previewWrapper = constraintLayout {
             add(preview, lParams(wrapContent, wrapContent) {

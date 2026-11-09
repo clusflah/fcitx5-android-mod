@@ -69,7 +69,9 @@ class ClipboardEntryUi(override val ctx: Context, private val theme: Theme, radi
                 setColor(Color.WHITE)
             }
         )
-        background = GradientDrawable().apply {
+        background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+            this, theme, radius, theme.clipboardEntryColor, pressMorph = true
+        ) ?: GradientDrawable().apply {
             cornerRadius = radius
             setColor(theme.clipboardEntryColor)
         }

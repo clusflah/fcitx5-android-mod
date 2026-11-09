@@ -3,6 +3,7 @@
  * mod: "Jade" themes, the default look of this fork: a light grey keyboard with white letter keys,
  * grey function keys (return included), round white toolbar buttons and a jade green accent,
  * like the common Chinese phone keyboards. JadeDark is the same layout for dark mode.
+ * GlassLight / GlassDark are the built-in iOS 26 style Liquid Glass presets.
  */
 package org.fcitx.fcitx5.android.data.theme
 
@@ -63,4 +64,59 @@ object ThemePresetMod {
         genericActiveBackgroundColor = JADE,
         genericActiveForegroundColor = 0xffffffff
     )
+
+    val GlassLight = Theme.Builtin(
+        name = "GlassLight",
+        isDark = false,
+        backgroundColor = 0xffdce6f5,
+        barColor = 0x59ffffff,
+        keyboardColor = 0xffdce6f5,
+        keyBackgroundColor = 0x78ffffff,
+        keyTextColor = 0xff121824,
+        candidateTextColor = 0xff121824,
+        candidateLabelColor = 0xff121824,
+        candidateCommentColor = 0xff5a667a,
+        altKeyBackgroundColor = 0x5ce2eaf7,
+        altKeyTextColor = 0xff222b3a,
+        accentKeyBackgroundColor = 0xb32fbf8f,
+        accentKeyTextColor = 0xffffffff,
+        keyPressHighlightColor = 0x33ffffff,
+        keyShadowColor = 0x26001833,
+        popupBackgroundColor = 0xd9f4f8ff,
+        popupTextColor = 0xff121824,
+        spaceBarColor = 0x78ffffff,
+        dividerColor = 0x24001833,
+        clipboardEntryColor = 0x85ffffff,
+        genericActiveBackgroundColor = JADE,
+        genericActiveForegroundColor = 0xffffffff
+    )
+
+    val GlassDark = Theme.Builtin(
+        name = "GlassDark",
+        isDark = true,
+        backgroundColor = 0xff111622,
+        barColor = 0x4d182030,
+        keyboardColor = 0xff111622,
+        keyBackgroundColor = 0x662c364c,
+        keyTextColor = 0xfff2f6ff,
+        candidateTextColor = 0xfff2f6ff,
+        candidateLabelColor = 0xfff2f6ff,
+        candidateCommentColor = 0xff94a2b8,
+        altKeyBackgroundColor = 0x521d2536,
+        altKeyTextColor = 0xffd6e0f0,
+        accentKeyBackgroundColor = 0xb32fbf8f,
+        accentKeyTextColor = 0xffffffff,
+        keyPressHighlightColor = 0x38ffffff,
+        keyShadowColor = 0x4d000000,
+        popupBackgroundColor = 0xd91e2638,
+        popupTextColor = 0xfff2f6ff,
+        spaceBarColor = 0x662c364c,
+        dividerColor = 0x26ffffff,
+        clipboardEntryColor = 0x73263044,
+        genericActiveBackgroundColor = JADE,
+        genericActiveForegroundColor = 0xffffffff
+    )
+
+    fun isGlassPreset(theme: Theme): Boolean =
+        theme.name == GlassLight.name || theme.name == GlassDark.name
 }

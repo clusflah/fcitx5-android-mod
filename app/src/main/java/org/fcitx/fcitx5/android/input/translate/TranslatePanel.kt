@@ -84,12 +84,19 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
                 cornerRadius = ctx.dp(14f)
                 setColor(theme.keyBackgroundColor)
             }
+            org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                this, theme, ctx.dp(14f), theme.keyBackgroundColor
+            )?.let { background = it }
             clipToOutline = true
             // header: 文A 中外互译 ∨ ............ 收起
             addView(LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setBackgroundColor(theme.popupBackgroundColor)
+                setBackgroundColor(
+                    if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetPanels })
+                        (theme.popupBackgroundColor and 0x00ffffff) or (0x48 shl 24)
+                    else theme.popupBackgroundColor
+                )
                 setPadding(ctx.dp(12), 0, ctx.dp(12), 0)
                 addView(ImageView(ctx).apply {
                     setImageResource(R.drawable.ic_translate)

@@ -32,7 +32,9 @@ class PreeditComponent : UniqueComponent<PreeditComponent>(), Dependent, InputBr
         val bkgColor =
             if (!keyBorder && theme is Theme.Builtin) theme.barColor else theme.backgroundColor
         PreeditUi(context, theme, setupTextView = {
-            backgroundColor = bkgColor
+            background = org.fcitx.fcitx5.android.input.glass.Glass.candidateBackground(
+                this, theme, dp(6f), bkgColor
+            ) ?: android.graphics.drawable.ColorDrawable(bkgColor)
             horizontalPadding = dp(8)
         }).apply {
             // TODO make it customizable

@@ -196,7 +196,11 @@ class T9Keyboard(
         if (bordered) {
             background = GradientDrawable().apply {
                 cornerRadius = keyRadius
-                setColor(theme.altKeyBackgroundColor)
+                setColor(
+                    if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetKeys })
+                        android.graphics.Color.TRANSPARENT
+                    else theme.altKeyBackgroundColor
+                )
             }
             // keep the entries' press highlight inside the rounded corners
             clipToOutline = true
@@ -209,7 +213,9 @@ class T9Keyboard(
     private val leftBox = FrameLayout(context).apply {
         if (bordered) {
             setPadding(hMargin, vMargin, hMargin, vMargin)
-            background = shadowedKeyBackgroundDrawable(
+            background = org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+                this, theme, theme.altKeyBackgroundColor, theme.altKeyTextColor, keyRadius, hMargin, vMargin, pressMorph = false
+            ) ?: shadowedKeyBackgroundDrawable(
                 theme.altKeyBackgroundColor, theme.keyShadowColor, keyRadius, dp(1), hMargin, vMargin
             )
         }

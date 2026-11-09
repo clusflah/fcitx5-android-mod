@@ -15,6 +15,7 @@ import androidx.annotation.DrawableRes
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.data.theme.ThemeManager
+import org.fcitx.fcitx5.android.input.glass.Glass
 import org.fcitx.fcitx5.android.input.keyboard.CustomGestureView
 import org.fcitx.fcitx5.android.utils.borderlessRippleDrawable
 import org.fcitx.fcitx5.android.utils.circlePressHighlightDrawable
@@ -37,6 +38,7 @@ class ToolButton(context: Context) : CustomGestureView(context) {
 
     /** mod: key-colored circle behind the icon, drawn when [roundButtons] is on */
     private var circleColor: Int? = null
+    private var buttonTheme: Theme? = null
 
     private val image = imageView {
         isClickable = false
@@ -52,6 +54,7 @@ class ToolButton(context: Context) : CustomGestureView(context) {
         }
 
     constructor(context: Context, @DrawableRes icon: Int, theme: Theme) : this(context) {
+        buttonTheme = theme
         image.imageTintList = ColorStateList.valueOf(theme.altKeyTextColor)
         setIcon(icon)
         if (roundButtons) circleColor = theme.keyBackgroundColor
@@ -76,10 +79,11 @@ class ToolButton(context: Context) : CustomGestureView(context) {
             background = highlight
         } else {
             // the circle stays a little inside the button, so neighbours don't touch
-            background = InsetDrawable(GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(circle)
-            }, dp(2))
+            background = buttonTheme?.let { Glass.barButtonBackground(this, it, dp(2)) }
+                ?: InsetDrawable(GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(circle)
+                }, dp(2))
             foreground = highlight
         }
     }

@@ -12,9 +12,10 @@ import android.graphics.drawable.RippleDrawable
 import android.graphics.drawable.StateListDrawable
 import androidx.annotation.DrawableRes
 import org.fcitx.fcitx5.android.data.theme.Theme
+import org.fcitx.fcitx5.android.input.glass.Glass
 import org.fcitx.fcitx5.android.input.keyboard.CustomGestureView
-import org.fcitx.fcitx5.android.input.keyboard.shadowedKeyBackgroundDrawable
 import org.fcitx.fcitx5.android.input.keyboard.insetRadiusDrawable
+import org.fcitx.fcitx5.android.input.keyboard.shadowedKeyBackgroundDrawable
 import org.fcitx.fcitx5.android.utils.borderDrawable
 import org.fcitx.fcitx5.android.utils.pressHighlightDrawable
 import org.fcitx.fcitx5.android.utils.rippleDrawable
@@ -49,7 +50,9 @@ class TextEditingButton(
     init {
         if (bordered) {
             val bkgColor = if (altStyle) theme.altKeyBackgroundColor else theme.keyBackgroundColor
-            background = shadowedKeyBackgroundDrawable(
+            background = Glass.keyBackground(
+                this, theme, bkgColor, if (altStyle) theme.altKeyTextColor else theme.keyTextColor, radius, hInset, vInset
+            ) ?: shadowedKeyBackgroundDrawable(
                 bkgColor, theme.keyShadowColor,
                 radius, shadowWidth, hInset, vInset
             )
@@ -79,6 +82,7 @@ class TextEditingButton(
         isFocusable = false
         background = null
         setTextColor(if (altStyle) theme.altKeyTextColor else theme.keyTextColor)
+        Glass.applyKeyTextShadow(this, theme)
     }
 
     val imageView = imageView {
@@ -123,7 +127,9 @@ class TextEditingButton(
             )
         )
         background = if (bordered) {
-            StateListDrawable().apply {
+            Glass.statefulKeyBackground(
+                this, theme, theme.keyBackgroundColor, theme.genericActiveBackgroundColor, theme.keyTextColor, radius, hInset, vInset
+            ) ?: StateListDrawable().apply {
                 addState(
                     intArrayOf(android.R.attr.state_activated),
                     shadowedKeyBackgroundDrawable(

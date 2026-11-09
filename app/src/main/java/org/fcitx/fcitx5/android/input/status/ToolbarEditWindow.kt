@@ -324,11 +324,16 @@ class ToolbarEditWindow : InputWindow.ExtendedInputWindow<ToolbarEditWindow>() {
                 setColor(theme.popupBackgroundColor)
             }
             setPadding(0, context.dp(8), 0, context.dp(10))
+            background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                this, theme, context.dp(16f), theme.popupBackgroundColor
+            ) ?: background
             addView(pages, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(dots, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, context.dp(12)).apply { topMargin = context.dp(4) })
         }
         return FrameLayout(context).apply {
-            setBackgroundColor(theme.keyboardColor)
+            if (!org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetPanels }) {
+                setBackgroundColor(theme.keyboardColor)
+            }
             val m = context.dp(12)
             setPadding(m, m, m, m)
             addView(card, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))

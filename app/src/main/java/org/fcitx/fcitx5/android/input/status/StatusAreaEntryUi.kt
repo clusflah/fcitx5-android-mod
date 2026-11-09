@@ -163,6 +163,21 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
                 if (entry.active) theme.genericActiveBackgroundColor else theme.keyBackgroundColor
         }
         label.text = shown.label
+        val tileColor = if (card) {
+            if (on) blend(theme.keyBackgroundColor, theme.genericActiveBackgroundColor, 0.16f) else theme.keyBackgroundColor
+        } else {
+            if (entry.active) theme.genericActiveBackgroundColor else theme.keyBackgroundColor
+        }
+        if (card) {
+            val tileView = root.getChildAt(0)
+            tileView.background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                tileView, theme, ctx.dp(18f), tileColor, pressMorph = true
+            ) ?: cardDrawable
+        } else {
+            bkg.background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                bkg, theme, 0f, tileColor, isOval = true, pressMorph = true
+            ) ?: bkgDrawable
+        }
     }
 
     private fun blend(base: Int, tint: Int, amount: Float): Int {

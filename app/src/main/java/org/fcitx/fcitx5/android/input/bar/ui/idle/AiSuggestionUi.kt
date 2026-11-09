@@ -59,7 +59,9 @@ class AiSuggestionUi(override val ctx: Context, private val theme: Theme) : Ui {
                 textSize = 16f
                 isSingleLine = true
                 setTextColor(theme.keyTextColor)
-                background = GradientDrawable().apply {
+                background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                    this, theme, ctx.dp(14f), theme.keyBackgroundColor, pressMorph = true
+                ) ?: GradientDrawable().apply {
                     setColor(theme.keyBackgroundColor); cornerRadius = ctx.dp(14f)
                 }
                 setPadding(ctx.dp(12), ctx.dp(5), ctx.dp(12), ctx.dp(5))

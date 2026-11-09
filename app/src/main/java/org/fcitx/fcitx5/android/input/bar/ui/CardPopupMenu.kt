@@ -59,7 +59,7 @@ object CardPopupMenu {
         }
         val content = ScrollView(ctx).apply {
             isVerticalScrollBarEnabled = false
-            background = GradientDrawable().apply {
+            background = org.fcitx.fcitx5.android.input.glass.Glass.popupBackground(this, theme, ctx.dp(14f)) ?: GradientDrawable().apply {
                 cornerRadius = ctx.dp(14f)
                 setColor(theme.popupBackgroundColor)
                 setStroke(ctx.dp(1), theme.dividerColor)

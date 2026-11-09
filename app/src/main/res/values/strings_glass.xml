@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<resources>
+    <string name="liquid_glass">Liquid Glass</string>
+    <string name="glass_mode">Liquid Glass Mode</string>
+    <string name="glass_mode_follow_theme">Follow Theme (Glass presets only)</string>
+    <string name="glass_mode_backdrop">Backdrop Glass (All themes)</string>
+    <string name="glass_mode_see_through">See-through Glass (Experimental)</string>
+    <string name="glass_mode_off">Off</string>
+    <string name="glass_blur_radius">Blur Radius</string>
+    <string name="glass_tint_opacity">Glass Tint Opacity</string>
+    <string name="glass_refraction">Edge Refraction</string>
+    <string name="glass_dispersion">Chromatic Dispersion</string>
+    <string name="glass_highlight">Specular Highlight</string>
+    <string name="glass_press_morph">Press Morph Animation</string>
+    <string name="glass_press_morph_summary">Elastic droplet expansion and specular boost when pressing keys</string>
+    <string name="glass_dynamic_backdrop">Dynamic Aurora Backdrop</string>
+    <string name="glass_dynamic_backdrop_summary">Use a multi-color luminous backdrop when the theme has no background image</string>
+    <string name="glass_animate_backdrop">Animate Backdrop Drift</string>
+    <string name="glass_animate_backdrop_summary">Slowly drift the luminous backdrop orbs while the keyboard is shown</string>
+    <string name="glass_power_save_fallback">Disable in Battery Saver</string>
+    <string name="glass_power_save_fallback_summary">Temporarily turn off glass shaders when system Battery Saver is active</string>
+    <string name="glass_target_keys">Apply to Keys</string>
+    <string name="glass_target_toolbar">Apply to Toolbar</string>
+    <string name="glass_target_candidates">Apply to Candidates &amp; Preedit</string>
+    <string name="glass_target_popups">Apply to Key Popups</string>
+    <string name="glass_target_panels">Apply to Panels (Clipboard, Phrases, More, Translate)</string>
+</resources>

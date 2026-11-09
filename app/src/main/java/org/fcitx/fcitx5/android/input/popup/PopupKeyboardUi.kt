@@ -160,7 +160,7 @@ class PopupKeyboardUi(
     }
 
     override val root = verticalLayout root@{
-        background = inactiveBackground
+        background = org.fcitx.fcitx5.android.input.glass.Glass.popupBackground(this, theme, radius) ?: inactiveBackground
         outlineProvider = ViewOutlineProvider.BACKGROUND
         elevation = dp(2f)
         // add rows in reverse order, because newly added view shows at bottom

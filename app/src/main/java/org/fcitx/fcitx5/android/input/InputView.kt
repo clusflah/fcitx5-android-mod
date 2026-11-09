@@ -161,6 +161,14 @@ class InputView(
     // mod: landscape floating keyboard, see FloatingKeyboard
     private val floating = FloatingKeyboard(service, theme) { updateKeyboardSize() }
 
+    private val glassBackdropWindow =
+        org.fcitx.fcitx5.android.input.glass.GlassBackdropWindow(
+            service, theme, org.fcitx.fcitx5.android.input.glass.Glass.style(theme)
+        )
+
+    fun onWindowShown() = glassBackdropWindow.onWindowShown(keyboardView, floating.enabled)
+    fun onWindowHidden() = glassBackdropWindow.onWindowHidden()
+
     /** the floating keyboard's bounds in the window (all that takes touches), or null when docked */
     fun floatingKeyboardBounds(out: Rect): Rect? {
         if (!floating.enabled || !keyboardView.isLaidOut) return null
@@ -220,6 +228,7 @@ class InputView(
     private val onKeyboardSizeChangeListener = ManagedPreferenceProvider.OnChangeListener { key ->
         if (keyboardSizePrefs.any { it.key == key }) {
             updateKeyboardSize()
+            glassBackdropWindow.syncBounds(keyboardView, floating.enabled)
         }
     }
 
@@ -244,7 +253,7 @@ class InputView(
 
         broadcaster.onImeUpdate(fcitx.runImmediately { inputMethodEntryCached })
 
-        customBackground.imageDrawable = theme.backgroundDrawable(keyBorder)
+        // customBackground is attached by Glass.attachBackdrop below
 
         // mod: in-keyboard translate card above the toolbar, see TranslatePanel
         val translatePanel = org.fcitx.fcitx5.android.input.translate.TranslatePanel(service, theme)
@@ -310,6 +319,10 @@ class InputView(
         })
 
         updateKeyboardSize()
+        org.fcitx.fcitx5.android.input.glass.Glass.attachBackdrop(keyboardView, customBackground, theme, keyBorder)
+        keyboardView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            glassBackdropWindow.syncBounds(keyboardView, floating.enabled)
+        }
         add(popup.root, lParams(matchParent, matchParent) {
             centerVertically()
             centerHorizontally()
@@ -489,6 +502,7 @@ class InputView(
         advancedPrefs.unregisterOnChangeListener(onKeyboardSizeChangeListener)
         keyboardPrefs.unregisterOnChangeListener(onKeyboardSizeChangeListener)
         // clear DynamicScope, implies that InputView should not be attached again after detached.
+        glassBackdropWindow.dismiss()
         scope.clear()
         super.onDetachedFromWindow()
     }
