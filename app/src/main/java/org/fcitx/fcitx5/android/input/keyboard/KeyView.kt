@@ -126,7 +126,11 @@ abstract class KeyView(ctx: Context, val theme: Theme, val def: KeyDef.Appearanc
             }
             val borderOrShadowWidth = dp(1)
             // background: key border
-            appearanceView.background = if (borderStroke) borderedKeyBackgroundDrawable(
+            appearanceView.background = org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+                appearanceView, theme, bkgColor,
+                if (def.variant == Variant.Accent) theme.accentKeyTextColor else theme.keyTextColor,
+                radius, hMargin, vMargin
+            ) ?: if (borderStroke) borderedKeyBackgroundDrawable(
                 bkgColor, theme.keyShadowColor,
                 radius, borderOrShadowWidth, hMargin, vMargin
             ) else shadowedKeyBackgroundDrawable(
@@ -217,7 +221,9 @@ abstract class KeyView(ctx: Context, val theme: Theme, val def: KeyDef.Appearanc
                 val minHeight = dp(26)
                 val hInset = dp(10)
                 val vInset = if (h < minHeight) 0 else min((h - minHeight) / 2, dp(16))
-                appearanceView.background = insetRadiusDrawable(
+                appearanceView.background = org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+                    appearanceView, theme, theme.spaceBarColor, theme.keyTextColor, bkgRadius, hInset, vInset
+                ) ?: insetRadiusDrawable(
                     hInset, vInset, bkgRadius, theme.spaceBarColor
                 )
                 // InsetDrawable sets padding to container view; remove padding to prevent text from bing clipped
@@ -234,7 +240,9 @@ abstract class KeyView(ctx: Context, val theme: Theme, val def: KeyDef.Appearanc
                 val drawableSize = min(min(w, h), dp(35))
                 val hInset = (w - drawableSize) / 2
                 val vInset = (h - drawableSize) / 2
-                appearanceView.background = insetOvalDrawable(
+                appearanceView.background = org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+                    appearanceView, theme, theme.accentKeyBackgroundColor, theme.accentKeyTextColor, 0f, hInset, vInset, isOval = true
+                ) ?: insetOvalDrawable(
                     hInset, vInset, theme.accentKeyBackgroundColor
                 )
                 appearanceView.padding = 0
@@ -260,6 +268,7 @@ open class TextKeyView(ctx: Context, theme: Theme, def: KeyDef.Appearance.Text) 
         textDirection = View.TEXT_DIRECTION_FIRST_STRONG_LTR
         // keep original typeface, apply textStyle only
         setTypeface(typeface, def.textStyle)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         setTextColor(
             when (def.variant) {
                 Variant.Normal -> theme.keyTextColor

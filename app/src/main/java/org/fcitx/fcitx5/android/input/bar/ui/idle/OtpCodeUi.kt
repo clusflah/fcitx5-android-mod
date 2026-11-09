@@ -32,7 +32,9 @@ class OtpCodeUi(override val ctx: Context, private val theme: Theme) : Ui {
         setTypeface(typeface, android.graphics.Typeface.BOLD)
         letterSpacing = 0.08f
         setTextColor(theme.keyTextColor)
-        background = GradientDrawable().apply {
+        background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+            this, theme, ctx.dp(14f), theme.keyBackgroundColor, pressMorph = true
+        ) ?: GradientDrawable().apply {
             setColor(theme.keyBackgroundColor); cornerRadius = ctx.dp(14f)
         }
         setPadding(ctx.dp(14), ctx.dp(5), ctx.dp(14), ctx.dp(5))

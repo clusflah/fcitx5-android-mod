@@ -41,6 +41,9 @@ object PanelSwitchBar {
                 setColor(theme.altKeyBackgroundColor.withAlpha(0x80))
             }
             setPadding(ctx.dp(3), ctx.dp(3), ctx.dp(3), ctx.dp(3))
+            background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                this, theme, ctx.dp(10f), theme.altKeyBackgroundColor.withAlpha(0x80)
+            ) ?: background
             labels.forEachIndexed { i, label ->
                 addView(TextView(ctx).apply {
                     text = label

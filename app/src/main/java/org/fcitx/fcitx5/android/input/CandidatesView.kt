@@ -214,7 +214,9 @@ class CandidatesView(
 
         minWidth = dp(windowMinWidth)
         padding = dp(windowPadding)
-        background = GradientDrawable().apply {
+        background = org.fcitx.fcitx5.android.input.glass.Glass.candidateBackground(
+            this, theme, dp(windowRadius).toFloat(), theme.backgroundColor
+        ) ?: GradientDrawable().apply {
             setColor(theme.backgroundColor)
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dp(windowRadius).toFloat()

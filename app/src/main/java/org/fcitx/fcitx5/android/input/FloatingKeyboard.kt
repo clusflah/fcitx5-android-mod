@@ -102,7 +102,7 @@ class FloatingKeyboard(
         }
     }
 
-    val elevation = context.dp(8f)
+    val elevation = if (org.fcitx.fcitx5.android.input.glass.Glass.isActive(theme)) 0f else context.dp(8f)
 
     private enum class Drag { Move, ResizeLeft, ResizeRight }
 

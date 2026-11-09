@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<resources>
+    <string name="liquid_glass">液态玻璃</string>
+    <string name="glass_mode">液态玻璃模式</string>
+    <string name="glass_mode_follow_theme">跟随主题（仅玻璃预设开启）</string>
+    <string name="glass_mode_backdrop">背景玻璃（全部主题开启）</string>
+    <string name="glass_mode_see_through">透视玻璃（实验）</string>
+    <string name="glass_mode_off">关闭</string>
+    <string name="glass_blur_radius">模糊半径</string>
+    <string name="glass_tint_opacity">玻璃着色不透明度</string>
+    <string name="glass_refraction">边缘折射强度</string>
+    <string name="glass_dispersion">色彩色散强度</string>
+    <string name="glass_highlight">高光描边强度</string>
+    <string name="glass_press_morph">按下液态形变动效</string>
+    <string name="glass_press_morph_summary">按键按下时呈现水滴弹性膨胀与高光增强效果</string>
+    <string name="glass_dynamic_backdrop">流光渐变衬底</string>
+    <string name="glass_dynamic_backdrop_summary">当前主题无背景图片时，使用多彩柔光渐变作为玻璃折射衬底</string>
+    <string name="glass_animate_backdrop">流光衬底缓慢漂移</string>
+    <string name="glass_animate_backdrop_summary">键盘显示时让柔光色块缓慢流动（可能略微增加耗电）</string>
+    <string name="glass_power_save_fallback">省电模式下自动降级</string>
+    <string name="glass_power_save_fallback_summary">系统开启省电模式时自动退回普通样式以节省电量</string>
+    <string name="glass_target_keys">应用于键盘按键</string>
+    <string name="glass_target_toolbar">应用于工具栏</string>
+    <string name="glass_target_candidates">应用于候选栏与预编辑</string>
+    <string name="glass_target_popups">应用于按键气泡弹窗</string>
+    <string name="glass_target_panels">应用于功能面板（剪贴板、常用语、更多、翻译等）</string>
+</resources>

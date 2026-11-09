@@ -1,0 +1,101 @@
+// SPDX-License-Identifier: LGPL-2.1-or-later
+// iOS 26 style Liquid Glass AGSL RuntimeShader (Android 13+ / API 33+).
+// Evaluates rounded-rect signed distance field (SDF), curved meniscus edge refraction,
+// chromatic dispersion (RGB prism offset), frosted surface tint, and anisotropic specular rim.
+
+uniform shader uBackdrop;
+uniform float2 uOrigin;
+uniform float2 uSize;
+uniform float uRadius;
+uniform float2 uBackdropOffset;
+uniform float2 uBackdropBitmapSize;
+uniform float uDownscale;
+uniform float uRefractionPx;
+uniform float uDispersion;
+uniform float uHighlight;
+uniform float uPress;
+uniform float4 uTintColor;
+uniform float uIsDark;
+
+half4 main(float2 fragCoord) {
+    float2 halfSize = max(uSize * 0.5, float2(1.0, 1.0));
+    float2 center = uOrigin + halfSize;
+    float2 p = fragCoord - center;
+
+    float r = clamp(uRadius, 0.0, min(halfSize.x, halfSize.y));
+    float2 b = max(halfSize - float2(r, r), float2(0.0, 0.0));
+    float2 q = abs(p) - b;
+
+    // Signed distance to rounded rectangle boundary (negative inside, 0 on boundary)
+    float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+
+    // Analytic outward unit normal of the rounded rectangle SDF
+    float2 w = max(q, 0.0);
+    float wLen = length(w);
+    float2 grad = (wLen > 0.0001)
+        ? (w / wLen)
+        : ((q.x > q.y) ? float2(1.0, 0.0) : float2(0.0, 1.0));
+    float2 normal = sign(p) * grad;
+
+    // Curved meniscus bevel width near the edge
+    float minHalf = min(halfSize.x, halfSize.y);
+    float bevel = clamp(max(r * 0.85, minHalf * 0.42), 4.0, minHalf);
+    float edgeT = clamp(1.0 + dist / bevel, 0.0, 1.0);
+    // Steep Snell-like lens curve near the rim
+    float lens = edgeT * edgeT * (0.35 + 0.65 * edgeT);
+
+    // Outward refraction pulls background inward near the curved rim, plus subtle convex magnification on press
+    float pressBoost = 1.0 + uPress * 0.45;
+    float2 refractOffset = -normal * (lens * uRefractionPx * pressBoost)
+        - (p / max(halfSize.x, 1.0)) * (uPress * 5.0);
+
+    float2 baseCoord = uBackdropOffset + fragCoord;
+    float2 maxCoord = max(uBackdropBitmapSize - float2(1.0, 1.0), float2(1.0, 1.0));
+
+    half3 bgRgb;
+    if (uDispersion > 0.001) {
+        float2 coordR = clamp((baseCoord + refractOffset * (1.0 + uDispersion)) * uDownscale, float2(0.0, 0.0), maxCoord);
+        float2 coordG = clamp((baseCoord + refractOffset) * uDownscale, float2(0.0, 0.0), maxCoord);
+        float2 coordB = clamp((baseCoord + refractOffset * (1.0 - uDispersion)) * uDownscale, float2(0.0, 0.0), maxCoord);
+        bgRgb = half3(
+            uBackdrop.eval(coordR).r,
+            uBackdrop.eval(coordG).g,
+            uBackdrop.eval(coordB).b
+        );
+    } else {
+        float2 coord = clamp((baseCoord + refractOffset) * uDownscale, float2(0.0, 0.0), maxCoord);
+        bgRgb = uBackdrop.eval(coord).rgb;
+    }
+
+    // Internal vertical sheen (slightly brighter at top of droplet)
+    float vNorm = clamp((p.y / halfSize.y) * 0.5 + 0.5, 0.0, 1.0);
+    float innerSheen = (1.0 - vNorm) * (uIsDark > 0.5 ? 0.06 : 0.11) + uPress * 0.06;
+
+    // Blend surface tint over refracted backdrop
+    float tintAlpha = clamp(uTintColor.a, 0.0, 1.0);
+    half3 tinted = mix(bgRgb, half3(uTintColor.rgb), half(tintAlpha));
+    tinted = clamp(tinted + half3(innerSheen), half3(0.0), half3(1.0));
+
+    // Anisotropic specular rim highlight (top-left primary light + bottom-right secondary caustics)
+    float2 lightDir = float2(-0.48, -0.877);
+    float ndotl = dot(normal, lightDir);
+    float primaryLight = max(0.0, ndotl);
+    float secondaryLight = max(0.0, -ndotl) * 0.42;
+
+    // Crisp rim band (1.5px wide) + softer inner meniscus glow
+    float rimBand = exp(min(dist, 0.0) * 1.15);
+    float innerBand = exp(min(dist, 0.0) * 0.24) * primaryLight * 0.28;
+    float specStrength = uHighlight * (1.0 + uPress * 0.35);
+    float spec = clamp((rimBand * (0.22 + 0.78 * (primaryLight + secondaryLight)) + innerBand) * specStrength, 0.0, 1.0);
+
+    half3 specColor = (uIsDark > 0.5) ? half3(0.92, 0.96, 1.0) : half3(1.0, 1.0, 1.0);
+    half3 finalRgb = mix(tinted, specColor, half(spec));
+
+    // Subtle bottom inner shadow for depth
+    float bottomShadow = max(0.0, normal.y) * rimBand * (uIsDark > 0.5 ? 0.22 : 0.12) * (1.0 - primaryLight);
+    finalRgb = finalRgb * half(1.0 - bottomShadow);
+
+    // Smooth anti-aliased edge coverage
+    float edgeAlpha = clamp(0.5 - dist, 0.0, 1.0);
+    return half4(finalRgb * half(edgeAlpha), half(edgeAlpha));
+}

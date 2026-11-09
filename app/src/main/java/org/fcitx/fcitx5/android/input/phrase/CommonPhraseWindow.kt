@@ -135,7 +135,9 @@ class CommonPhraseWindow : InputWindow.ExtendedInputWindow<CommonPhraseWindow>()
                 textSize = 14f
                 setPadding(context.dp(12), context.dp(6), context.dp(12), context.dp(6))
                 setTextColor(if (selected) theme.accentKeyTextColor else theme.keyTextColor)
-                background = rounded(if (selected) theme.accentKeyBackgroundColor else theme.keyBackgroundColor)
+                background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                    this, theme, context.dp(8f), if (selected) theme.accentKeyBackgroundColor else theme.keyBackgroundColor, pressMorph = true
+                ) ?: rounded(if (selected) theme.accentKeyBackgroundColor else theme.keyBackgroundColor)
                 setOnClickListener { currentGroupId = g.id; refresh() }
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 marginEnd = context.dp(6)
@@ -168,7 +170,9 @@ class CommonPhraseWindow : InputWindow.ExtendedInputWindow<CommonPhraseWindow>()
             val root = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(ctx.dp(10), ctx.dp(8), ctx.dp(10), ctx.dp(8))
-                background = rounded(theme.clipboardEntryColor)
+                background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                    this, theme, ctx.dp(8f), theme.clipboardEntryColor, pressMorph = true
+                ) ?: rounded(theme.clipboardEntryColor)
                 addView(label); addView(content)
                 layoutParams = ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                     setMargins(ctx.dp(4), ctx.dp(4), ctx.dp(4), ctx.dp(4))

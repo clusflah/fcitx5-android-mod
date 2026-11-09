@@ -4,4 +4,6 @@
     <item name="voice_model_container" type="id" />
     <!-- mod: container of the Rime 语法模型 settings page -->
     <item name="rime_grammar_container" type="id" />
+    <!-- mod: shared GlassBackdrop holder tag on InputView / KeyboardPreviewUi -->
+    <item name="tag_glass_backdrop" type="id" />
 </resources>

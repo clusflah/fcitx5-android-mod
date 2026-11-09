@@ -85,7 +85,9 @@ class AzureVoiceInputWindow : InputWindow.ExtendedInputWindow<AzureVoiceInputWin
         })
         // a wide oval whose top shows as a dome; tapping it finishes like the mic button
         val dome = FrameLayout(context).apply {
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(theme.keyBackgroundColor) }
+            background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                this, theme, context.dp(110f), theme.keyBackgroundColor, pressMorph = true
+            ) ?: GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(theme.keyBackgroundColor) }
             setOnClickListener { onMicClick() }
             addView(TextView(context).apply {
                 text = context.getString(R.string.azure_voice_hint)

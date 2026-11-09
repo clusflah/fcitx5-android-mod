@@ -98,14 +98,19 @@ class ThemeThumbnailUi(override val ctx: Context) : Ui {
         root.apply {
             foreground = rippleDrawable(theme.keyPressHighlightColor)
         }
-        bkg.imageDrawable = theme.backgroundDrawable()
+        val isGlass = org.fcitx.fcitx5.android.data.theme.ThemePresetMod.isGlassPreset(theme)
+        bkg.imageDrawable = if (isGlass) org.fcitx.fcitx5.android.input.glass.DynamicBackdropDrawable(theme) else theme.backgroundDrawable()
         bar.backgroundColor = theme.barColor
-        spaceBar.background = GradientDrawable().apply {
+        spaceBar.background = (if (isGlass) org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+            spaceBar, theme, theme.spaceBarColor, theme.keyTextColor, ctx.dp(2f), pressMorph = false
+        ) else null) ?: GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = ctx.dp(2f)
             setColor(theme.spaceBarColor)
         }
-        returnKey.background = ShapeDrawable(OvalShape()).apply {
+        returnKey.background = (if (isGlass) org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+            returnKey, theme, theme.accentKeyBackgroundColor, theme.accentKeyTextColor, 0f, isOval = true, pressMorph = false
+        ) else null) ?: ShapeDrawable(OvalShape()).apply {
             paint.color = theme.accentKeyBackgroundColor
         }
         val foregroundTint = ColorStateList.valueOf(theme.altKeyTextColor)

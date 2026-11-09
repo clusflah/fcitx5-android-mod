@@ -28,6 +28,7 @@ import org.fcitx.fcitx5.android.input.FcitxInputMethodService
 import org.fcitx.fcitx5.android.input.dependency.fcitx
 import org.fcitx.fcitx5.android.input.dependency.inputMethodService
 import org.fcitx.fcitx5.android.input.dependency.theme
+import org.fcitx.fcitx5.android.input.glass.Glass
 import org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow
 import org.fcitx.fcitx5.android.input.keyboard.RimeT9
 import org.fcitx.fcitx5.android.input.wm.InputWindow
@@ -53,7 +54,9 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
     override fun onCreateView(): View {
         card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
+            background = Glass.panelCardBackground(
+                this, theme, context.dp(16f), theme.popupBackgroundColor
+            ) ?: GradientDrawable().apply {
                 cornerRadius = context.dp(16f)
                 setColor(theme.popupBackgroundColor)
             }
@@ -62,7 +65,9 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
         }
         return ScrollView(context).apply {
             isVerticalScrollBarEnabled = false
-            setBackgroundColor(theme.keyboardColor)
+            if (!Glass.style(theme).let { it.enabled && it.targetPanels }) {
+                setBackgroundColor(theme.keyboardColor)
+            }
             addView(FrameLayout(context).apply {
                 val m = context.dp(12)
                 setPadding(m, m, m, m)
@@ -128,7 +133,9 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            background = GradientDrawable().apply {
+            background = (if (tile.selected) {
+                Glass.panelCardBackground(this, theme, context.dp(12f), theme.keyBackgroundColor, pressMorph = true)
+            } else null) ?: GradientDrawable().apply {
                 cornerRadius = context.dp(12f)
                 setColor(if (tile.selected) theme.keyBackgroundColor else android.graphics.Color.TRANSPARENT)
             }

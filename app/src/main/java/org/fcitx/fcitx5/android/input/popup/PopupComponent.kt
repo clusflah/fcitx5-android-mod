@@ -109,6 +109,7 @@ class PopupComponent :
             root.addView(popup.root)
         }
         showingEntryUi[viewId] = popup
+        org.fcitx.fcitx5.android.input.glass.Glass.animatePopupIn(popup.root, theme)
     }
 
     private fun updatePopup(viewId: Int, content: String) {
@@ -182,6 +183,7 @@ class PopupComponent :
             })
         }
         showingContainerUi[viewId] = ui
+        org.fcitx.fcitx5.android.input.glass.Glass.animatePopupIn(ui.root, theme)
     }
 
     private fun changeFocus(viewId: Int, x: Float, y: Float): Boolean {

@@ -26,6 +26,8 @@ object ThemeManager {
     val BuiltinThemes = listOf(
         ThemePresetMod.JadeLight, // mod
         ThemePresetMod.JadeDark, // mod
+        ThemePresetMod.GlassLight, // mod
+        ThemePresetMod.GlassDark, // mod
         ThemePreset.MaterialLight,
         ThemePreset.MaterialDark,
         ThemePreset.PixelLight,
@@ -80,11 +82,19 @@ object ThemeManager {
         onChangeListeners.remove(listener)
     }
 
+    fun notifyGlassStateChanged() {
+        if (::_activeTheme.isInitialized) {
+            fireChange()
+        }
+    }
+
     private fun fireChange() {
         onChangeListeners.forEach { it.onThemeChange(_activeTheme) }
     }
 
     val prefs = AppPrefs.getInstance().registerProvider(::ThemePrefs)
+
+    val glassPrefs = AppPrefs.getInstance().registerProvider(::GlassPrefs)
 
     fun saveTheme(theme: Theme.Custom) {
         ThemeFilesManager.saveThemeFiles(theme)
@@ -136,6 +146,7 @@ object ThemeManager {
         isDarkMode = configuration.isDarkMode()
         // fire all `OnThemeChangedListener`s on theme preferences change
         prefs.registerOnChangeListener(onThemePrefsChange)
+        glassPrefs.registerOnChangeListener(onThemePrefsChange)
         _activeTheme = evaluateActiveTheme()
     }
 
@@ -153,6 +164,9 @@ object ThemeManager {
         val sp = PreferenceManager.getDefaultSharedPreferences(ctx)
         sp.edit {
             prefs.managedPreferences.forEach {
+                it.value.putValueTo(this@edit)
+            }
+            glassPrefs.managedPreferences.forEach {
                 it.value.putValueTo(this@edit)
             }
         }

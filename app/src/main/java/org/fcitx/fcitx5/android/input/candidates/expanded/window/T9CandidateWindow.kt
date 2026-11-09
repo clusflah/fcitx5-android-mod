@@ -308,7 +308,9 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
         }
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(theme.keyboardColor)
+            if (!org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetCandidates }) {
+                setBackgroundColor(theme.keyboardColor)
+            }
             if (pinyinColumn) {
                 addView(column, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.15f))
             }

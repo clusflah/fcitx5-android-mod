@@ -32,7 +32,7 @@ class PopupEntryUi(override val ctx: Context, theme: Theme, keyHeight: Int, radi
     }
 
     override val root = constraintLayout {
-        background = GradientDrawable().apply {
+        background = org.fcitx.fcitx5.android.input.glass.Glass.popupBackground(this, theme, radius) ?: GradientDrawable().apply {
             cornerRadius = radius
             setColor(theme.popupBackgroundColor)
         }

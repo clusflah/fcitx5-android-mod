@@ -72,7 +72,9 @@ class AiPredictWindow : InputWindow.ExtendedInputWindow<AiPredictWindow>() {
         textSize = 14f
         gravity = Gravity.CENTER
         setTextColor(theme.keyTextColor)
-        background = rounded(theme.keyBackgroundColor)
+        background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+            this, theme, context.dp(8f), theme.keyBackgroundColor, pressMorph = true
+        ) ?: rounded(theme.keyBackgroundColor)
         setPadding(context.dp(14), context.dp(8), context.dp(14), context.dp(8))
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             .apply { marginStart = context.dp(8) }
@@ -129,7 +131,9 @@ class AiPredictWindow : InputWindow.ExtendedInputWindow<AiPredictWindow>() {
             this.text = text
             textSize = 16f
             setTextColor(theme.keyTextColor)
-            background = rounded(theme.clipboardEntryColor)
+            background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                this, theme, context.dp(8f), theme.clipboardEntryColor, pressMorph = true
+            ) ?: rounded(theme.clipboardEntryColor)
             setPadding(context.dp(12), context.dp(10), context.dp(12), context.dp(10))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 .apply { topMargin = context.dp(6) }

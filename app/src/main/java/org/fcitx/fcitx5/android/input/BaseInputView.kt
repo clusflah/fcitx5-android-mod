@@ -82,6 +82,7 @@ abstract class BaseInputView(
             val actions = fcitx.runOnReady { getCandidateActions(idx) }
             if (actions.isEmpty()) return@launch
             InputFeedbacks.hapticFeedback(view, longPress = true)
+            org.fcitx.fcitx5.android.input.glass.Glass.animateCandidateJelly(view, theme)
             candidateActionMenu = PopupMenu(themedContext, view).apply {
                 menu.add(buildSpannedString {
                     bold {

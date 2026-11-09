@@ -87,7 +87,8 @@ class SettingsSearchActivity : AppCompatActivity() {
                 pageEntries(prefs.clipboard, R.string.clipboard, SettingsRoute.Clipboard, null) +
                 pageEntries(prefs.symbols, R.string.emoji_and_symbols, SettingsRoute.Symbol, null) +
                 pageEntries(prefs.advanced, R.string.advanced, SettingsRoute.Advanced, null) +
-                pageEntries(ThemeManager.prefs, R.string.theme, SettingsRoute.Theme, null)
+                pageEntries(ThemeManager.prefs, R.string.theme, SettingsRoute.Theme, null) +
+                pageEntries(ThemeManager.glassPrefs, R.string.liquid_glass, SettingsRoute.Theme, null)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
