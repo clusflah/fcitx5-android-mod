@@ -214,6 +214,8 @@ class CandidatesView(
 
         minWidth = dp(windowMinWidth)
         padding = dp(windowPadding)
+        org.fcitx.fcitx5.android.input.glass.Glass.attachStandaloneBackdrop(this, theme)
+        if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetCandidates }) elevation = dp(6f)
         background = org.fcitx.fcitx5.android.input.glass.Glass.candidateBackground(
             this, theme, dp(windowRadius).toFloat(), theme.backgroundColor
         ) ?: GradientDrawable().apply {

@@ -12,6 +12,7 @@ import androidx.core.text.buildSpannedString
 import androidx.core.text.color
 import org.fcitx.fcitx5.android.core.CandidateWord
 import org.fcitx.fcitx5.android.data.theme.Theme
+import splitties.dimensions.dp
 import splitties.views.backgroundColor
 import splitties.views.dsl.core.Ui
 import splitties.views.dsl.core.textView
@@ -24,6 +25,7 @@ class LabeledCandidateItemUi(
 
     override val root = textView {
         setupTextView(this)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
     }
 
     fun update(candidate: CandidateWord, active: Boolean) {
@@ -47,6 +49,13 @@ class LabeledCandidateItemUi(
             }
         }
         val bg = if (active) theme.genericActiveBackgroundColor else Color.TRANSPARENT
-        root.backgroundColor = bg
+        if (active && org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetCandidates }) {
+            root.background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = ctx.dp(6f)
+                setColor(theme.genericActiveBackgroundColor)
+            }
+        } else {
+            root.backgroundColor = bg
+        }
     }
 }

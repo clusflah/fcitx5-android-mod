@@ -35,10 +35,14 @@ class PreeditComponent : UniqueComponent<PreeditComponent>(), Dependent, InputBr
             background = org.fcitx.fcitx5.android.input.glass.Glass.candidateBackground(
                 this, theme, dp(6f), bkgColor
             ) ?: android.graphics.drawable.ColorDrawable(bkgColor)
-            horizontalPadding = dp(8)
+            if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetCandidates }) {
+                setPadding(dp(8), dp(2), dp(8), dp(2))
+            } else {
+                horizontalPadding = dp(8)
+            }
         }).apply {
             // TODO make it customizable
-            root.alpha = 0.8f
+            root.alpha = if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetCandidates }) 1f else 0.8f
             root.visibility = View.INVISIBLE
         }
     }

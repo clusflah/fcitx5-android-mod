@@ -106,7 +106,7 @@ class GlassBackdrop(
         }
 
         computeLuminanceGrid(bmp)
-        bitmapShader = BitmapShader(bmp, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+        bitmapShader = BitmapShader(bmp, Shader.TileMode.MIRROR, Shader.TileMode.MIRROR)
         version++
     }
 
@@ -128,8 +128,10 @@ class GlassBackdrop(
         if (sourceWidth <= 0 || sourceHeight <= 0) {
             return if (theme.isDark) 0.12f else 0.82f
         }
-        val gx = ((xPx / sourceWidth) * GRID_W).toInt().coerceIn(0, GRID_W - 1)
-        val gy = ((yPx / sourceHeight) * GRID_H).toInt().coerceIn(0, GRID_H - 1)
+        val mx = kotlin.math.abs(xPx)
+        val my = kotlin.math.abs(yPx)
+        val gx = ((mx / sourceWidth) * GRID_W).toInt().coerceIn(0, GRID_W - 1)
+        val gy = ((my / sourceHeight) * GRID_H).toInt().coerceIn(0, GRID_H - 1)
         return luminanceGrid[gy * GRID_W + gx]
     }
 
@@ -171,8 +173,16 @@ class GlassBackdrop(
             val newCompositeLum = bgLum * (1f - targetOpacity) + tintLum * targetOpacity
             if (contrastRatio(newCompositeLum, textLum) < 4.2f) {
                 // Gently shift tint RGB away from text luminance to guarantee readability
-                val pole = if (textLum < 0.45f) 0xffffffff.toInt() else 0xff10141e.toInt()
-                rgb = ColorUtils.blendARGB(rgb or (0xff shl 24), pole, 0.25f) and 0x00ffffff
+                val hsl = FloatArray(3)
+                ColorUtils.colorToHSL(rgb or (0xff shl 24), hsl)
+                if (hsl[1] > 0.35f) {
+                    hsl[2] = if (textLum > 0.5f) (hsl[2] * 0.78f).coerceAtLeast(0.22f)
+                    else (hsl[2] + (1f - hsl[2]) * 0.35f).coerceAtMost(0.88f)
+                    rgb = ColorUtils.HSLToColor(hsl) and 0x00ffffff
+                } else {
+                    val pole = if (textLum < 0.45f) 0xffffffff.toInt() else 0xff10141e.toInt()
+                    rgb = ColorUtils.blendARGB(rgb or (0xff shl 24), pole, 0.25f) and 0x00ffffff
+                }
             }
         }
 

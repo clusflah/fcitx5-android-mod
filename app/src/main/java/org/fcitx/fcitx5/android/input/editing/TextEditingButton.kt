@@ -50,13 +50,16 @@ class TextEditingButton(
     init {
         if (bordered) {
             val bkgColor = if (altStyle) theme.altKeyBackgroundColor else theme.keyBackgroundColor
-            background = Glass.keyBackground(
-                this, theme, bkgColor, if (altStyle) theme.altKeyTextColor else theme.keyTextColor, radius, hInset, vInset
-            ) ?: shadowedKeyBackgroundDrawable(
+            val glassBg = Glass.keyBackground(
+                this, theme, bkgColor, if (altStyle) theme.altKeyTextColor else theme.keyTextColor, radius, hInset, vInset, scaleViewOnPress = true
+            )
+            background = glassBg ?: shadowedKeyBackgroundDrawable(
                 bkgColor, theme.keyShadowColor,
                 radius, shadowWidth, hInset, vInset
             )
-            foreground = if (rippled) {
+            foreground = if (glassBg != null) {
+                null
+            } else if (rippled) {
                 RippleDrawable(
                     ColorStateList.valueOf(theme.keyPressHighlightColor), null,
                     insetRadiusDrawable(hInset, vInset, radius)
@@ -127,9 +130,11 @@ class TextEditingButton(
             )
         )
         background = if (bordered) {
-            Glass.statefulKeyBackground(
-                this, theme, theme.keyBackgroundColor, theme.genericActiveBackgroundColor, theme.keyTextColor, radius, hInset, vInset
-            ) ?: StateListDrawable().apply {
+            val glassStateful = Glass.statefulKeyBackground(
+                this, theme, theme.keyBackgroundColor, theme.genericActiveBackgroundColor, theme.genericActiveForegroundColor, radius, hInset, vInset
+            )
+            if (glassStateful != null) foreground = null
+            glassStateful ?: StateListDrawable().apply {
                 addState(
                     intArrayOf(android.R.attr.state_activated),
                     shadowedKeyBackgroundDrawable(

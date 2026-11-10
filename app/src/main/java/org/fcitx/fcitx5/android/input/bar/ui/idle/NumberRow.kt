@@ -25,6 +25,21 @@ class NumberRow(ctx: Context, theme: Theme) : BaseKeyboard(ctx, theme, Layout) {
 
     var onCollapseListener: (() -> Unit)? = null
 
+    init {
+        if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetKeys }) {
+            for (i in 0 until childCount) {
+                val kv = getChildAt(i)
+                val glassBg = org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+                    kv, theme, theme.keyBackgroundColor, theme.keyTextColor, dp(8f), dp(2), dp(4), scaleViewOnPress = true
+                )
+                if (glassBg != null) {
+                    kv.background = glassBg
+                    kv.foreground = null
+                }
+            }
+        }
+    }
+
     private fun checkGesture(ev: MotionEvent): Boolean {
         val startEvent = gestureStartEvent ?: return false
         val firstPointerId = startEvent.getPointerId(startEvent.actionIndex)

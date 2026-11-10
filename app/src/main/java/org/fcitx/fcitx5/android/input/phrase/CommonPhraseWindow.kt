@@ -11,6 +11,7 @@ import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -19,11 +20,17 @@ import androidx.recyclerview.widget.RecyclerView
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.data.phrase.CommonPhrase
 import org.fcitx.fcitx5.android.data.phrase.CommonPhraseManager
+import org.fcitx.fcitx5.android.data.theme.ThemeManager
 import org.fcitx.fcitx5.android.input.FcitxInputMethodService
+import org.fcitx.fcitx5.android.input.bar.ui.PanelSwitchBar
 import org.fcitx.fcitx5.android.input.bar.ui.ToolButton
+import org.fcitx.fcitx5.android.input.clipboard.ClipboardWindow
 import org.fcitx.fcitx5.android.input.dependency.inputMethodService
 import org.fcitx.fcitx5.android.input.dependency.theme
+import org.fcitx.fcitx5.android.input.glass.Glass
+import org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow
 import org.fcitx.fcitx5.android.input.wm.InputWindow
+import org.fcitx.fcitx5.android.input.wm.InputWindowManager
 import org.fcitx.fcitx5.android.ui.main.CommonPhraseActivity
 import org.mechdancer.dependency.manager.must
 import splitties.dimensions.dp
@@ -32,7 +39,7 @@ class CommonPhraseWindow : InputWindow.ExtendedInputWindow<CommonPhraseWindow>()
 
     private val service: FcitxInputMethodService by manager.inputMethodService()
     private val theme by manager.theme()
-    private val windowManager: org.fcitx.fcitx5.android.input.wm.InputWindowManager by manager.must()
+    private val windowManager: InputWindowManager by manager.must()
 
     override val title: String by lazy { context.getString(R.string.common_phrase) }
 
@@ -44,8 +51,8 @@ class CommonPhraseWindow : InputWindow.ExtendedInputWindow<CommonPhraseWindow>()
 
     private val onDataChanged: () -> Unit = { refresh() }
 
-    private fun rounded(color: Int) = GradientDrawable().apply {
-        setColor(color); cornerRadius = context.dp(8f)
+    private fun rounded(color: Int, radiusDp: Float = 12f) = GradientDrawable().apply {
+        setColor(color); cornerRadius = context.dp(radiusDp)
     }
 
     override fun onCreateView(): View {
@@ -56,19 +63,22 @@ class CommonPhraseWindow : InputWindow.ExtendedInputWindow<CommonPhraseWindow>()
         }
         root.addView(HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
+            Glass.attachScrollInvalidator(this, theme)
             addView(tabBar)
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        val content = android.widget.FrameLayout(context)
+        val content = FrameLayout(context)
         content.addView(RecyclerView(context).apply {
             layoutManager = GridLayoutManager(context, 2)
             adapter = this@CommonPhraseWindow.adapter
             setPadding(context.dp(4), 0, context.dp(4), context.dp(4))
             clipToPadding = false
+            Glass.attachScrollInvalidator(this, theme)
         }, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         emptyHint = TextView(context).apply {
             text = context.getString(R.string.common_phrase_empty)
             setTextColor(theme.altKeyTextColor)
             gravity = Gravity.CENTER
+            Glass.applyKeyTextShadow(this, theme)
             setOnClickListener { openManager() }
         }
         content.addView(emptyHint, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -77,16 +87,16 @@ class CommonPhraseWindow : InputWindow.ExtendedInputWindow<CommonPhraseWindow>()
     }
 
     // mod: card style: ∧ | 剪贴板 · 常用语 | manage, instead of the title
-    private val cardStyle = org.fcitx.fcitx5.android.data.theme.ThemeManager.prefs.cardStyle.getValue()
+    private val cardStyle = ThemeManager.prefs.cardStyle.getValue() || Glass.isDialogGlassActive(theme)
 
     override val showTitle get() = !cardStyle
 
     override fun onCreateBarExtension(): View = if (cardStyle) {
-        org.fcitx.fcitx5.android.input.bar.ui.PanelSwitchBar.create(
+        PanelSwitchBar.create(
             context, theme,
             listOf(context.getString(R.string.clipboard), context.getString(R.string.common_phrase)), 1,
-            onBack = { windowManager.attachWindow(org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow) },
-            onSelect = { windowManager.attachWindow(org.fcitx.fcitx5.android.input.clipboard.ClipboardWindow()) },
+            onBack = { windowManager.attachWindow(KeyboardWindow) },
+            onSelect = { windowManager.attachWindow(ClipboardWindow()) },
             actions = listOf(ToolButton(context, R.drawable.ic_baseline_settings_24, theme).apply {
                 contentDescription = context.getString(R.string.common_phrase_manage)
                 setOnClickListener { openManager() }
@@ -98,7 +108,7 @@ class CommonPhraseWindow : InputWindow.ExtendedInputWindow<CommonPhraseWindow>()
         addView(ToolButton(context, R.drawable.ic_clipboard, theme).apply {
             contentDescription = context.getString(R.string.clipboard)
             setOnClickListener {
-                windowManager.attachWindow(org.fcitx.fcitx5.android.input.clipboard.ClipboardWindow())
+                windowManager.attachWindow(ClipboardWindow())
             }
         }, LinearLayout.LayoutParams(context.dp(40), context.dp(40)))
         addView(ToolButton(context, R.drawable.ic_baseline_settings_24, theme).apply {
@@ -130,14 +140,20 @@ class CommonPhraseWindow : InputWindow.ExtendedInputWindow<CommonPhraseWindow>()
         tabBar.removeAllViews()
         groups.forEach { g ->
             val selected = g.id == currentGroupId
+            val fgColor = if (selected) theme.accentKeyTextColor else theme.keyTextColor
+            val bgColor = if (selected) theme.accentKeyBackgroundColor else theme.keyBackgroundColor
             tabBar.addView(TextView(context).apply {
                 text = g.name
                 textSize = 14f
+                if (selected) typeface = Typeface.DEFAULT_BOLD
                 setPadding(context.dp(12), context.dp(6), context.dp(12), context.dp(6))
-                setTextColor(if (selected) theme.accentKeyTextColor else theme.keyTextColor)
-                background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
-                    this, theme, context.dp(8f), if (selected) theme.accentKeyBackgroundColor else theme.keyBackgroundColor, pressMorph = true
-                ) ?: rounded(if (selected) theme.accentKeyBackgroundColor else theme.keyBackgroundColor)
+                setTextColor(fgColor)
+                Glass.applyKeyTextShadow(this, theme)
+                background = Glass.panelCardBackground(
+                    this, theme, context.dp(12f), bgColor, fgColor,
+                    pressMorph = true,
+                    extraOpacityBoost = if (selected) 0.16f else 0.08f
+                ) ?: rounded(bgColor, 12f)
                 setOnClickListener { currentGroupId = g.id; refresh() }
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 marginEnd = context.dp(6)
@@ -159,20 +175,23 @@ class CommonPhraseWindow : InputWindow.ExtendedInputWindow<CommonPhraseWindow>()
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
             val ctx = parent.context
+            val entryRadiusDp = ThemeManager.prefs.clipboardEntryRadius.getValue().toFloat()
             val label = TextView(ctx).apply {
                 textSize = 12f; setTextColor(theme.altKeyTextColor)
                 maxLines = 1; ellipsize = TextUtils.TruncateAt.END
+                Glass.applyKeyTextShadow(this, theme)
             }
             val content = TextView(ctx).apply {
                 textSize = 15f; setTextColor(theme.keyTextColor); typeface = Typeface.DEFAULT_BOLD
                 maxLines = 2; ellipsize = TextUtils.TruncateAt.END
+                Glass.applyKeyTextShadow(this, theme)
             }
             val root = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(ctx.dp(10), ctx.dp(8), ctx.dp(10), ctx.dp(8))
-                background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
-                    this, theme, ctx.dp(8f), theme.clipboardEntryColor, pressMorph = true
-                ) ?: rounded(theme.clipboardEntryColor)
+                background = Glass.panelCardBackground(
+                    this, theme, ctx.dp(entryRadiusDp), theme.clipboardEntryColor, theme.keyTextColor, pressMorph = true
+                ) ?: rounded(theme.clipboardEntryColor, entryRadiusDp)
                 addView(label); addView(content)
                 layoutParams = ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                     setMargins(ctx.dp(4), ctx.dp(4), ctx.dp(4), ctx.dp(4))

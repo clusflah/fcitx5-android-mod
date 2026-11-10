@@ -142,7 +142,11 @@ class PopupComponent :
             }
         }
         // clear popup preview text         OR create empty popup preview
-        showingEntryUi[viewId]?.setText("") ?: showPopup(viewId, "", bounds)
+        if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetPopups }) {
+            showingEntryUi[viewId]?.let { dismissPopupEntry(viewId, it) }
+        } else {
+            showingEntryUi[viewId]?.setText("") ?: showPopup(viewId, "", bounds)
+        }
         val keyboardUi = PopupKeyboardUi(
             context,
             theme,

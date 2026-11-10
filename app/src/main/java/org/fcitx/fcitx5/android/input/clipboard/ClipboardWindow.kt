@@ -174,9 +174,32 @@ class ClipboardWindow : InputWindow.ExtendedInputWindow<ClipboardWindow>() {
     override fun onCreateView(): View = ui.root
 
     private var promptMenu: PopupMenu? = null
+    private var promptCardMenu: android.widget.PopupWindow? = null
 
     private fun promptDeleteAll(skipPinned: Boolean) {
         promptMenu?.dismiss()
+        promptCardMenu?.dismiss()
+        val headerText = context.getString(if (skipPinned) R.string.delete_all_except_pinned else R.string.delete_all_pinned_items)
+        if (cardStyle || org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetPopups }) {
+            promptCardMenu = org.fcitx.fcitx5.android.input.bar.ui.CardPopupMenu.show(
+                ui.deleteAllButton,
+                theme,
+                listOf(context.getString(android.R.string.cancel), context.getString(android.R.string.ok)),
+                -1,
+                width = context.dp(220),
+                header = headerText
+            ) { idx ->
+                promptCardMenu = null
+        snackbarInstance?.dismiss()
+                if (idx == 1) {
+                    service.lifecycleScope.launch {
+                        val ids = ClipboardManager.deleteAll(skipPinned)
+                        showUndoSnackbar(*ids)
+                    }
+                }
+            }
+            return
+        }
         promptMenu = PopupMenu(context, ui.deleteAllButton).apply {
             menu.add(buildSpannedString {
                 bold {
@@ -246,6 +269,15 @@ class ClipboardWindow : InputWindow.ExtendedInputWindow<ClipboardWindow>() {
                 ((view as FrameLayout).getChildAt(0) as SnackbarContentLayout).apply {
                     messageView.letterSpacing = 0f
                     actionView.letterSpacing = 0f
+                    org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(messageView, theme)
+                    org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(actionView, theme)
+                    if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetPopups }) {
+                        actionView.setTextColor(org.fcitx.fcitx5.android.data.theme.ThemePresetMod.JADE)
+                        view.backgroundTintList = null
+                        view.background = org.fcitx.fcitx5.android.input.glass.Glass.popupBackground(
+                            view, theme, snackbarCtx.dp(14f), theme.popupBackgroundColor, theme.popupTextColor
+                        )
+                    }
                 }
                 show()
             }
@@ -281,6 +313,8 @@ class ClipboardWindow : InputWindow.ExtendedInputWindow<ClipboardWindow>() {
         adapter.onDetached()
         adapterSubmitJob?.cancel()
         promptMenu?.dismiss()
+        promptCardMenu?.dismiss()
+        promptCardMenu = null
         snackbarInstance?.dismiss()
     }
 
@@ -289,7 +323,7 @@ class ClipboardWindow : InputWindow.ExtendedInputWindow<ClipboardWindow>() {
     }
 
     // mod: card style: ∧ | 剪贴板 · 常用语 | delete all, instead of the title
-    private val cardStyle = ThemeManager.prefs.cardStyle.getValue()
+    private val cardStyle = ThemeManager.prefs.cardStyle.getValue() || org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive(theme)
 
     override val showTitle get() = !cardStyle
 

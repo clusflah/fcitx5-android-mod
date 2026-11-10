@@ -41,7 +41,13 @@ class TextEditingWindow : InputWindow.ExtendedInputWindow<TextEditingWindow>(),
     }
 
     private val ui by lazy {
-        TextEditingUi(context, theme, buttonRipple, buttonBorder, buttonRadius.toFloat()).apply {
+        TextEditingUi(
+            context,
+            theme,
+            buttonRipple,
+            buttonBorder || org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetKeys },
+            context.resources.displayMetrics.density * buttonRadius
+        ).apply {
             fun CustomGestureView.onClickWithRepeating(block: () -> Unit) {
                 setOnClickListener { block() }
                 repeatEnabled = true

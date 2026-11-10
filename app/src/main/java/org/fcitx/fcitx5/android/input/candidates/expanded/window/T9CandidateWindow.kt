@@ -181,6 +181,7 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
                 textSize = 18f
                 gravity = Gravity.CENTER
                 setTextColor(theme.altKeyTextColor)
+                org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
                 background = pressHighlightDrawable(theme.keyPressHighlightColor)
                 setOnClickListener {
                     InputFeedbacks.hapticFeedback(it)
@@ -233,10 +234,12 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
     private fun styleTabs() {
         listOf(freqTab to !singleChars, singleTab to singleChars).forEach { (view, selected) ->
             view.setTextColor(if (selected) theme.keyTextColor else theme.altKeyTextColor)
-            view.background = if (selected) GradientDrawable().apply {
+            view.typeface = if (selected) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
+            org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(view, theme)
+            view.background = if (selected) (org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(view, theme, context.dp(8f), theme.keyBackgroundColor, theme.keyTextColor, pressMorph = true, extraOpacityBoost = 0.22f) ?: GradientDrawable().apply {
                 cornerRadius = context.dp(8f)
                 setColor(theme.keyBackgroundColor)
-            } else null
+            }) else null
         }
     }
 
@@ -248,6 +251,9 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
                 setColor(theme.altKeyBackgroundColor)
             }
             setPadding(dp(3), dp(3), dp(3), dp(3))
+            org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                this, theme, context.dp(10f), theme.altKeyBackgroundColor
+            )?.let { background = it }
             addView(freqTab, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
             addView(singleTab, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
         }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34), Gravity.CENTER))
@@ -269,6 +275,7 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
             // the last row can scroll out from under ⌫
             clipToPadding = false
             setPadding(0, 0, 0, rowHeightOrDefault())
+            org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(this, theme)
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                     val last = (recyclerView.layoutManager as GridLayoutManager).findLastVisibleItemPosition()
@@ -280,8 +287,17 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
             setImageResource(R.drawable.ic_baseline_backspace_24)
             imageTintList = android.content.res.ColorStateList.valueOf(theme.altKeyTextColor)
             scaleType = ImageView.ScaleType.CENTER
-            setBackgroundColor(theme.altKeyBackgroundColor)
-            foreground = pressHighlightDrawable(theme.keyPressHighlightColor)
+            val glassBs = org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+                this, theme, theme.altKeyBackgroundColor, theme.altKeyTextColor,
+                context.dp(8f), context.dp(4), context.dp(4), pressMorph = true, scaleViewOnPress = true
+            )
+            if (glassBs != null) {
+                background = glassBs
+                foreground = null
+            } else {
+                setBackgroundColor(theme.altKeyBackgroundColor)
+                foreground = pressHighlightDrawable(theme.keyPressHighlightColor)
+            }
             setOnClickListener {
                 InputFeedbacks.hapticFeedback(it)
                 sendKey(KeyAction.SymAction(KeySym(FcitxKeyMapping.FcitxKey_BackSpace)))
@@ -303,7 +319,12 @@ class T9CandidateWindow : InputWindow.ExtendedInputWindow<T9CandidateWindow>(), 
         }
         val column = ScrollView(context).apply {
             isVerticalScrollBarEnabled = false
-            setBackgroundColor(theme.altKeyBackgroundColor)
+            val glassCol = org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+                this, theme, theme.altKeyBackgroundColor, theme.altKeyTextColor,
+                context.dp(8f), context.dp(4), context.dp(4), pressMorph = false
+            )
+            if (glassCol != null) background = glassCol else setBackgroundColor(theme.altKeyBackgroundColor)
+            org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(this, theme)
             addView(columnList)
         }
         return LinearLayout(context).apply {

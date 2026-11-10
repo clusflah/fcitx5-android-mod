@@ -8,6 +8,7 @@
 package org.fcitx.fcitx5.android.input.translate
 
 import android.content.res.ColorStateList
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -20,6 +21,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
+import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -29,6 +31,7 @@ import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.data.theme.ThemePresetMod
 import org.fcitx.fcitx5.android.input.FcitxInputMethodService
 import org.fcitx.fcitx5.android.input.bar.ui.CardPopupMenu
+import org.fcitx.fcitx5.android.input.glass.Glass
 import splitties.dimensions.dp
 
 class TranslatePanel(private val service: FcitxInputMethodService, private val theme: Theme) {
@@ -42,6 +45,7 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
         setTextColor(theme.altKeyTextColor)
         setPadding(ctx.dp(8), 0, ctx.dp(4), 0)
         gravity = Gravity.CENTER_VERTICAL
+        Glass.applyKeyTextShadow(this, theme)
         setOnClickListener { chooseTarget(it) }
     }
 
@@ -53,6 +57,7 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
         gravity = Gravity.CENTER_VERTICAL
         maxLines = 3
         setPadding(ctx.dp(14), ctx.dp(10), ctx.dp(8), ctx.dp(10))
+        Glass.applyKeyTextShadow(this, theme)
         // a green bar where the text cursor would be
         setCompoundDrawablesRelative(GradientDrawable().apply {
             setColor(ThemePresetMod.JADE)
@@ -64,10 +69,15 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
     private val sendButton = TextView(ctx).apply {
         text = "翻译"
         textSize = 14f
+        typeface = Typeface.DEFAULT_BOLD
         setTextColor(0xffffffff.toInt())
         gravity = Gravity.CENTER
         setPadding(ctx.dp(14), 0, ctx.dp(14), 0)
-        background = GradientDrawable().apply {
+        Glass.applyKeyTextShadow(this, theme)
+        background = Glass.panelCardBackground(
+            this, theme, ctx.dp(14f), ThemePresetMod.JADE, 0xffffffff.toInt(),
+            pressMorph = true, extraOpacityBoost = 0.24f
+        ) ?: GradientDrawable().apply {
             cornerRadius = ctx.dp(14f)
             setColor(ThemePresetMod.JADE)
         }
@@ -80,21 +90,20 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
         setPadding(ctx.dp(8), ctx.dp(8), ctx.dp(8), ctx.dp(4))
         addView(LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
+            background = Glass.panelCardBackground(
+                this, theme, ctx.dp(14f), theme.keyBackgroundColor, theme.keyTextColor
+            ) ?: GradientDrawable().apply {
                 cornerRadius = ctx.dp(14f)
                 setColor(theme.keyBackgroundColor)
             }
-            org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
-                this, theme, ctx.dp(14f), theme.keyBackgroundColor
-            )?.let { background = it }
             clipToOutline = true
             // header: 文A 中外互译 ∨ ............ 收起
             addView(LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setBackgroundColor(
-                    if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetPanels })
-                        (theme.popupBackgroundColor and 0x00ffffff) or (0x48 shl 24)
+                    if (Glass.style(theme).let { it.enabled && it.targetPanels })
+                        (theme.popupBackgroundColor and 0x00ffffff) or (0x40 shl 24)
                     else theme.popupBackgroundColor
                 )
                 setPadding(ctx.dp(12), 0, ctx.dp(12), 0)
@@ -108,6 +117,7 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
                     textSize = 14f
                     setTextColor(theme.altKeyTextColor)
                     gravity = Gravity.CENTER_VERTICAL
+                    Glass.applyKeyTextShadow(this, theme)
                     setOnClickListener { close() }
                 }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ctx.dp(40)))
@@ -181,7 +191,7 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
             val result = runCatching { AiTranslate.translateDetailed(ctx, text) }
             field.hint = "输入要翻译的内容"
             result.onSuccess { r ->
-                r.note?.let { android.widget.Toast.makeText(ctx, it, android.widget.Toast.LENGTH_SHORT).show() }
+                r.note?.let { Toast.makeText(ctx, it, Toast.LENGTH_SHORT).show() }
                 // the translation goes to the app, not back into the draft
                 val wasActive = TranslateDraft.active
                 if (wasActive) TranslateDraft.stop()
@@ -190,7 +200,7 @@ class TranslatePanel(private val service: FcitxInputMethodService, private val t
                     TranslateDraft.start()
                 }
             }.onFailure {
-                android.widget.Toast.makeText(ctx, "翻译失败：${it.message}", android.widget.Toast.LENGTH_SHORT).show()
+                Toast.makeText(ctx, "翻译失败：${it.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }

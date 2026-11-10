@@ -44,13 +44,14 @@ import splitties.views.imageDrawable
 class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : Ui {
 
     /** mod: a rounded tile with the icon above a grey label, instead of a circle */
-    private val card = ThemeManager.prefs.cardStyle.getValue()
+    private val card = ThemeManager.prefs.cardStyle.getValue() || org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive(theme)
 
     private val cardDrawable = GradientDrawable().apply { cornerRadius = ctx.dp(18f) }
 
     private val bkgDrawable = ShapeDrawable(OvalShape())
 
     val bkg = frameLayout {
+        isDuplicateParentStateEnabled = true
         background = bkgDrawable
     }
 
@@ -60,6 +61,7 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
 
     val textIcon = view(::AutoScaleTextView) {
         setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20f)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         // keep original typeface, apply textStyle only
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             // 600 = Semi Bold, 700 = Bold which is too heavy
@@ -75,9 +77,11 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
         maxLines = 1
         ellipsize = android.text.TextUtils.TruncateAt.END
         setTextColor(if (card) theme.altKeyTextColor else theme.keyTextColor)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
     }
 
     private fun cardContent() = constraintLayout {
+        isDuplicateParentStateEnabled = true
         background = cardDrawable
         add(bkg, lParams(dp(28), dp(28)) {
             topOfParent(dp(14))
@@ -98,6 +102,7 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
 
     override val root = object : CustomGestureView(ctx) {
         val content = if (card) cardContent() else constraintLayout {
+            isDuplicateParentStateEnabled = true
             add(bkg, lParams(dp(48), dp(48)) {
                 topOfParent(dp(4))
                 centerHorizontally()
@@ -154,7 +159,7 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
             bkgDrawable.paint.color = android.graphics.Color.TRANSPARENT
             // light tiles on the keyboard color; switched-on ones get a green tint
             cardDrawable.setColor(
-                if (on) blend(theme.keyBackgroundColor, theme.genericActiveBackgroundColor, 0.16f)
+                if (on) org.fcitx.fcitx5.android.input.glass.Glass.activeTint(theme, theme.genericActiveBackgroundColor)
                 else theme.keyBackgroundColor
             )
             label.setTextColor(if (on) theme.genericActiveBackgroundColor else theme.altKeyTextColor)
@@ -164,18 +169,18 @@ class StatusAreaEntryUi(override val ctx: Context, private val theme: Theme) : U
         }
         label.text = shown.label
         val tileColor = if (card) {
-            if (on) blend(theme.keyBackgroundColor, theme.genericActiveBackgroundColor, 0.16f) else theme.keyBackgroundColor
+            if (on) org.fcitx.fcitx5.android.input.glass.Glass.activeTint(theme, theme.genericActiveBackgroundColor) else theme.keyBackgroundColor
         } else {
             if (entry.active) theme.genericActiveBackgroundColor else theme.keyBackgroundColor
         }
         if (card) {
             val tileView = root.getChildAt(0)
             tileView.background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
-                tileView, theme, ctx.dp(18f), tileColor, pressMorph = true
+                tileView, theme, ctx.dp(18f), tileColor, contentColor, pressMorph = true
             ) ?: cardDrawable
         } else {
             bkg.background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
-                bkg, theme, 0f, tileColor, isOval = true, pressMorph = true
+                bkg, theme, 0f, tileColor, contentColor, isOval = true, pressMorph = true
             ) ?: bkgDrawable
         }
     }

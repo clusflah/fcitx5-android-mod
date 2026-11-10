@@ -6,6 +6,7 @@
 package org.fcitx.fcitx5.android.input.bar.ui
 
 import android.content.Context
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
@@ -15,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.data.theme.Theme
+import org.fcitx.fcitx5.android.input.glass.Glass
 import splitties.dimensions.dp
 
 object PanelSwitchBar {
@@ -36,26 +38,33 @@ object PanelSwitchBar {
 
         addView(LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
-            background = GradientDrawable().apply {
+            setPadding(ctx.dp(3), ctx.dp(3), ctx.dp(3), ctx.dp(3))
+            background = Glass.panelCardBackground(
+                this, theme, ctx.dp(10f), theme.altKeyBackgroundColor.withAlpha(0x80)
+            ) ?: GradientDrawable().apply {
                 cornerRadius = ctx.dp(10f)
                 setColor(theme.altKeyBackgroundColor.withAlpha(0x80))
             }
-            setPadding(ctx.dp(3), ctx.dp(3), ctx.dp(3), ctx.dp(3))
-            background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
-                this, theme, ctx.dp(10f), theme.altKeyBackgroundColor.withAlpha(0x80)
-            ) ?: background
             labels.forEachIndexed { i, label ->
+                val isSelected = i == selected
                 addView(TextView(ctx).apply {
                     text = label
                     textSize = 15f
                     gravity = Gravity.CENTER
                     setPadding(ctx.dp(18), 0, ctx.dp(18), 0)
-                    setTextColor(if (i == selected) theme.keyTextColor else theme.altKeyTextColor)
-                    if (i == selected) background = GradientDrawable().apply {
-                        cornerRadius = ctx.dp(8f)
-                        setColor(theme.keyBackgroundColor)
+                    setTextColor(if (isSelected) theme.keyTextColor else theme.altKeyTextColor)
+                    if (isSelected) {
+                        typeface = Typeface.DEFAULT_BOLD
+                        background = Glass.panelCardBackground(
+                            this, theme, ctx.dp(8f), theme.keyBackgroundColor, theme.keyTextColor,
+                            pressMorph = true, extraOpacityBoost = 0.22f
+                        ) ?: GradientDrawable().apply {
+                            cornerRadius = ctx.dp(8f)
+                            setColor(theme.keyBackgroundColor)
+                        }
                     }
-                    setOnClickListener { if (i != selected) onSelect(i) }
+                    Glass.applyKeyTextShadow(this, theme)
+                    setOnClickListener { if (!isSelected) onSelect(i) }
                 }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
             }
         }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ctx.dp(34), Gravity.CENTER))

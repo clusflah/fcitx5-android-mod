@@ -180,9 +180,10 @@ class VoiceModelFragment : ManagedPreferenceFragment(AppPrefs.getInstance().voic
         }
         AlertDialog.Builder(ctx)
             .setTitle(m.name)
-            .setItems(actions.map { it.first }.toTypedArray()) { _, which -> actions[which].second() }
+            .setAdapter(AiDialogStyle.textAdapter(ctx, android.R.layout.simple_list_item_1, actions.map { it.first }.toMutableList())) { _, which -> actions[which].second() }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+            .also { if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) AiDialogStyle.alert(it) }
     }
 
     private fun download(m: OfflineVoice.Model) {
@@ -197,13 +198,14 @@ class VoiceModelFragment : ManagedPreferenceFragment(AppPrefs.getInstance().voic
                 if (metered) "约 ${m.sizeMb} MB，当前在用移动数据，建议连 Wi-Fi 再下载。选择下载源："
                 else "选择下载源（约 ${m.sizeMb} MB）"
             )
-            .setItems(OfflineVoice.SOURCES.map { it.first }.toTypedArray()) { _, which ->
+            .setAdapter(AiDialogStyle.textAdapter(ctx, android.R.layout.simple_list_item_1, OfflineVoice.SOURCES.map { it.first }.toMutableList())) { _, which ->
                 OfflineVoice.startDownload(ctx, m, OfflineVoice.SOURCES[which].second)
                 Toast.makeText(ctx, "已开始下载，通知栏可以看到进度", Toast.LENGTH_SHORT).show()
                 refresh()
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+            .also { if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) AiDialogStyle.alert(it) }
     }
 
     private fun confirmDelete(m: OfflineVoice.Model) {
@@ -213,6 +215,7 @@ class VoiceModelFragment : ManagedPreferenceFragment(AppPrefs.getInstance().voic
             .setPositiveButton(android.R.string.ok) { _, _ -> OfflineVoice.delete(ctx, m); refresh() }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+            .also { if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) AiDialogStyle.alert(it) }
     }
 
     // ---------- online engines ----------
@@ -246,6 +249,7 @@ class VoiceModelFragment : ManagedPreferenceFragment(AppPrefs.getInstance().voic
             .setNeutralButton("仅保存") { _, _ -> save(); refresh() }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+            .also { if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) AiDialogStyle.alert(it) }
     }
 
     // ---------- state ----------

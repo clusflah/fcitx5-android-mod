@@ -1276,6 +1276,7 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
             showingDialog = null
         }
         dialog.show()
+        if (dialog is android.app.AlertDialog && org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) org.fcitx.fcitx5.android.ui.main.AiDialogStyle.platformAlert(dialog)
         showingDialog = dialog
     }
 

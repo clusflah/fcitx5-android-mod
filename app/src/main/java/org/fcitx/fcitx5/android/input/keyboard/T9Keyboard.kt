@@ -205,7 +205,14 @@ class T9Keyboard(
             // keep the entries' press highlight inside the rounded corners
             clipToOutline = true
         } else {
-            setBackgroundColor(theme.altKeyBackgroundColor)
+            background = org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+                this, theme, theme.altKeyBackgroundColor, theme.altKeyTextColor, 0f, pressMorph = false
+            ) ?: android.graphics.drawable.ColorDrawable(theme.altKeyBackgroundColor)
+        }
+        setOnScrollChangeListener { _, _, _, _, _ ->
+            for (i in 0 until columnList.childCount) {
+                columnList.getChildAt(i).invalidate()
+            }
         }
         addView(columnList)
     }
@@ -288,6 +295,7 @@ class T9Keyboard(
         textSize = 18f
         gravity = Gravity.CENTER
         setTextColor(theme.altKeyTextColor)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         background = pressHighlightDrawable(theme.keyPressHighlightColor)
         setOnClickListener {
             InputFeedbacks.hapticFeedback(it)
@@ -331,9 +339,19 @@ class T9Keyboard(
             columnList.addView(columnItem(syllable) { choose(syllable) }.apply {
                 minHeight = dp(42)
                 if (syllable == highlighted) {
-                    setBackgroundColor(theme.keyBackgroundColor)
+                    val glassHl = org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+                        this, theme, theme.keyBackgroundColor, theme.keyTextColor, dp(6f), dp(3), dp(2), pressMorph = true
+                    )
+                    if (glassHl != null) {
+                        background = glassHl
+                        foreground = null
+                    } else {
+                        setBackgroundColor(theme.keyBackgroundColor)
+                    }
                     setTextColor(theme.keyTextColor)
-                    foreground = pressHighlightDrawable(theme.keyPressHighlightColor)
+                    if (background !is org.fcitx.fcitx5.android.input.glass.GlassDrawable) {
+                        foreground = pressHighlightDrawable(theme.keyPressHighlightColor)
+                    }
                 }
             }, LinearLayout.LayoutParams(MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }

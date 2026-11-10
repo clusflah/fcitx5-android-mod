@@ -10,6 +10,7 @@ package org.fcitx.fcitx5.android.input.bar.ui
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
@@ -17,12 +18,14 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
 import android.widget.PopupWindow
 import android.widget.TextView
 import org.fcitx.fcitx5.android.data.InputFeedbacks
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.data.theme.ThemePresetMod
+import org.fcitx.fcitx5.android.input.glass.Glass
 import splitties.dimensions.dp
 
 object DragChooser {
@@ -41,10 +44,15 @@ object DragChooser {
         var downX = 0f
         var downY = 0f
 
-        fun circle(on: Boolean) = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(if (on) ThemePresetMod.JADE else theme.popupBackgroundColor)
-            setStroke(button.dp(1), if (on) ThemePresetMod.JADE else theme.dividerColor)
+        fun circle(view: View, on: Boolean): Drawable {
+            val bgColor = if (on) ThemePresetMod.JADE else theme.popupBackgroundColor
+            val fgColor = if (on) 0xffffffff.toInt() else theme.popupTextColor
+            return Glass.popupBackground(view, theme, 0f, bgColor, fgColor, isOval = true)
+                ?: GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(bgColor)
+                    setStroke(button.dp(1), if (on) ThemePresetMod.JADE else theme.dividerColor)
+                }
         }
 
         fun highlight(i: Int) {
@@ -52,7 +60,7 @@ object DragChooser {
             hovered = i
             circles.forEachIndexed { k, v ->
                 val on = k == i
-                v.background = circle(on)
+                v.background = circle(v, on)
                 v.setTextColor(if (on) 0xffffffff.toInt() else theme.popupTextColor)
                 v.animate().scaleX(if (on) 1.12f else 1f).scaleY(if (on) 1.12f else 1f).setDuration(80).start()
             }
@@ -65,7 +73,9 @@ object DragChooser {
             val gap = ctx.dp(24)
             val w = size * 2 + gap + ctx.dp(16)
             val h = size + ctx.dp(16)
-            val box = FrameLayout(ctx)
+            val box = FrameLayout(ctx).apply {
+                Glass.attachStandaloneBackdrop(this, theme)
+            }
             circles = labels().take(2).mapIndexed { i, label ->
                 TextView(ctx).apply {
                     text = label
@@ -73,7 +83,9 @@ object DragChooser {
                     gravity = Gravity.CENTER
                     setPadding(ctx.dp(4), 0, ctx.dp(4), 0)
                     setTextColor(theme.popupTextColor)
-                    background = circle(false)
+                    Glass.applyKeyTextShadow(this, theme)
+                    background = circle(this, false)
+                    outlineProvider = ViewOutlineProvider.BACKGROUND
                     elevation = ctx.dp(4f)
                 }.also {
                     box.addView(it, FrameLayout.LayoutParams(size, size, Gravity.TOP or (if (i == 0) Gravity.START else Gravity.END)).apply {
@@ -88,6 +100,7 @@ object DragChooser {
                 setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
                 showAsDropDown(button, (button.width - w) / 2, -(button.height + h))
             }
+            Glass.animatePopupIn(box, theme)
         }
 
         /** 0 = toward the left circle, 1 = the right one, -1 = not far enough yet */

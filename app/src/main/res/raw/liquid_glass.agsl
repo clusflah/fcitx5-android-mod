@@ -16,6 +16,14 @@ uniform float uHighlight;
 uniform float uPress;
 uniform float4 uTintColor;
 uniform float uIsDark;
+uniform float uSurfaceAlpha;
+
+float2 mirrorCoord(float2 c, float2 maxC) {
+    float2 a = abs(c);
+    float2 p = maxC * 2.0;
+    float2 m = a - floor(a / p) * p;
+    return min(m, p - m);
+}
 
 half4 main(float2 fragCoord) {
     float2 halfSize = max(uSize * 0.5, float2(1.0, 1.0));
@@ -54,16 +62,16 @@ half4 main(float2 fragCoord) {
 
     half3 bgRgb;
     if (uDispersion > 0.001) {
-        float2 coordR = clamp((baseCoord + refractOffset * (1.0 + uDispersion)) * uDownscale, float2(0.0, 0.0), maxCoord);
-        float2 coordG = clamp((baseCoord + refractOffset) * uDownscale, float2(0.0, 0.0), maxCoord);
-        float2 coordB = clamp((baseCoord + refractOffset * (1.0 - uDispersion)) * uDownscale, float2(0.0, 0.0), maxCoord);
+        float2 coordR = mirrorCoord((baseCoord + refractOffset * (1.0 + uDispersion)) * uDownscale, maxCoord);
+        float2 coordG = mirrorCoord((baseCoord + refractOffset) * uDownscale, maxCoord);
+        float2 coordB = mirrorCoord((baseCoord + refractOffset * (1.0 - uDispersion)) * uDownscale, maxCoord);
         bgRgb = half3(
             uBackdrop.eval(coordR).r,
             uBackdrop.eval(coordG).g,
             uBackdrop.eval(coordB).b
         );
     } else {
-        float2 coord = clamp((baseCoord + refractOffset) * uDownscale, float2(0.0, 0.0), maxCoord);
+        float2 coord = mirrorCoord((baseCoord + refractOffset) * uDownscale, maxCoord);
         bgRgb = uBackdrop.eval(coord).rgb;
     }
 
@@ -95,7 +103,9 @@ half4 main(float2 fragCoord) {
     float bottomShadow = max(0.0, normal.y) * rimBand * (uIsDark > 0.5 ? 0.22 : 0.12) * (1.0 - primaryLight);
     finalRgb = finalRgb * half(1.0 - bottomShadow);
 
-    // Smooth anti-aliased edge coverage
+    // Smooth anti-aliased edge coverage; specular rim stays crisp even on translucent floating surfaces
     float edgeAlpha = clamp(0.5 - dist, 0.0, 1.0);
-    return half4(finalRgb * half(edgeAlpha), half(edgeAlpha));
+    float bodyAlpha = clamp(mix(uSurfaceAlpha, 1.0, clamp(spec * 1.15, 0.0, 1.0)), 0.0, 1.0);
+    float outAlpha = edgeAlpha * bodyAlpha;
+    return half4(finalRgb * half(outAlpha), half(outAlpha));
 }

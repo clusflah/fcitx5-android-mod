@@ -32,7 +32,7 @@ class TitleUi(override val ctx: Context, theme: Theme) : Ui {
     // mod: the card style closes panels with ∧, like the toolbar's expand button
     private val backButton = ToolButton(
         ctx,
-        if (org.fcitx.fcitx5.android.data.theme.ThemeManager.prefs.cardStyle.getValue()) R.drawable.ic_baseline_expand_less_24
+        if (org.fcitx.fcitx5.android.data.theme.ThemeManager.prefs.cardStyle.getValue() || org.fcitx.fcitx5.android.input.glass.Glass.isActive(theme)) R.drawable.ic_baseline_expand_less_24
         else R.drawable.ic_baseline_arrow_back_24,
         theme
     ).apply {
@@ -44,6 +44,7 @@ class TitleUi(override val ctx: Context, theme: Theme) : Ui {
         setTextColor(theme.altKeyTextColor)
         gravity = gravityVerticalCenter
         textSize = 16f
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
     }
 
     private var extension: View? = null

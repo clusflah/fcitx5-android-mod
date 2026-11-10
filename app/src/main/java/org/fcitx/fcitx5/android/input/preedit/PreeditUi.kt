@@ -47,6 +47,7 @@ open class PreeditUi(
     private fun createTextView() = textView {
         setTextColor(theme.keyTextColor)
         textSize = 16f
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         setupTextView?.invoke(this)
     }
 

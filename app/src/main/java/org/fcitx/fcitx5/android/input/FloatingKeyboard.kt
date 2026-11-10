@@ -99,10 +99,11 @@ class FloatingKeyboard(
     val outlineProvider = object : ViewOutlineProvider() {
         override fun getOutline(view: View, outline: Outline) {
             outline.setRoundRect(0, 0, view.width, view.height, context.dp(16f))
+            if (org.fcitx.fcitx5.android.input.glass.Glass.isActive(theme)) outline.alpha = 0.35f
         }
     }
 
-    val elevation = if (org.fcitx.fcitx5.android.input.glass.Glass.isActive(theme)) 0f else context.dp(8f)
+    val elevation = if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).seeThrough) 0f else context.dp(8f)
 
     private enum class Drag { Move, ResizeLeft, ResizeRight }
 

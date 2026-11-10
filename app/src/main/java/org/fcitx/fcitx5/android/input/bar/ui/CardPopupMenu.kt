@@ -7,18 +7,23 @@
 package org.fcitx.fcitx5.android.input.bar.ui
 
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
 import android.graphics.drawable.StateListDrawable
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.data.theme.ThemePresetMod
+import org.fcitx.fcitx5.android.input.glass.Glass
 import splitties.dimensions.dp
 
 object CardPopupMenu {
@@ -29,26 +34,60 @@ object CardPopupMenu {
      * @return the window, e.g. to dismiss it when the anchor goes away
      */
     fun show(
-        anchor: View, theme: Theme, labels: List<String>, selected: Int,
-        width: Int = anchor.dp(200), onPick: (Int) -> Unit
+        anchor: View,
+        theme: Theme,
+        labels: List<String>,
+        selected: Int,
+        width: Int = anchor.dp(200),
+        header: String? = null,
+        onPick: (Int) -> Unit
     ): PopupWindow {
         val ctx = anchor.context
         lateinit var window: PopupWindow
         val list = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, ctx.dp(6), 0, ctx.dp(6))
+            if (!header.isNullOrBlank()) {
+                addView(TextView(ctx).apply {
+                    text = header
+                    textSize = 13f
+                    typeface = Typeface.DEFAULT_BOLD
+                    maxLines = 2
+                    ellipsize = TextUtils.TruncateAt.END
+                    setTextColor(ThemePresetMod.JADE)
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(ctx.dp(18), ctx.dp(6), ctx.dp(18), ctx.dp(6))
+                    Glass.applyKeyTextShadow(this, theme)
+                }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+                addView(View(ctx).apply {
+                    setBackgroundColor(theme.dividerColor)
+                }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ctx.dp(1)).apply {
+                    setMargins(ctx.dp(12), ctx.dp(2), ctx.dp(12), ctx.dp(2))
+                })
+            }
             labels.forEachIndexed { i, label ->
                 val isSelected = i == selected
                 addView(TextView(ctx).apply {
                     text = if (isSelected) "$label  ✓" else label
                     textSize = 15f
                     maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    ellipsize = TextUtils.TruncateAt.END
+                    if (isSelected) typeface = Typeface.DEFAULT_BOLD
                     setTextColor(if (isSelected) ThemePresetMod.JADE else theme.popupTextColor)
                     gravity = Gravity.CENTER_VERTICAL
                     setPadding(ctx.dp(18), 0, ctx.dp(18), 0)
+                    Glass.applyKeyTextShadow(this, theme)
                     background = StateListDrawable().apply {
-                        addState(intArrayOf(android.R.attr.state_pressed), ColorDrawable(theme.keyPressHighlightColor))
+                        addState(
+                            intArrayOf(android.R.attr.state_pressed),
+                            InsetDrawable(
+                                GradientDrawable().apply {
+                                    cornerRadius = ctx.dp(10f)
+                                    setColor(theme.keyPressHighlightColor)
+                                },
+                                ctx.dp(6), ctx.dp(2), ctx.dp(6), ctx.dp(2)
+                            )
+                        )
                     }
                     setOnClickListener {
                         window.dismiss()
@@ -59,11 +98,14 @@ object CardPopupMenu {
         }
         val content = ScrollView(ctx).apply {
             isVerticalScrollBarEnabled = false
-            background = org.fcitx.fcitx5.android.input.glass.Glass.popupBackground(this, theme, ctx.dp(14f)) ?: GradientDrawable().apply {
-                cornerRadius = ctx.dp(14f)
+            Glass.attachStandaloneBackdrop(this, theme)
+            Glass.attachScrollInvalidator(this, theme)
+            background = Glass.popupBackground(this, theme, ctx.dp(16f)) ?: GradientDrawable().apply {
+                cornerRadius = ctx.dp(16f)
                 setColor(theme.popupBackgroundColor)
                 setStroke(ctx.dp(1), theme.dividerColor)
             }
+            outlineProvider = ViewOutlineProvider.BACKGROUND
             clipToOutline = true
             addView(list)
         }
@@ -80,8 +122,12 @@ object CardPopupMenu {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         }
         window.showAsDropDown(anchor, 0, -(anchor.height + height + ctx.dp(4)))
+        Glass.animatePopupIn(content, theme)
         // keep the item in use in view
-        if (selected > 0) content.post { content.scrollTo(0, list.getChildAt(selected).top - ctx.dp(6)) }
+        val targetIdx = if (!header.isNullOrBlank() && selected >= 0) selected + 2 else selected
+        if (targetIdx > 0 && targetIdx < list.childCount) {
+            content.post { content.scrollTo(0, list.getChildAt(targetIdx).top - ctx.dp(6)) }
+        }
         return window
     }
 }

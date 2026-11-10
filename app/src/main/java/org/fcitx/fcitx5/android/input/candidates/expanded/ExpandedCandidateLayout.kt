@@ -125,7 +125,9 @@ class ExpandedCandidateLayout(context: Context, theme: Theme) : ConstraintLayout
         val inset = dp(if (landscape) keyVerticalMarginLandscape else keyVerticalMargin)
         tabsContainer.background =
             singleSideBorderDrawable(dp(1), theme.dividerColor, Gravity.RIGHT, inset)
-        if (!keyBorder) {
+        org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(recyclerView, theme)
+        org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(scrollableTabs, theme)
+        if (!keyBorder && !org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetCandidates }) {
             backgroundColor = theme.barColor
             embeddedKeyboard.background =
                 singleSideBorderDrawable(dp(1), theme.dividerColor, Gravity.LEFT, inset)

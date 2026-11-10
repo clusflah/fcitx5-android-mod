@@ -44,6 +44,7 @@ class ClipboardSuggestionUi(override val ctx: Context, private val theme: Theme)
         maxWidth = dp(120)
         ellipsize = TextUtils.TruncateAt.END
         setTextColor(theme.altKeyTextColor)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
     }
 
     private val layout = constraintLayout {
@@ -62,7 +63,7 @@ class ClipboardSuggestionUi(override val ctx: Context, private val theme: Theme)
 
     val suggestionView = CustomGestureView(ctx).apply {
         add(layout, lParams(wrapContent, matchParent))
-        background = rippleDrawable(theme.keyPressHighlightColor)
+        background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(this, theme, dp(14f), theme.keyBackgroundColor, theme.altKeyTextColor, pressMorph = true) ?: rippleDrawable(theme.keyPressHighlightColor)
     }
 
     /** "↗ github.com": opens an http(s) link found in the clipboard; hidden otherwise */
@@ -72,6 +73,7 @@ class ClipboardSuggestionUi(override val ctx: Context, private val theme: Theme)
         ellipsize = TextUtils.TruncateAt.END
         gravity = android.view.Gravity.CENTER_VERTICAL
         setTextColor(theme.altKeyTextColor)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         setCompoundDrawablesRelativeWithIntrinsicBounds(
             drawable(R.drawable.ic_open_in_new)!!.mutate().apply {
                 setTint(theme.altKeyTextColor)
@@ -80,7 +82,7 @@ class ClipboardSuggestionUi(override val ctx: Context, private val theme: Theme)
         )
         compoundDrawablePadding = dp(4)
         setPadding(dp(8), 0, dp(8), 0)
-        background = rippleDrawable(theme.keyPressHighlightColor)
+        background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(this, theme, dp(14f), theme.keyBackgroundColor, theme.altKeyTextColor, pressMorph = true) ?: rippleDrawable(theme.keyPressHighlightColor)
         visibility = android.view.View.GONE
     }
 

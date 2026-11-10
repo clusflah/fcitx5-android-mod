@@ -48,7 +48,10 @@ class GlassPressAnimator(
 
     private fun applyScale(p: Float) {
         val v = scaleTarget ?: return
-        val s = 1f + (maxScale - 1f) * p
+        val maxDim = kotlin.math.max(v.width, v.height)
+        val maxDeltaPx = v.resources.displayMetrics.density * 7f
+        val effectiveMax = if (maxDim > 0) kotlin.math.min(maxScale, 1f + maxDeltaPx / maxDim) else maxScale
+        val s = 1f + (effectiveMax - 1f) * p
         v.scaleX = s
         v.scaleY = s
     }

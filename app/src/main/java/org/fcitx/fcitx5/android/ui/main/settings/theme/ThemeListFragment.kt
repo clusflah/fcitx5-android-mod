@@ -47,6 +47,7 @@ class ThemeListFragment : Fragment() {
     private val onThemeChangeListener = ThemeManager.OnThemeChangeListener {
         lifecycleScope.launch {
             updateSelectedThemes(it)
+            if (::themeListAdapter.isInitialized) themeListAdapter.notifyGlassThumbnailsChanged()
         }
     }
 
@@ -135,6 +136,9 @@ class ThemeListFragment : Fragment() {
             override fun onAddNewTheme() = addTheme()
             override fun onSelectTheme(theme: Theme) = selectTheme(theme)
             override fun onEditTheme(theme: Theme.Custom) = editTheme(theme)
+            override fun onEditGlassBackdrop() {
+                (parentFragment as? ThemeFragment)?.openGlassBackdropEditor()
+            }
             override fun onExportTheme(theme: Theme.Custom) = exportTheme(theme)
         }
         ThemeManager.refreshThemes()

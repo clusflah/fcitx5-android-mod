@@ -438,7 +438,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
             return@OnChangeListener
         }
         if (on) scheduleAiPredict() else clearAiSuggestion()
-        idleUi.buttonsUi.aiPredictButton.alpha = if (on) 1f else 0.4f
+        idleUi.buttonsUi.aiPredictButton.iconAlpha = if (on) 1f else 0.4f
     }
     private var isInlineSuggestionPresent: Boolean = false
     private var isCapabilityFlagsPassword: Boolean = false
@@ -689,7 +689,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                     windowManager.attachWindow(CommonPhraseWindow())
                     true
                 }
-                aiPredictButton.alpha = if (aiPredictAuto.getValue()) 1f else 0.4f
+                aiPredictButton.iconAlpha = if (aiPredictAuto.getValue()) 1f else 0.4f
                 aiPredictButton.setOnClickListener {
                     val on = !aiPredictAuto.getValue()
                     if (on && !CloudConsent.granted(context, CloudConsent.Kind.AiPredict)) {
@@ -709,7 +709,7 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                 }
                 translateButton.setOnClickListener {
                     // mod: card style: open the translate card above the toolbar instead
-                    if (ThemeManager.prefs.cardStyle.getValue()) {
+                    if (ThemeManager.prefs.cardStyle.getValue() || org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive(theme)) {
                         if (isPasswordField) context.toast("密码框里不翻译")
                         else org.fcitx.fcitx5.android.input.translate.TranslateDraft.togglePanel?.invoke()
                         return@setOnClickListener

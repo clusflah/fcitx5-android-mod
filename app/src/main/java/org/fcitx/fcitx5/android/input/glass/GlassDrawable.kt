@@ -36,7 +36,9 @@ class GlassDrawable(
     private val refractionScale: Float = 1f,
     private val extraOpacityBoost: Float = 0f,
     private val enablePressMorph: Boolean = false,
-    scaleViewOnPress: Boolean = false
+    scaleViewOnPress: Boolean = false,
+    private val surfaceAlpha: Float = 1f,
+    private val outlineAlpha: Float = 0f
 ) : Drawable() {
 
     private val viewRef = if (hostView != null) WeakReference(hostView) else null
@@ -158,7 +160,8 @@ class GlassDrawable(
             shadowColor = theme.keyShadowColor,
             pressProgress = max(0f, press),
             refractionScale = refractionScale,
-            density = density
+            density = density,
+            surfaceAlpha = surfaceAlpha
         )
     }
 
@@ -173,7 +176,7 @@ class GlassDrawable(
         } else {
             outline.setRoundRect(left, top, right, bottom, cornerRadius)
         }
-        outline.alpha = 0f
+        outline.alpha = outlineAlpha
     }
 
     override fun setAlpha(alpha: Int) {}

@@ -12,6 +12,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.data.theme.ThemePresetMod
+import org.fcitx.fcitx5.android.input.glass.Glass
 import splitties.dimensions.dp
 
 class VoiceStatusView(context: Context, theme: Theme) : FrameLayout(context) {
@@ -21,6 +22,7 @@ class VoiceStatusView(context: Context, theme: Theme) : FrameLayout(context) {
         gravity = Gravity.CENTER
         isSingleLine = true
         setTextColor(theme.keyTextColor)
+        Glass.applyKeyTextShadow(this, theme)
     }
 
     private val hint = TextView(context).apply {
@@ -29,6 +31,7 @@ class VoiceStatusView(context: Context, theme: Theme) : FrameLayout(context) {
         isSingleLine = true
         setTextColor(theme.altKeyTextColor)
         setPadding(0, 0, dp(12), 0)
+        Glass.applyKeyTextShadow(this, theme)
     }
 
     private val wave = VoiceWaveView(context, ThemePresetMod.JADE, barDp = 4f)

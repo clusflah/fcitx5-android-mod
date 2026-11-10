@@ -47,7 +47,10 @@ object InputMethodPickerDialog {
                     else service.lifecycleScope.launch { fcitx.activateIme(uniqueName) }
                     dialog.dismiss()
                 }
-                styledDrawable(android.R.attr.dividerHorizontal)?.let {
+                styledDrawable(android.R.attr.dividerHorizontal)?.mutate()?.let {
+                    if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) {
+                        it.setTint(org.fcitx.fcitx5.android.data.theme.ThemeManager.activeTheme.dividerColor)
+                    }
                     addItemDecoration(SingleDividerDecoration(it, dividerIndex))
                 }
             })

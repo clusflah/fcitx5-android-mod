@@ -11,6 +11,7 @@ import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.RuntimeShader
 import android.graphics.Shader
@@ -35,6 +36,7 @@ class GlassRenderer(private val isDark: Boolean, private val style: GlassStyle) 
     private val shaderMatrix = Matrix()
     private val shadowRect = RectF()
     private val rimRect = RectF()
+    private val clipPath = Path()
 
     private var cachedBitmap: Bitmap? = null
     private var localBitmapShader: BitmapShader? = null
@@ -63,7 +65,8 @@ class GlassRenderer(private val isDark: Boolean, private val style: GlassStyle) 
         @ColorInt shadowColor: Int,
         pressProgress: Float,
         refractionScale: Float,
-        density: Float
+        density: Float,
+        surfaceAlpha: Float = 1f
     ) {
         if (rect.isEmpty) return
 
@@ -78,7 +81,18 @@ class GlassRenderer(private val isDark: Boolean, private val style: GlassStyle) 
         if (shadowAlpha > 0) {
             shadowPaint.color = (shadowColor and 0x00ffffff) or (shadowAlpha shl 24)
             shadowRect.set(rect.left, rect.top + shadowOffset * 0.5f, rect.right, rect.bottom + shadowOffset)
-            canvas.drawRoundRect(shadowRect, radius, radius, shadowPaint)
+            val isTranslucentSurface = style.seeThrough || surfaceAlpha < 0.99f
+            if (isTranslucentSurface && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // Clip out interior so shadow doesn't muddy translucent glass droplets
+                clipPath.reset()
+                clipPath.addRoundRect(rect, radius, radius, Path.Direction.CW)
+                canvas.save()
+                canvas.clipOutPath(clipPath)
+                canvas.drawRoundRect(shadowRect, radius, radius, shadowPaint)
+                canvas.restore()
+            } else if (!isTranslucentSurface) {
+                canvas.drawRoundRect(shadowRect, radius, radius, shadowPaint)
+            }
         }
 
         // 2. Try AGSL RuntimeShader path on API 33+ when backdrop bitmap is available
@@ -107,16 +121,18 @@ class GlassRenderer(private val isDark: Boolean, private val style: GlassStyle) 
                 highlight = style.highlight,
                 press = pressProgress,
                 tintColor = tintColor,
-                isDark = isDark
+                isDark = isDark,
+                surfaceAlpha = surfaceAlpha.coerceIn(0.08f, 1f)
             )
             if (drawn) return
         }
 
         // 3. Fallback / SeeThrough path (API 23–32, or SeeThrough cross-window blur mode)
+        val clampedSurfaceAlpha = surfaceAlpha.coerceIn(0.08f, 1f)
         if (!style.seeThrough && bmp != null && !bmp.isRecycled) {
             var bs = localBitmapShader
             if (bs == null || cachedBitmap !== bmp) {
-                bs = BitmapShader(bmp, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+                bs = BitmapShader(bmp, Shader.TileMode.MIRROR, Shader.TileMode.MIRROR)
                 localBitmapShader = bs
                 cachedBitmap = bmp
             }
@@ -129,12 +145,17 @@ class GlassRenderer(private val isDark: Boolean, private val style: GlassStyle) 
             shaderMatrix.postTranslate(-backdropOffsetX * pressZoom, -backdropOffsetY * pressZoom)
             bs.setLocalMatrix(shaderMatrix)
             bodyPaint.shader = bs
-            bodyPaint.alpha = 0xff
+            bodyPaint.alpha = (clampedSurfaceAlpha * 255f).roundToInt()
             canvas.drawRoundRect(rect, radius, radius, bodyPaint)
         }
 
         // 4. Frosted surface tint
-        tintPaint.color = tintColor
+        if (clampedSurfaceAlpha < 0.99f && !style.seeThrough) {
+            val scaledAlpha = (Color.alpha(tintColor) * clampedSurfaceAlpha).roundToInt().coerceIn(0, 255)
+            tintPaint.color = (tintColor and 0x00ffffff) or (scaledAlpha shl 24)
+        } else {
+            tintPaint.color = tintColor
+        }
         canvas.drawRoundRect(rect, radius, radius, tintPaint)
 
         // 5. Internal top-to-bottom sheen gradient
@@ -225,7 +246,8 @@ class GlassRenderer(private val isDark: Boolean, private val style: GlassStyle) 
             highlight: Float,
             press: Float,
             @ColorInt tintColor: Int,
-            isDark: Boolean
+            isDark: Boolean,
+            surfaceAlpha: Float
         ): Boolean = runCatching {
             runtimeShader.setInputShader("uBackdrop", backdropShader)
             runtimeShader.setFloatUniform("uOrigin", rect.left, rect.top)
@@ -246,6 +268,7 @@ class GlassRenderer(private val isDark: Boolean, private val style: GlassStyle) 
                 Color.alpha(tintColor) / 255f
             )
             runtimeShader.setFloatUniform("uIsDark", if (isDark) 1f else 0f)
+            runtimeShader.setFloatUniform("uSurfaceAlpha", surfaceAlpha)
             canvas.drawRoundRect(rect, radius, radius, shaderPaint)
             true
         }.getOrDefault(false)

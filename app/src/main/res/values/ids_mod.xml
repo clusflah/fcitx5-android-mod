@@ -6,4 +6,5 @@
     <item name="rime_grammar_container" type="id" />
     <!-- mod: shared GlassBackdrop holder tag on InputView / KeyboardPreviewUi -->
     <item name="tag_glass_backdrop" type="id" />
+    <item name="tag_glass_drift" type="id" />
 </resources>

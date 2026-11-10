@@ -63,7 +63,11 @@ class PopupMenuUi(
 
     private val keyViews = items.map {
         imageView {
-            background = inactiveBackground
+            val inset = (keySize - ctx.dp(33)) / 2
+            background = org.fcitx.fcitx5.android.input.glass.Glass.popupBackground(
+                this, theme, 0f, theme.accentKeyBackgroundColor, theme.accentKeyTextColor,
+                isOval = true, hInset = inset, vInset = inset
+            ) ?: inactiveBackground
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             imageDrawable = drawable(it.icon)!!.apply {
                 setTint(theme.accentKeyTextColor)
@@ -84,13 +88,23 @@ class PopupMenuUi(
 
     private fun markFocus(index: Int) {
         keyViews.getOrNull(index)?.apply {
-            background = activeBackground
+            val inset = (keySize - ctx.dp(37)) / 2
+            background = org.fcitx.fcitx5.android.input.glass.Glass.popupBackground(
+                this, theme, 0f,
+                ColorUtils.compositeColors(theme.keyPressHighlightColor, theme.accentKeyBackgroundColor),
+                theme.accentKeyTextColor,
+                isOval = true, hInset = inset, vInset = inset
+            ) ?: activeBackground
         }
     }
 
     private fun markInactive(index: Int) {
         keyViews.getOrNull(index)?.apply {
-            background = inactiveBackground
+            val inset = (keySize - ctx.dp(33)) / 2
+            background = org.fcitx.fcitx5.android.input.glass.Glass.popupBackground(
+                this, theme, 0f, theme.accentKeyBackgroundColor, theme.accentKeyTextColor,
+                isOval = true, hInset = inset, vInset = inset
+            ) ?: inactiveBackground
         }
     }
 

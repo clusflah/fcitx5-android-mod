@@ -40,6 +40,7 @@ class ClipboardEntryUi(override val ctx: Context, private val theme: Theme, radi
         setPaddingDp(8, 4, 8, 4)
         ellipsize = TextUtils.TruncateAt.END
         setTextColor(theme.keyTextColor)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
     }
 
     val pin = imageView {
@@ -62,16 +63,17 @@ class ClipboardEntryUi(override val ctx: Context, private val theme: Theme, radi
     override val root = CustomGestureView(ctx).apply {
         isClickable = true
         minimumHeight = dp(30)
-        foreground = RippleDrawable(
+        val glassBg = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+            this, theme, radius, theme.clipboardEntryColor, theme.keyTextColor, pressMorph = true
+        )
+        foreground = if (glassBg != null) null else RippleDrawable(
             ColorStateList.valueOf(theme.keyPressHighlightColor), null,
             GradientDrawable().apply {
                 cornerRadius = radius
                 setColor(Color.WHITE)
             }
         )
-        background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
-            this, theme, radius, theme.clipboardEntryColor, pressMorph = true
-        ) ?: GradientDrawable().apply {
+        background = glassBg ?: GradientDrawable().apply {
             cornerRadius = radius
             setColor(theme.clipboardEntryColor)
         }

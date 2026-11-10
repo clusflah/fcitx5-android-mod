@@ -72,17 +72,29 @@ abstract class BaseInputView(
     }
 
     private var candidateActionMenu: PopupMenu? = null
+    private var candidateCardMenu: android.widget.PopupWindow? = null
 
     val themedContext = context.withTheme(R.style.Theme_InputViewTheme)
 
     fun showCandidateActionMenu(idx: Int, text: String, view: View) {
         candidateActionMenu?.dismiss()
+        candidateCardMenu?.dismiss(); candidateCardMenu = null
         candidateActionMenu = null
         service.lifecycleScope.launch {
             val actions = fcitx.runOnReady { getCandidateActions(idx) }
             if (actions.isEmpty()) return@launch
             InputFeedbacks.hapticFeedback(view, longPress = true)
             org.fcitx.fcitx5.android.input.glass.Glass.animateCandidateJelly(view, theme)
+            if (ThemeManager.prefs.cardStyle.getValue() || org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetPopups }) {
+                candidateCardMenu = runCatching {
+                    org.fcitx.fcitx5.android.input.bar.ui.CardPopupMenu.show(
+                        view, theme, actions.map { it.text }, -1, header = text
+                    ) { i -> triggerCandidateAction(idx, actions[i].id) }.apply {
+                        setOnDismissListener { candidateCardMenu = null }
+                    }
+                }.getOrNull()
+                if (candidateCardMenu != null) return@launch
+            }
             candidateActionMenu = PopupMenu(themedContext, view).apply {
                 menu.add(buildSpannedString {
                     bold {
@@ -149,6 +161,8 @@ abstract class BaseInputView(
     }
 
     override fun onDetachedFromWindow() {
+        candidateCardMenu?.dismiss()
+        candidateCardMenu = null
         handleEvents = false
         super.onDetachedFromWindow()
     }

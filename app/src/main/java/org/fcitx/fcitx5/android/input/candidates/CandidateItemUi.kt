@@ -14,6 +14,7 @@ import org.fcitx.fcitx5.android.input.keyboard.T9Pinyin
 import org.fcitx.fcitx5.android.input.AutoScaleTextView
 import org.fcitx.fcitx5.android.input.keyboard.CustomGestureView
 import org.fcitx.fcitx5.android.utils.pressHighlightDrawable
+import splitties.dimensions.dp
 import splitties.views.dsl.core.Ui
 import splitties.views.dsl.core.add
 import splitties.views.dsl.core.lParams
@@ -30,10 +31,24 @@ class CandidateItemUi(override val ctx: Context, val theme: Theme) : Ui {
         isSingleLine = true
         gravity = gravityCenter
         setTextColor(theme.candidateTextColor)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
     }
 
     override val root = view(::CustomGestureView) {
-        background = pressHighlightDrawable(theme.keyPressHighlightColor)
+        background = if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetCandidates }) {
+            android.graphics.drawable.StateListDrawable().apply {
+                addState(
+                    intArrayOf(android.R.attr.state_pressed),
+                    android.graphics.drawable.InsetDrawable(
+                        android.graphics.drawable.GradientDrawable().apply {
+                            cornerRadius = dp(8f)
+                            setColor(theme.keyPressHighlightColor)
+                        },
+                        dp(3), dp(4), dp(3), dp(4)
+                    )
+                )
+            }
+        } else pressHighlightDrawable(theme.keyPressHighlightColor)
 
         /**
          * candidate long press feedback is handled by [org.fcitx.fcitx5.android.input.BaseInputView.showCandidateActionMenu]
