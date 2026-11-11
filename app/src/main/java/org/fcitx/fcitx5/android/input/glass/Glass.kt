@@ -102,7 +102,7 @@ object Glass {
         if (!style.enabled) return null
         val hasThemePhoto = theme is Theme.Custom && theme.backgroundImage != null && !style.seeThrough
         val glassCustomBackdrop = if (!style.seeThrough) {
-            org.fcitx.fcitx5.android.data.theme.GlassCustomBackdrop.loadDrawable()
+            org.fcitx.fcitx5.android.data.theme.GlassCustomBackdrop.loadDrawable(theme.isDark)
         } else null
         val sourceDrawable: Drawable = when {
             hasThemePhoto -> theme.backgroundDrawable(keyBorder = true)
@@ -150,7 +150,7 @@ object Glass {
 
         val hasCustomImage = customDrawable != null || (theme is Theme.Custom && theme.backgroundImage != null)
         val glassCustomBackdrop = if (!style.seeThrough) {
-            org.fcitx.fcitx5.android.data.theme.GlassCustomBackdrop.loadDrawable()
+            org.fcitx.fcitx5.android.data.theme.GlassCustomBackdrop.loadDrawable(theme.isDark)
         } else null
         val sourceDrawable: Drawable = when {
             customDrawable != null -> customDrawable

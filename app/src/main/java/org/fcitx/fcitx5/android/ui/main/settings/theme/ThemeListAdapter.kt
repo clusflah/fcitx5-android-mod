@@ -134,7 +134,7 @@ abstract class ThemeListAdapter : RecyclerView.Adapter<ThemeListAdapter.ViewHold
                 }
                 editButton.setOnClickListener {
                     if (theme is Theme.Custom) onEditTheme(theme)
-                    else if (org.fcitx.fcitx5.android.data.theme.ThemePresetMod.isGlassPreset(theme)) onEditGlassBackdrop()
+                    else if (org.fcitx.fcitx5.android.data.theme.ThemePresetMod.isGlassPreset(theme)) onEditGlassBackdrop(theme.isDark)
                 }
             }
             else -> throw IllegalArgumentException(INVALID_TYPE + it)
@@ -151,7 +151,7 @@ abstract class ThemeListAdapter : RecyclerView.Adapter<ThemeListAdapter.ViewHold
 
     abstract fun onEditTheme(theme: Theme.Custom)
 
-    open fun onEditGlassBackdrop() {}
+    open fun onEditGlassBackdrop(isDark: Boolean) {}
 
     fun notifyGlassThumbnailsChanged() {
         entries.forEachIndexed { i, t ->

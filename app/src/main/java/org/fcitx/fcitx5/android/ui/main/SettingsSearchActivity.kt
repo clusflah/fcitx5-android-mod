@@ -91,11 +91,18 @@ class SettingsSearchActivity : AppCompatActivity() {
                 pageEntries(ThemeManager.glassPrefs, R.string.liquid_glass, SettingsRoute.Theme, null) +
                 listOf(
                     Entry(
-                        getString(R.string.glass_backdrop_image),
+                        getString(R.string.glass_backdrop_image_light),
                         getString(R.string.liquid_glass),
-                        "液态玻璃 背景图片 底图 壁纸 自定义图片 裁剪",
+                        "液态玻璃 亮色 浅色 背景图片 底图 壁纸 自定义图片 裁剪",
                         route = SettingsRoute.Theme,
-                        key = org.fcitx.fcitx5.android.ui.main.settings.theme.GlassSettingsFragment.KEY_BACKDROP_IMAGE
+                        key = org.fcitx.fcitx5.android.ui.main.settings.theme.GlassSettingsFragment.KEY_BACKDROP_IMAGE_LIGHT
+                    ),
+                    Entry(
+                        getString(R.string.glass_backdrop_image_dark),
+                        getString(R.string.liquid_glass),
+                        "液态玻璃 暗色 深色 夜间 背景图片 底图 壁纸 自定义图片 裁剪",
+                        route = SettingsRoute.Theme,
+                        key = org.fcitx.fcitx5.android.ui.main.settings.theme.GlassSettingsFragment.KEY_BACKDROP_IMAGE_DARK
                     )
                 )
     }

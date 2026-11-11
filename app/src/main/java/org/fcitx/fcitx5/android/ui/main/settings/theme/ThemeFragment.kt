@@ -90,7 +90,8 @@ class ThemeFragment : Fragment() {
 
         SettingsSearchActivity.pendingScrollKey?.let { key ->
             when {
-                key == GlassSettingsFragment.KEY_BACKDROP_IMAGE ||
+                key == GlassSettingsFragment.KEY_BACKDROP_IMAGE_LIGHT ||
+                        key == GlassSettingsFragment.KEY_BACKDROP_IMAGE_DARK ||
                         ThemeManager.glassPrefs.managedPreferences.containsKey(key) ->
                     viewPager.setCurrentItem(2, false)
                 ThemeManager.prefs.managedPreferences.containsKey(key) ->
@@ -130,15 +131,24 @@ class ThemeFragment : Fragment() {
     fun previewSize(): Pair<Int, Int> =
         if (::previewUi.isInitialized) previewUi.intrinsicWidth to previewUi.intrinsicHeight else -1 to -1
 
-    fun openGlassBackdropEditor() {
-        GlassSettingsFragment.pendingOpenBackdropPicker = true
+    fun previewBackdropSlot(isDark: Boolean) {
+        if (!::previewUi.isInitialized) return
+        val active = ThemeManager.activeTheme
+        val previewTheme = if (active.isDark == isDark) active
+        else if (isDark) org.fcitx.fcitx5.android.data.theme.ThemePresetMod.GlassDark
+        else org.fcitx.fcitx5.android.data.theme.ThemePresetMod.GlassLight
+        previewUi.setTheme(previewTheme)
+    }
+
+    fun openGlassBackdropEditor(isDark: Boolean) {
+        GlassSettingsFragment.pendingOpenBackdropDark = isDark
         if (::viewPager.isInitialized) {
             viewPager.setCurrentItem(2, true)
         }
         childFragmentManager.fragments.filterIsInstance<GlassSettingsFragment>().firstOrNull()?.let { frag ->
             if (frag.isResumed) {
-                GlassSettingsFragment.pendingOpenBackdropPicker = false
-                frag.onBackdropPreferenceClicked()
+                GlassSettingsFragment.pendingOpenBackdropDark = null
+                frag.onBackdropPreferenceClicked(isDark)
             }
         }
     }

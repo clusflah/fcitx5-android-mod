@@ -100,7 +100,7 @@ class ThemeThumbnailUi(override val ctx: Context) : Ui {
         }
         val isGlass = org.fcitx.fcitx5.android.data.theme.ThemePresetMod.isGlassPreset(theme)
         bkg.imageDrawable = if (isGlass) {
-            org.fcitx.fcitx5.android.data.theme.GlassCustomBackdrop.loadDrawable()
+            org.fcitx.fcitx5.android.data.theme.GlassCustomBackdrop.loadDrawable(theme.isDark)
                 ?: org.fcitx.fcitx5.android.input.glass.DynamicBackdropDrawable(theme)
         } else theme.backgroundDrawable()
         bar.backgroundColor = theme.barColor
