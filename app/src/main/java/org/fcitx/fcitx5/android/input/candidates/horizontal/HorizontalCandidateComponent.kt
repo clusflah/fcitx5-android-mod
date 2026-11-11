@@ -166,6 +166,7 @@ class HorizontalCandidateComponent :
             layoutManager = this@HorizontalCandidateComponent.layoutManager
             addItemDecoration(CandidateDividerDecoration(dividerDrawable))
             addOnScrollListener(CandidateScrollLoader(fcitx, this@HorizontalCandidateComponent.adapter))
+            org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(this, theme)
         }
     }
 

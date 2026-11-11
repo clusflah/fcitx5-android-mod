@@ -29,6 +29,7 @@ class PopupEntryUi(override val ctx: Context, theme: Theme, keyHeight: Int, radi
         textSize = 23f
         gravity = gravityCenter
         setTextColor(theme.popupTextColor)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
     }
 
     override val root = constraintLayout {

@@ -14,6 +14,7 @@ import org.fcitx.fcitx5.android.input.keyboard.CustomGestureView
 import org.fcitx.fcitx5.android.utils.alpha
 import org.fcitx.fcitx5.android.utils.pressHighlightDrawable
 import org.fcitx.fcitx5.android.utils.rippleDrawable
+import splitties.dimensions.dp
 import splitties.resources.drawable
 import splitties.views.dsl.constraintlayout.after
 import splitties.views.dsl.constraintlayout.before
@@ -46,6 +47,7 @@ class PickerTabsUi(override val ctx: Context, val theme: Theme) : Ui {
             textSize = 16f // sp
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(theme.keyTextColor)
+            org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         }
 
         val icon = imageView()
@@ -85,6 +87,16 @@ class PickerTabsUi(override val ctx: Context, val theme: Theme) : Ui {
             val color = theme.keyTextColor.alpha(if (active) 1f else 0.5f)
             label.setTextColor(color)
             icon.imageDrawable?.setTint(color)
+            if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetToolbar }) {
+                root.foreground = null
+                root.background = if (active) {
+                    org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
+                        root, theme, theme.keyBackgroundColor, theme.keyTextColor,
+                        ctx.dp(10f), ctx.dp(3), ctx.dp(5),
+                        pressMorph = true, scaleViewOnPress = true
+                    )
+                } else null
+            }
         }
     }
 

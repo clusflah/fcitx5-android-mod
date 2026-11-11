@@ -7,7 +7,10 @@
 package org.fcitx.fcitx5.android.input.status
 
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -34,7 +37,6 @@ import org.fcitx.fcitx5.android.input.keyboard.RimeT9
 import org.fcitx.fcitx5.android.input.wm.InputWindow
 import org.fcitx.fcitx5.android.input.wm.InputWindowManager
 import org.fcitx.fcitx5.android.utils.AppUtil
-import org.fcitx.fcitx5.android.utils.pressHighlightDrawable
 import org.mechdancer.dependency.manager.must
 import splitties.dimensions.dp
 
@@ -55,7 +57,7 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
         card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             background = Glass.panelCardBackground(
-                this, theme, context.dp(16f), theme.popupBackgroundColor
+                this, theme, context.dp(16f), theme.popupBackgroundColor, theme.keyTextColor
             ) ?: GradientDrawable().apply {
                 cornerRadius = context.dp(16f)
                 setColor(theme.popupBackgroundColor)
@@ -65,6 +67,7 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
         }
         return ScrollView(context).apply {
             isVerticalScrollBarEnabled = false
+            Glass.attachScrollInvalidator(this, theme)
             if (!Glass.style(theme).let { it.enabled && it.targetPanels }) {
                 setBackgroundColor(theme.keyboardColor)
             }
@@ -130,16 +133,29 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
 
     private fun tileView(tile: Tile): View {
         val color = if (tile.selected) theme.genericActiveBackgroundColor else theme.keyTextColor
+        val radiusPx = context.dp(12f)
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            background = (if (tile.selected) {
-                Glass.panelCardBackground(this, theme, context.dp(12f), theme.keyBackgroundColor, pressMorph = true)
-            } else null) ?: GradientDrawable().apply {
-                cornerRadius = context.dp(12f)
-                setColor(if (tile.selected) theme.keyBackgroundColor else android.graphics.Color.TRANSPARENT)
+            val glassSelectedBg = if (tile.selected) {
+                Glass.panelCardBackground(
+                    this, theme, radiusPx, theme.keyBackgroundColor, color,
+                    pressMorph = true, extraOpacityBoost = 0.16f
+                )
+            } else null
+            background = glassSelectedBg ?: GradientDrawable().apply {
+                cornerRadius = radiusPx
+                setColor(if (tile.selected) theme.keyBackgroundColor else Color.TRANSPARENT)
             }
-            foreground = pressHighlightDrawable(theme.keyPressHighlightColor)
+            foreground = if (glassSelectedBg != null) null else StateListDrawable().apply {
+                addState(
+                    intArrayOf(android.R.attr.state_pressed),
+                    GradientDrawable().apply {
+                        cornerRadius = radiusPx
+                        setColor(theme.keyPressHighlightColor)
+                    }
+                )
+            }
             addView(ImageView(context).apply {
                 setImageResource(tile.icon)
                 imageTintList = ColorStateList.valueOf(color)
@@ -151,12 +167,13 @@ class KeyboardPickerWindow : InputWindow.ExtendedInputWindow<KeyboardPickerWindo
                 text = tile.label
                 textSize = 12f
                 maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
+                ellipsize = TextUtils.TruncateAt.END
                 gravity = Gravity.CENTER_HORIZONTAL
                 textAlignment = View.TEXT_ALIGNMENT_CENTER
                 includeFontPadding = false
                 setTextColor(if (tile.selected) color else theme.altKeyTextColor)
                 setPadding(context.dp(2), context.dp(6), context.dp(2), 0)
+                Glass.applyKeyTextShadow(this, theme)
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             setOnClickListener {
                 InputFeedbacks.hapticFeedback(it)

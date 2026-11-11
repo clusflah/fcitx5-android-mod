@@ -90,7 +90,8 @@ class ThemeFragment : Fragment() {
 
         SettingsSearchActivity.pendingScrollKey?.let { key ->
             when {
-                ThemeManager.glassPrefs.managedPreferences.containsKey(key) ->
+                key == GlassSettingsFragment.KEY_BACKDROP_IMAGE ||
+                        ThemeManager.glassPrefs.managedPreferences.containsKey(key) ->
                     viewPager.setCurrentItem(2, false)
                 ThemeManager.prefs.managedPreferences.containsKey(key) ->
                     viewPager.setCurrentItem(1, false)
@@ -123,6 +124,22 @@ class ThemeFragment : Fragment() {
                 endOfParent()
                 bottomOfParent()
             })
+        }
+    }
+
+    fun previewSize(): Pair<Int, Int> =
+        if (::previewUi.isInitialized) previewUi.intrinsicWidth to previewUi.intrinsicHeight else -1 to -1
+
+    fun openGlassBackdropEditor() {
+        GlassSettingsFragment.pendingOpenBackdropPicker = true
+        if (::viewPager.isInitialized) {
+            viewPager.setCurrentItem(2, true)
+        }
+        childFragmentManager.fragments.filterIsInstance<GlassSettingsFragment>().firstOrNull()?.let { frag ->
+            if (frag.isResumed) {
+                GlassSettingsFragment.pendingOpenBackdropPicker = false
+                frag.onBackdropPreferenceClicked()
+            }
         }
     }
 

@@ -30,6 +30,33 @@ class GlassPrefs(sharedPreferences: SharedPreferences) :
     private val enabled: Boolean
         get() = mode.getValue() != GlassMode.Off
 
+    val hasCustomBackdrop = ManagedPreference.PBool(
+        sharedPreferences,
+        "glass_has_custom_backdrop",
+        false
+    ).apply { register() }
+
+    val backdropCropRect = ManagedPreference.PString(
+        sharedPreferences,
+        "glass_backdrop_crop_rect",
+        ""
+    ).apply { register() }
+
+    val backdropCropRotation = ManagedPreference.PInt(
+        sharedPreferences,
+        "glass_backdrop_crop_rotation",
+        0
+    ).apply { register() }
+
+    val backdropBrightness = int(
+        R.string.glass_backdrop_brightness,
+        "glass_backdrop_brightness",
+        85,
+        10,
+        100,
+        "%"
+    ) { enabled && hasCustomBackdrop.getValue() }
+
     val blurRadius = int(
         R.string.glass_blur_radius,
         "glass_blur_radius",
@@ -98,14 +125,14 @@ class GlassPrefs(sharedPreferences: SharedPreferences) :
         "glass_dynamic_backdrop",
         true,
         R.string.glass_dynamic_backdrop_summary
-    ) { enabled }
+    ) { enabled && !hasCustomBackdrop.getValue() }
 
     val animateBackdrop = switch(
         R.string.glass_animate_backdrop,
         "glass_animate_backdrop",
         false,
         R.string.glass_animate_backdrop_summary
-    ) { enabled && dynamicBackdrop.getValue() }
+    ) { enabled && !hasCustomBackdrop.getValue() && dynamicBackdrop.getValue() }
 
     val powerSaveFallback = switch(
         R.string.glass_power_save_fallback,

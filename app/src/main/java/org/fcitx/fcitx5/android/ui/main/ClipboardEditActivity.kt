@@ -31,15 +31,40 @@ class ClipboardEditActivity : Activity() {
     private var entryId: Int = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val styled = AiDialogStyle.enabled
+        if (styled) requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
         super.onCreate(savedInstanceState)
-        window.attributes.gravity = Gravity.TOP
+        window.attributes = window.attributes.apply {
+            gravity = Gravity.TOP
+            if (styled) y = org.fcitx.fcitx5.android.utils.appContext.resources.displayMetrics.density.let { (16 * it).toInt() }
+        }
         val binding = ActivityClipboardEditBinding.inflate(layoutInflater).apply {
             editText = clipboardEditText
             clipboardEditCancel.setOnClickListener { finish() }
             clipboardEditOk.setOnClickListener { finishEditing() }
             clipboardEditCopy.setOnClickListener { finishEditing(copy = true) }
         }
-        setContentView(binding.root)
+        if (styled) {
+            val d = resources.displayMetrics.density
+            fun px(dp: Int) = (dp * d).toInt()
+            binding.clipboardEditOk.tag = AiDialogStyle.PRIMARY
+            val header = android.widget.TextView(this).apply {
+                setText(org.fcitx.fcitx5.android.R.string.edit_clipboard)
+                setPadding(px(2), 0, px(2), px(6))
+            }
+            val wrapper = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setPadding(px(16), px(14), px(16), px(12))
+                addView(header)
+                addView(binding.root)
+            }
+            setContentView(wrapper)
+            AiDialogStyle.apply(wrapper)
+            AiDialogStyle.title(header)
+            AiDialogStyle.styleWindow(window)
+        } else {
+            setContentView(binding.root)
+        }
         inputMethodManager.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
         processIntent(intent)
     }

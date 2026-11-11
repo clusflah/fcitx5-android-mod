@@ -37,6 +37,7 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
         isHorizontalScrollBarEnabled = false
         isFillViewport = true
         overScrollMode = View.OVER_SCROLL_NEVER
+        org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(this, theme)
         addView(bar, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT))
     }
 

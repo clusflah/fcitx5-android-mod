@@ -62,7 +62,8 @@ class PopupKeyboardUi(
             text = this@PopupKeyUi.text
             scaleMode = AutoScaleTextView.Mode.Proportional
             textSize = 23f
-            setTextColor(theme.keyTextColor)
+            setTextColor(theme.popupTextColor)
+            org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         }
 
         override val root = frameLayout {
@@ -184,7 +185,10 @@ class PopupKeyboardUi(
 
     private fun markFocus(index: Int) {
         keyUis.getOrNull(index)?.apply {
-            root.background = focusBackground
+            root.background = org.fcitx.fcitx5.android.input.glass.Glass.popupBackground(
+                root, theme, radius, theme.genericActiveBackgroundColor, theme.genericActiveForegroundColor,
+                hInset = ctx.dp(2), vInset = ctx.dp(2)
+            ) ?: focusBackground
             textView.setTextColor(theme.genericActiveForegroundColor)
         }
     }

@@ -18,12 +18,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.fcitx.fcitx5.android.R
-import org.fcitx.fcitx5.android.data.ai.AiSuggest
 import org.fcitx.fcitx5.android.data.ai.AiConfig
+import org.fcitx.fcitx5.android.data.ai.AiSuggest
 import org.fcitx.fcitx5.android.input.FcitxInputMethodService
 import org.fcitx.fcitx5.android.input.bar.ui.ToolButton
 import org.fcitx.fcitx5.android.input.dependency.inputMethodService
 import org.fcitx.fcitx5.android.input.dependency.theme
+import org.fcitx.fcitx5.android.input.glass.Glass
 import org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow
 import org.fcitx.fcitx5.android.input.wm.InputWindow
 import org.fcitx.fcitx5.android.input.wm.InputWindowManager
@@ -43,7 +44,7 @@ class AiPredictWindow : InputWindow.ExtendedInputWindow<AiPredictWindow>() {
     private var job: Job? = null
 
     private fun rounded(color: Int) = GradientDrawable().apply {
-        setColor(color); cornerRadius = context.dp(8f)
+        setColor(color); cornerRadius = context.dp(12f)
     }
 
     override fun onCreateView(): View {
@@ -55,12 +56,19 @@ class AiPredictWindow : InputWindow.ExtendedInputWindow<AiPredictWindow>() {
             textSize = 13f
             setTextColor(theme.altKeyTextColor)
             setPadding(context.dp(4), context.dp(4), context.dp(4), context.dp(4))
+            Glass.applyKeyTextShadow(this, theme)
         }
         root.addView(status)
         list = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(ScrollView(context).apply { addView(list) },
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        val actions = LinearLayout(context).apply { gravity = Gravity.END }
+        root.addView(ScrollView(context).apply {
+            isVerticalScrollBarEnabled = false
+            Glass.attachScrollInvalidator(this, theme)
+            addView(list)
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        val actions = LinearLayout(context).apply {
+            gravity = Gravity.END
+            setPadding(0, context.dp(4), 0, 0)
+        }
         actions.addView(actionButton("换一批") { request() })
         actions.addView(actionButton("返回键盘") { windowManager.attachWindow(KeyboardWindow) })
         root.addView(actions)
@@ -72,8 +80,9 @@ class AiPredictWindow : InputWindow.ExtendedInputWindow<AiPredictWindow>() {
         textSize = 14f
         gravity = Gravity.CENTER
         setTextColor(theme.keyTextColor)
-        background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
-            this, theme, context.dp(8f), theme.keyBackgroundColor, pressMorph = true
+        Glass.applyKeyTextShadow(this, theme)
+        background = Glass.panelCardBackground(
+            this, theme, context.dp(12f), theme.keyBackgroundColor, theme.keyTextColor, pressMorph = true
         ) ?: rounded(theme.keyBackgroundColor)
         setPadding(context.dp(14), context.dp(8), context.dp(14), context.dp(8))
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -131,8 +140,9 @@ class AiPredictWindow : InputWindow.ExtendedInputWindow<AiPredictWindow>() {
             this.text = text
             textSize = 16f
             setTextColor(theme.keyTextColor)
-            background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
-                this, theme, context.dp(8f), theme.clipboardEntryColor, pressMorph = true
+            Glass.applyKeyTextShadow(this, theme)
+            background = Glass.panelCardBackground(
+                this, theme, context.dp(12f), theme.clipboardEntryColor, theme.keyTextColor, pressMorph = true
             ) ?: rounded(theme.clipboardEntryColor)
             setPadding(context.dp(12), context.dp(10), context.dp(12), context.dp(10))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)

@@ -6,6 +6,9 @@
 package org.fcitx.fcitx5.android.input.bar.ui
 
 import android.content.Context
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
+import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.HorizontalScrollView
@@ -14,6 +17,7 @@ import android.widget.TextView
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.data.InputFeedbacks
 import org.fcitx.fcitx5.android.data.theme.Theme
+import org.fcitx.fcitx5.android.input.glass.Glass
 import org.fcitx.fcitx5.android.utils.pressHighlightDrawable
 import splitties.dimensions.dp
 import splitties.views.dsl.constraintlayout.before
@@ -38,6 +42,7 @@ class T9SymbolUi(override val ctx: Context, private val theme: Theme) : Ui {
     private val scroll = HorizontalScrollView(ctx).apply {
         isHorizontalScrollBarEnabled = false
         isFillViewport = true
+        Glass.attachScrollInvalidator(this, theme)
         addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, matchParent))
     }
 
@@ -67,6 +72,7 @@ class T9SymbolUi(override val ctx: Context, private val theme: Theme) : Ui {
 
     fun setSymbols(symbols: List<String>, onPick: (String) -> Unit) {
         row.removeAllViews()
+        val glassOn = Glass.isActive(theme)
         symbols.forEach { symbol ->
             row.addView(TextView(ctx).apply {
                 text = symbol
@@ -75,7 +81,23 @@ class T9SymbolUi(override val ctx: Context, private val theme: Theme) : Ui {
                 minWidth = dp(48)
                 setPadding(dp(8), 0, dp(8), 0)
                 setTextColor(theme.candidateTextColor)
-                background = pressHighlightDrawable(theme.keyPressHighlightColor)
+                Glass.applyKeyTextShadow(this, theme)
+                background = if (glassOn) {
+                    StateListDrawable().apply {
+                        addState(
+                            intArrayOf(android.R.attr.state_pressed),
+                            InsetDrawable(
+                                GradientDrawable().apply {
+                                    cornerRadius = dp(10f)
+                                    setColor(theme.keyPressHighlightColor)
+                                },
+                                dp(3), dp(5), dp(3), dp(5)
+                            )
+                        )
+                    }
+                } else {
+                    pressHighlightDrawable(theme.keyPressHighlightColor)
+                }
                 setOnClickListener {
                     InputFeedbacks.hapticFeedback(it)
                     InputFeedbacks.soundEffect(InputFeedbacks.SoundEffect.Standard)

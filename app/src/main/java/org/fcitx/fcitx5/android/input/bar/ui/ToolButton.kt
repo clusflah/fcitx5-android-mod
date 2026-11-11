@@ -53,11 +53,19 @@ class ToolButton(context: Context) : CustomGestureView(context) {
             image.rotation = value
         }
 
+    var iconAlpha: Float
+        get() = image.alpha
+        set(value) {
+            image.alpha = value
+        }
+
     constructor(context: Context, @DrawableRes icon: Int, theme: Theme) : this(context) {
         buttonTheme = theme
         image.imageTintList = ColorStateList.valueOf(theme.altKeyTextColor)
         setIcon(icon)
-        if (roundButtons) circleColor = theme.keyBackgroundColor
+        if (roundButtons || Glass.style(theme).let { it.enabled && it.targetToolbar }) {
+            circleColor = theme.keyBackgroundColor
+        }
         setPressHighlightColor(theme.keyPressHighlightColor)
         add(image, lParams(wrapContent, wrapContent, gravityCenter))
     }
@@ -79,12 +87,12 @@ class ToolButton(context: Context) : CustomGestureView(context) {
             background = highlight
         } else {
             // the circle stays a little inside the button, so neighbours don't touch
-            background = buttonTheme?.let { Glass.barButtonBackground(this, it, dp(2)) }
-                ?: InsetDrawable(GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(circle)
-                }, dp(2))
-            foreground = highlight
+            val glassBg = buttonTheme?.let { Glass.barButtonBackground(this, it, dp(2)) }
+            background = glassBg ?: InsetDrawable(GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(circle)
+            }, dp(2))
+            foreground = if (glassBg != null) null else highlight
         }
     }
 }

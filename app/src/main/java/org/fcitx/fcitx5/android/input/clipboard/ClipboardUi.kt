@@ -31,6 +31,7 @@ class ClipboardUi(override val ctx: Context, private val theme: Theme) : Ui {
 
     val recyclerView = recyclerView {
         addItemDecoration(SpacesItemDecoration(dp(4)))
+        org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(this, theme)
     }
 
     val enableUi = ClipboardInstructionUi.Enable(ctx, theme)
@@ -47,7 +48,7 @@ class ClipboardUi(override val ctx: Context, private val theme: Theme) : Ui {
     private val disableAnimation by AppPrefs.getInstance().advanced.disableAnimation
 
     override val root = coordinatorLayout {
-        if (!keyBorder) {
+        if (!keyBorder && !org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive(theme)) {
             backgroundColor = theme.barColor
         }
         add(viewAnimator, defaultLParams(matchParent, matchParent))

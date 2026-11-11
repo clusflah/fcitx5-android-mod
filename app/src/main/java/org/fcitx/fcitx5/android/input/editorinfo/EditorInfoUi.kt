@@ -21,6 +21,7 @@ class EditorInfoUi(override val ctx: Context, private val theme: Theme) : Ui {
         text = str
         setPaddingDp(3)
         setTextColor(theme.keyTextColor)
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
     }
 
     private fun TableLayout.addRow(label: String, value: String) {
@@ -32,11 +33,21 @@ class EditorInfoUi(override val ctx: Context, private val theme: Theme) : Ui {
 
     val table = view(::TableLayout) {
         isStretchAllColumns = true
+        org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+            this, theme, ctx.resources.displayMetrics.density * 14f, theme.clipboardEntryColor
+        )?.let {
+            background = it
+            setPaddingDp(10)
+        }
     }
 
     override val root = table
         .wrapInHorizontalScrollView()
-        .wrapInScrollView { isFillViewport = true }
+        .wrapInScrollView {
+            isFillViewport = true
+            setPaddingDp(8)
+            org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(this, theme)
+        }
 
     fun setValues(values: Map<String, String>) {
         table.apply {

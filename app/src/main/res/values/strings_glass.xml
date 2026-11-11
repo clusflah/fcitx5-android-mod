@@ -7,6 +7,11 @@
     <string name="glass_mode_backdrop">Backdrop Glass (All themes)</string>
     <string name="glass_mode_see_through">See-through Glass (Experimental)</string>
     <string name="glass_mode_off">Off</string>
+    <string name="glass_backdrop_image">Backdrop Image</string>
+    <string name="glass_backdrop_image_unset">Not set (tap to choose an image as Liquid Glass backdrop)</string>
+    <string name="glass_backdrop_image_set">Custom backdrop set (tap to replace, recrop, or clear)</string>
+    <string name="glass_backdrop_clear">Clear backdrop (restore dynamic aurora)</string>
+    <string name="glass_backdrop_brightness">Backdrop Brightness</string>
     <string name="glass_blur_radius">Blur Radius</string>
     <string name="glass_tint_opacity">Glass Tint Opacity</string>
     <string name="glass_refraction">Edge Refraction</string>
@@ -15,7 +20,7 @@
     <string name="glass_press_morph">Press Morph Animation</string>
     <string name="glass_press_morph_summary">Elastic droplet expansion and specular boost when pressing keys</string>
     <string name="glass_dynamic_backdrop">Dynamic Aurora Backdrop</string>
-    <string name="glass_dynamic_backdrop_summary">Use a multi-color luminous backdrop when the theme has no background image</string>
+    <string name="glass_dynamic_backdrop_summary">Use a multi-color luminous backdrop when no custom backdrop image is set</string>
     <string name="glass_animate_backdrop">Animate Backdrop Drift</string>
     <string name="glass_animate_backdrop_summary">Slowly drift the luminous backdrop orbs while the keyboard is shown</string>
     <string name="glass_power_save_fallback">Disable in Battery Saver</string>
@@ -24,5 +29,5 @@
     <string name="glass_target_toolbar">Apply to Toolbar</string>
     <string name="glass_target_candidates">Apply to Candidates &amp; Preedit</string>
     <string name="glass_target_popups">Apply to Key Popups</string>
-    <string name="glass_target_panels">Apply to Panels (Clipboard, Phrases, More, Translate)</string>
+    <string name="glass_target_panels">Apply to Panels &amp; AI Assistant Dialog</string>
 </resources>

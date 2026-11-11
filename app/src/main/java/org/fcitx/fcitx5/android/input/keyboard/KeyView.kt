@@ -150,6 +150,10 @@ abstract class KeyView(ctx: Context, val theme: Theme, val def: KeyDef.Appearanc
     }
 
     private fun setupPressHighlight(mask: Drawable? = null) {
+        if (appearanceView.background is org.fcitx.fcitx5.android.input.glass.GlassDrawable) {
+            appearanceView.foreground = null
+            return
+        }
         appearanceView.foreground = if (rippled) {
             RippleDrawable(
                 ColorStateList.valueOf(theme.keyPressHighlightColor), null,
@@ -297,6 +301,7 @@ class AltTextKeyView(ctx: Context, theme: Theme, def: KeyDef.Appearance.AltText)
         setTextSize(TypedValue.COMPLEX_UNIT_DIP, 10.666667f)
         setTypeface(typeface, Typeface.BOLD)
         text = def.altText
+        org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         textDirection = View.TEXT_DIRECTION_FIRST_STRONG_LTR
         setTextColor(
             when (def.variant) {

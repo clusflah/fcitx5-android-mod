@@ -92,6 +92,7 @@ abstract class CandidateTabActionsAdapter(val theme: Theme, val indicatorStyle: 
             isSingleLine = true
             gravity = gravityCenter
             setTextColor(theme.candidateTextColor)
+            org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         }
 
         override val root = view(::CustomGestureView) {
@@ -115,6 +116,13 @@ abstract class CandidateTabActionsAdapter(val theme: Theme, val indicatorStyle: 
         }
 
         private fun createBackground(checkable: Boolean, indicatorStyle: Boolean): Drawable {
+            if (checkable && !indicatorStyle) {
+                org.fcitx.fcitx5.android.input.glass.Glass.statefulKeyBackground(
+                    root, theme, android.graphics.Color.TRANSPARENT,
+                    org.fcitx.fcitx5.android.input.glass.Glass.activeTint(theme),
+                    theme.candidateTextColor, ctx.dp(8f), ctx.dp(4), ctx.dp(3)
+                )?.let { return it }
+            }
             if (!checkable) {
                 return pressHighlightDrawable(theme.keyPressHighlightColor)
             }

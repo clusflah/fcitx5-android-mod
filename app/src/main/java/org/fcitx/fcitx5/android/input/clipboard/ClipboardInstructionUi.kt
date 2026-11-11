@@ -34,11 +34,20 @@ sealed class ClipboardInstructionUi(override val ctx: Context, protected val the
             setText(R.string.instruction_enable_clipboard_listening)
             setPaddingDp(12, 8, 12, 8)
             setTextColor(theme.keyTextColor)
+            org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         }
 
         val enableButton = androidStyles.button.borderless {
             setText(R.string.clipboard_enable)
             setTextColor(theme.accentKeyBackgroundColor)
+            org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
+                this, theme, dp(12f), theme.accentKeyBackgroundColor, theme.accentKeyTextColor, pressMorph = true, extraOpacityBoost = 0.20f
+            )?.let {
+                background = it
+                setTextColor(theme.accentKeyTextColor)
+                isAllCaps = false
+                setPaddingDp(16, 8, 16, 8)
+            }
         }
 
         override val root = constraintLayout {
@@ -65,6 +74,7 @@ sealed class ClipboardInstructionUi(override val ctx: Context, protected val the
         private val instructionText = textView {
             setText(R.string.instruction_copy)
             setTextColor(theme.keyTextColor)
+            org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         }
 
         override val root = constraintLayout {

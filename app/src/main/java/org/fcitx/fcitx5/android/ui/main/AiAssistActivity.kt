@@ -123,10 +123,10 @@ class AiAssistActivity : AppCompatActivity() {
         promptId = AiConfig.lastPrompt(this)?.takeIf { id -> prompts.any { it.id == id } }
             ?: prompts.firstOrNull()?.id
 
-        val pad = if (styled) dp(10) else dp(14)
+        val pad = if (styled) dp(12) else dp(14)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(pad, pad / 2, pad, pad)
+            setPadding(pad, if (styled) dp(10) else pad / 2, pad, pad)
         }
         // card style: title on the left, a compact model picker and ⚙ in the top right corner
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -310,7 +310,8 @@ class AiAssistActivity : AppCompatActivity() {
         resultBox.addView(outActions)
         root.addView(resultBox)
 
-        setContentView(ScrollView(this).apply { addView(root) })
+        val outerScroll = ScrollView(this).apply { addView(root) }
+        setContentView(outerScroll)
         // mod: keyboard floating (landscape): the card is as wide as the keyboard, on the other side
         // of the screen so the keyboard doesn't cover it when typing into the card
         val floating = org.fcitx.fcitx5.android.input.FloatingKeyboard.horizontalBounds(this)
@@ -330,7 +331,7 @@ class AiAssistActivity : AppCompatActivity() {
             }
         }
         if (styled) {
-            AiDialogStyle.styleWindow(window)
+            AiDialogStyle.styleWindow(window, explicitWidthPx = floating?.second)
             // sit lower on the screen, nearer the keyboard and the thumb: a quarter of the screen
             // below the middle, less half the card's own height once it is measured
             val lower = resources.displayMetrics.heightPixels / 4
@@ -342,7 +343,7 @@ class AiAssistActivity : AppCompatActivity() {
                     }
                 }
             }
-            AiDialogStyle.apply(root)
+            AiDialogStyle.apply(outerScroll)
             styleChips(formatBar)
             AiDialogStyle.compact(providerSpinner, header.getChildAt(header.childCount - 1) as Button)
             // keep the card low: the field grows as text is typed or pasted

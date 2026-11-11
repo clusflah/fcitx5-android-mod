@@ -31,7 +31,7 @@ class PopupStripUi(
     outerBounds: Rect,
     triggerBounds: Rect,
     onDismissSelf: PopupContainerUi.() -> Unit = {},
-    radius: Float,
+    private val radius: Float,
     /** gap above and below each key inside its row */
     verticalMargin: Int,
     private val items: Array<String>,
@@ -62,6 +62,7 @@ class PopupStripUi(
             textSize = 20f
             gravity = gravityCenter
             setTextColor(theme.popupTextColor)
+            org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         }
     }
 
@@ -89,9 +90,13 @@ class PopupStripUi(
         cells.getOrNull(focused)?.apply {
             background = null
             setTextColor(theme.popupTextColor)
+            org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
         }
         cells[index].apply {
-            background = focusBackground
+            background = org.fcitx.fcitx5.android.input.glass.Glass.popupBackground(
+                this, theme, radius, theme.genericActiveBackgroundColor, theme.genericActiveForegroundColor,
+                hInset = ctx.dp(2), vInset = ctx.dp(2)
+            ) ?: focusBackground
             setTextColor(theme.genericActiveForegroundColor)
         }
         focused = index

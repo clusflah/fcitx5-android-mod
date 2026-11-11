@@ -37,6 +37,7 @@ class AiSuggestionUi(override val ctx: Context, private val theme: Theme) : Ui {
         addView(icon, LinearLayout.LayoutParams(ctx.dp(18), ctx.dp(18)).apply { marginStart = ctx.dp(4) })
         addView(HorizontalScrollView(ctx).apply {
             isHorizontalScrollBarEnabled = false
+            org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(this, theme)
             addView(chips)
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
     }
@@ -59,6 +60,7 @@ class AiSuggestionUi(override val ctx: Context, private val theme: Theme) : Ui {
                 textSize = 16f
                 isSingleLine = true
                 setTextColor(theme.keyTextColor)
+                org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
                 background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
                     this, theme, ctx.dp(14f), theme.keyBackgroundColor, pressMorph = true
                 ) ?: GradientDrawable().apply {

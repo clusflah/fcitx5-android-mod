@@ -8,6 +8,7 @@ package org.fcitx.fcitx5.android.ui.main
 import android.app.Activity
 import android.os.Bundle
 import android.view.Gravity
+import android.view.Window
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -24,16 +25,26 @@ class CloudConsentActivity : Activity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val styled = AiDialogStyle.enabled
+        if (styled) requestWindowFeature(Window.FEATURE_NO_TITLE)
         super.onCreate(savedInstanceState)
         val kind = runCatching { CloudConsent.Kind.valueOf(intent.getStringExtra(EXTRA_KIND)!!) }
             .getOrElse { finish(); return }
-        title = CloudConsent.title(kind)
+        if (!styled) {
+            title = CloudConsent.title(kind)
+        }
         setFinishOnTouchOutside(false)
         val pad = dp(20)
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(pad, dp(8), pad, dp(8))
+            setPadding(pad, if (styled) dp(16) else dp(8), pad, if (styled) dp(14) else dp(8))
         }
+        val headerView = if (styled) {
+            TextView(this).apply {
+                text = CloudConsent.title(kind)
+                setPadding(0, 0, 0, dp(8))
+            }.also { box.addView(it) }
+        } else null
         box.addView(TextView(this).apply {
             text = CloudConsent.message(this@CloudConsentActivity, kind)
             textSize = 15f
@@ -49,10 +60,17 @@ class CloudConsentActivity : Activity() {
         })
         buttons.addView(Button(this, null, android.R.attr.borderlessButtonStyle).apply {
             text = "同意并继续"
+            tag = AiDialogStyle.PRIMARY
             setOnClickListener { decide(kind, true) }
         })
         box.addView(buttons)
-        setContentView(ScrollView(this).apply { addView(box) })
+        val scroll = ScrollView(this).apply { addView(box) }
+        setContentView(scroll)
+        if (styled) {
+            AiDialogStyle.apply(scroll)
+            headerView?.let { AiDialogStyle.title(it) }
+            AiDialogStyle.styleWindow(window, isAlert = true)
+        }
     }
 
     private fun decide(kind: CloudConsent.Kind, ok: Boolean) {

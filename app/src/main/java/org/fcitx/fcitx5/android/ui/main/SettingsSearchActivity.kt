@@ -88,7 +88,16 @@ class SettingsSearchActivity : AppCompatActivity() {
                 pageEntries(prefs.symbols, R.string.emoji_and_symbols, SettingsRoute.Symbol, null) +
                 pageEntries(prefs.advanced, R.string.advanced, SettingsRoute.Advanced, null) +
                 pageEntries(ThemeManager.prefs, R.string.theme, SettingsRoute.Theme, null) +
-                pageEntries(ThemeManager.glassPrefs, R.string.liquid_glass, SettingsRoute.Theme, null)
+                pageEntries(ThemeManager.glassPrefs, R.string.liquid_glass, SettingsRoute.Theme, null) +
+                listOf(
+                    Entry(
+                        getString(R.string.glass_backdrop_image),
+                        getString(R.string.liquid_glass),
+                        "液态玻璃 背景图片 底图 壁纸 自定义图片 裁剪",
+                        route = SettingsRoute.Theme,
+                        key = org.fcitx.fcitx5.android.ui.main.settings.theme.GlassSettingsFragment.KEY_BACKDROP_IMAGE
+                    )
+                )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

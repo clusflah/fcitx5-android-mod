@@ -104,7 +104,7 @@ class PickerWindow(
 
     override fun onCreateView() = PickerLayout(context, theme, switchKey).apply {
         pickerLayout = this
-        val bordered = followKeyBorder && keyBorder
+        val bordered = (followKeyBorder && keyBorder) || (key == Key.Emoticon && org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetKeys })
         pickerPagesAdapter = PickerPagesAdapter(
             theme, keyActionListener, popupActionListener, data,
             density, key.name, bordered, policy
@@ -117,6 +117,7 @@ class PickerWindow(
         }
         pager.apply {
             adapter = pickerPagesAdapter
+            org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(this, theme)
             // show first symbol category by default, rather than recently used
             val range = pickerPagesAdapter.getRangeOfCategoryIndex(1)
             setCurrentItem(range.first, false)

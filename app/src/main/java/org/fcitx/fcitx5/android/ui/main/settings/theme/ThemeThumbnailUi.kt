@@ -99,7 +99,10 @@ class ThemeThumbnailUi(override val ctx: Context) : Ui {
             foreground = rippleDrawable(theme.keyPressHighlightColor)
         }
         val isGlass = org.fcitx.fcitx5.android.data.theme.ThemePresetMod.isGlassPreset(theme)
-        bkg.imageDrawable = if (isGlass) org.fcitx.fcitx5.android.input.glass.DynamicBackdropDrawable(theme) else theme.backgroundDrawable()
+        bkg.imageDrawable = if (isGlass) {
+            org.fcitx.fcitx5.android.data.theme.GlassCustomBackdrop.loadDrawable()
+                ?: org.fcitx.fcitx5.android.input.glass.DynamicBackdropDrawable(theme)
+        } else theme.backgroundDrawable()
         bar.backgroundColor = theme.barColor
         spaceBar.background = (if (isGlass) org.fcitx.fcitx5.android.input.glass.Glass.keyBackground(
             spaceBar, theme, theme.spaceBarColor, theme.keyTextColor, ctx.dp(2f), pressMorph = false
@@ -115,7 +118,7 @@ class ThemeThumbnailUi(override val ctx: Context) : Ui {
         }
         val foregroundTint = ColorStateList.valueOf(theme.altKeyTextColor)
         editButton.apply {
-            visibility = if (theme is Theme.Custom) View.VISIBLE else View.GONE
+            visibility = if (theme is Theme.Custom || isGlass) View.VISIBLE else View.GONE
             background = rippleDrawable(theme.keyPressHighlightColor)
             imageTintList = foregroundTint
         }

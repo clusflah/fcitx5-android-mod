@@ -124,6 +124,7 @@ class CommonPhraseActivity : AppCompatActivity() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+            .also { if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) AiDialogStyle.alert(it) }
     }
 
     private fun phraseMenu(p: CommonPhrase) {
@@ -131,7 +132,9 @@ class CommonPhraseActivity : AppCompatActivity() {
             getString(R.string.common_phrase_edit), getString(R.string.move_up),
             getString(R.string.move_down), getString(R.string.delete)
         )
-        AlertDialog.Builder(this).setTitle(p.label.ifBlank { p.content }).setItems(items) { _, which ->
+        AlertDialog.Builder(this).setTitle(p.label.ifBlank { p.content }).setAdapter(
+            AiDialogStyle.textAdapter(this, android.R.layout.simple_list_item_1, items.toMutableList())
+        ) { _, which ->
             when (which) {
                 0 -> editPhrase(p)
                 1 -> CommonPhraseManager.movePhrase(this, p.id, -1)
@@ -139,7 +142,7 @@ class CommonPhraseActivity : AppCompatActivity() {
                 3 -> CommonPhraseManager.deletePhrase(this, p.id)
             }
             refresh()
-        }.show()
+        }.show().also { if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) AiDialogStyle.alert(it) }
     }
 
     private fun nameDialog(title: Int, initial: String, onOk: (String) -> Unit) {
@@ -150,6 +153,7 @@ class CommonPhraseActivity : AppCompatActivity() {
                 et.text.toString().trim().takeIf { it.isNotEmpty() }?.let(onOk); refresh()
             }
             .setNegativeButton(android.R.string.cancel, null).show()
+            .also { if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) AiDialogStyle.alert(it) }
     }
 
     private fun groupMenu() {
@@ -158,7 +162,9 @@ class CommonPhraseActivity : AppCompatActivity() {
             getString(R.string.common_phrase_group_rename), getString(R.string.move_up),
             getString(R.string.move_down), getString(R.string.common_phrase_group_delete)
         )
-        AlertDialog.Builder(this).setTitle(g.name).setItems(items) { _, which ->
+        AlertDialog.Builder(this).setTitle(g.name).setAdapter(
+            AiDialogStyle.textAdapter(this, android.R.layout.simple_list_item_1, items.toMutableList())
+        ) { _, which ->
             when (which) {
                 0 -> nameDialog(R.string.common_phrase_group_rename, g.name) {
                     CommonPhraseManager.renameGroup(this, g.id, it)
@@ -171,9 +177,10 @@ class CommonPhraseActivity : AppCompatActivity() {
                         CommonPhraseManager.deleteGroup(this, g.id); groupId = null; refresh()
                     }
                     .setNegativeButton(android.R.string.cancel, null).show()
+                    .also { if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) AiDialogStyle.alert(it) }
             }
             refresh()
-        }.show()
+        }.show().also { if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) AiDialogStyle.alert(it) }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

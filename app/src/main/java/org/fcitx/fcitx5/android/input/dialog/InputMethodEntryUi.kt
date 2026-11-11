@@ -35,6 +35,15 @@ class InputMethodEntryUi(override val ctx: Context) : Ui {
         background = styledDrawable(android.R.attr.selectableItemBackground)
         isFocusable = true
         isClickable = true
+        if (org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive()) {
+            val t = org.fcitx.fcitx5.android.data.theme.ThemeManager.activeTheme
+            setTextColor(t.keyTextColor)
+            compoundDrawableTintList = android.content.res.ColorStateList(
+                arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+                intArrayOf(org.fcitx.fcitx5.android.data.theme.ThemePresetMod.JADE, t.altKeyTextColor)
+            )
+            org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, t)
+        }
         layoutParams = ViewGroup.LayoutParams(matchParent, wrapContent)
     }
 }

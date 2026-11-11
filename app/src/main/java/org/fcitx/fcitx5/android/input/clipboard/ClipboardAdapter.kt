@@ -82,6 +82,7 @@ abstract class ClipboardAdapter(
     }
 
     private var popupMenu: PopupMenu? = null
+    private var cardPopupMenu: android.widget.PopupWindow? = null
 
     class ViewHolder(val entryUi: ClipboardEntryUi) : RecyclerView.ViewHolder(entryUi.root)
 
@@ -96,6 +97,29 @@ abstract class ClipboardAdapter(
                 onPaste(entry)
             }
             root.setOnLongClickListener {
+                if (org.fcitx.fcitx5.android.data.theme.ThemeManager.prefs.cardStyle.getValue() ||
+                    org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetPopups }
+                ) {
+                    cardPopupMenu?.dismiss()
+                    val labels = listOf(
+                        ctx.getString(if (entry.pinned) R.string.unpin else R.string.pin),
+                        ctx.getString(R.string.edit),
+                        ctx.getString(R.string.share),
+                        ctx.getString(R.string.delete)
+                    )
+                    cardPopupMenu = org.fcitx.fcitx5.android.input.bar.ui.CardPopupMenu.show(
+                        root, theme, labels, -1, width = ctx.resources.displayMetrics.widthPixels.coerceAtMost((ctx.resources.displayMetrics.density * 180).toInt())
+                    ) { idx ->
+                        cardPopupMenu = null
+                        when (idx) {
+                            0 -> if (entry.pinned) onUnpin(entry.id) else onPin(entry.id)
+                            1 -> onEdit(entry.id)
+                            2 -> onShare(entry)
+                            3 -> onDelete(entry.id)
+                        }
+                    }
+                    return@setOnLongClickListener true
+                }
                 val popup = PopupMenu(ctx, root)
                 val menu = popup.menu
                 val iconTint = ctx.styledColor(android.R.attr.colorControlNormal)
@@ -136,6 +160,8 @@ abstract class ClipboardAdapter(
     fun onDetached() {
         popupMenu?.dismiss()
         popupMenu = null
+        cardPopupMenu?.dismiss()
+        cardPopupMenu = null
     }
 
     abstract fun onPaste(entry: ClipboardEntry)

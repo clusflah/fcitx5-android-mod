@@ -12,7 +12,9 @@ package org.fcitx.fcitx5.android.input.status
 
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
+import android.text.TextUtils
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -30,6 +32,7 @@ import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.input.bar.ToolbarButton
 import org.fcitx.fcitx5.android.input.bar.ui.ToolButton
 import org.fcitx.fcitx5.android.input.dependency.theme
+import org.fcitx.fcitx5.android.input.glass.Glass
 import org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow
 import org.fcitx.fcitx5.android.input.wm.InputWindow
 import org.fcitx.fcitx5.android.input.wm.InputWindowManager
@@ -84,6 +87,7 @@ class ToolbarEditWindow : InputWindow.ExtendedInputWindow<ToolbarEditWindow>() {
             addView(doneButton(), LinearLayout.LayoutParams(context.dp(40), context.dp(40)).apply { marginStart = context.dp(4) })
             addView(HorizontalScrollView(context).apply {
                 isHorizontalScrollBarEnabled = false
+                Glass.attachScrollInvalidator(this, theme)
                 addView(barRow)
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { marginStart = context.dp(6) })
         }
@@ -95,11 +99,16 @@ class ToolbarEditWindow : InputWindow.ExtendedInputWindow<ToolbarEditWindow>() {
         setImageResource(R.drawable.ic_baseline_check_24)
         imageTintList = ColorStateList.valueOf(theme.genericActiveForegroundColor)
         scaleType = ImageView.ScaleType.CENTER_INSIDE
-        background = GradientDrawable().apply {
+        val glassBg = Glass.panelCardBackground(
+            this, theme, 0f,
+            theme.genericActiveBackgroundColor, theme.genericActiveForegroundColor,
+            isOval = true, pressMorph = true, extraOpacityBoost = 0.22f
+        )
+        background = glassBg ?: GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(theme.genericActiveBackgroundColor)
         }
-        foreground = circlePressHighlightDrawable(theme.keyPressHighlightColor)
+        foreground = if (glassBg != null) null else circlePressHighlightDrawable(theme.keyPressHighlightColor)
         contentDescription = context.getString(R.string.done)
         setOnClickListener { windowManager.attachWindow(KeyboardWindow) }
     }
@@ -140,6 +149,7 @@ class ToolbarEditWindow : InputWindow.ExtendedInputWindow<ToolbarEditWindow>() {
             dx += w
         }
         view.translationX = dx
+        Glass.invalidateGlassDescendants(barRow)
     }
 
     /** save the new order: the toolbar's buttons as now laid out, then the others as they were */
@@ -173,8 +183,8 @@ class ToolbarEditWindow : InputWindow.ExtendedInputWindow<ToolbarEditWindow>() {
                 lastRawX = e.rawX
                 if (dragged !== frame) return@setOnTouchListener false
                 when (e.actionMasked) {
-                    android.view.MotionEvent.ACTION_MOVE -> drag(e.rawX)
-                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    MotionEvent.ACTION_MOVE -> drag(e.rawX)
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         endDrag()
                         // let the button reset its pressed state; no click follows a long press
                         return@setOnTouchListener false
@@ -182,7 +192,7 @@ class ToolbarEditWindow : InputWindow.ExtendedInputWindow<ToolbarEditWindow>() {
                 }
                 true
             }
-        },FrameLayout.LayoutParams(context.dp(36), context.dp(36), Gravity.BOTTOM or Gravity.START))
+        }, FrameLayout.LayoutParams(context.dp(36), context.dp(36), Gravity.BOTTOM or Gravity.START))
         // − badge at the top right
         addView(TextView(context).apply {
             text = "−"
@@ -204,6 +214,7 @@ class ToolbarEditWindow : InputWindow.ExtendedInputWindow<ToolbarEditWindow>() {
         layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         PagerSnapHelper().attachToRecyclerView(this)
         overScrollMode = View.OVER_SCROLL_NEVER
+        Glass.attachScrollInvalidator(this, theme)
     } }
 
     private val dots by lazy { LinearLayout(context).apply {
@@ -245,39 +256,43 @@ class ToolbarEditWindow : InputWindow.ExtendedInputWindow<ToolbarEditWindow>() {
     private fun tile(b: ToolbarButton): View {
         val on = onBar(b)
         val green = theme.genericActiveBackgroundColor
+        val iconColor = if (on) green else theme.keyTextColor
+        val circleColor = if (on) Glass.activeTint(theme, green) else theme.keyBackgroundColor
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             addView(ImageView(context).apply {
+                isDuplicateParentStateEnabled = true
                 setImageResource(b.icon)
-                imageTintList = ColorStateList.valueOf(if (on) green else theme.keyTextColor)
+                imageTintList = ColorStateList.valueOf(iconColor)
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 setPadding(context.dp(13), context.dp(13), context.dp(13), context.dp(13))
-                background = GradientDrawable().apply {
+                val glassBg = Glass.panelCardBackground(
+                    this, theme, 0f, circleColor, iconColor,
+                    isOval = true, pressMorph = true,
+                    extraOpacityBoost = if (on) 0.14f else 0.08f
+                )
+                background = glassBg ?: GradientDrawable().apply {
                     shape = GradientDrawable.OVAL
-                    setColor(if (on) blend(theme.keyBackgroundColor, green, 0.16f) else theme.keyBackgroundColor)
+                    setColor(circleColor)
                 }
-                foreground = circlePressHighlightDrawable(theme.keyPressHighlightColor)
+                foreground = if (glassBg != null) null else circlePressHighlightDrawable(theme.keyPressHighlightColor)
             }, LinearLayout.LayoutParams(context.dp(50), context.dp(50)))
             addView(TextView(context).apply {
                 text = label(b)
                 textSize = 12f
                 maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
+                ellipsize = TextUtils.TruncateAt.END
                 gravity = Gravity.CENTER_HORIZONTAL
-                setTextColor(theme.altKeyTextColor)
+                setTextColor(if (on) green else theme.altKeyTextColor)
                 setPadding(context.dp(2), context.dp(8), context.dp(2), 0)
+                Glass.applyKeyTextShadow(this, theme)
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             setOnClickListener {
                 InputFeedbacks.hapticFeedback(it)
                 setOnBar(b, !on)
             }
         }
-    }
-
-    private fun blend(base: Int, tint: Int, amount: Float): Int {
-        fun ch(shift: Int) = ((base shr shift and 0xff) * (1 - amount) + (tint shr shift and 0xff) * amount).toInt()
-        return (0xff shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
     }
 
     private fun showDots(count: Int) {
@@ -319,19 +334,18 @@ class ToolbarEditWindow : InputWindow.ExtendedInputWindow<ToolbarEditWindow>() {
         })
         val card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
+            background = Glass.panelCardBackground(
+                this, theme, context.dp(16f), theme.popupBackgroundColor, theme.keyTextColor
+            ) ?: GradientDrawable().apply {
                 cornerRadius = context.dp(16f)
                 setColor(theme.popupBackgroundColor)
             }
             setPadding(0, context.dp(8), 0, context.dp(10))
-            background = org.fcitx.fcitx5.android.input.glass.Glass.panelCardBackground(
-                this, theme, context.dp(16f), theme.popupBackgroundColor
-            ) ?: background
             addView(pages, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(dots, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, context.dp(12)).apply { topMargin = context.dp(4) })
         }
         return FrameLayout(context).apply {
-            if (!org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetPanels }) {
+            if (!Glass.style(theme).let { it.enabled && it.targetPanels }) {
                 setBackgroundColor(theme.keyboardColor)
             }
             val m = context.dp(12)

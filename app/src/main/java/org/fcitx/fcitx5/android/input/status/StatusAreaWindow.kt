@@ -137,7 +137,7 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
                             return
                         }
                         // mod: card style: the keyboard-colored menu used elsewhere in the keyboard
-                        if (ThemeManager.prefs.cardStyle.getValue()) {
+                        if (ThemeManager.prefs.cardStyle.getValue() || org.fcitx.fcitx5.android.input.glass.Glass.style(theme).let { it.enabled && it.targetPopups }) {
                             val items = actions.filter {
                                 !it.isSeparator &&
                                         !(entry.action.name == "fcitx-rime-im" && RimeT9.isT9Schema(it.shortText))
@@ -221,13 +221,14 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
 
     val view by lazy {
         context.recyclerView {
-            if (!keyBorder) {
+            if (!keyBorder && !org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive(theme)) {
                 backgroundColor = theme.barColor
             }
             layoutManager = gridLayoutManager(4)
             adapter = this@StatusAreaWindow.adapter
+            org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(this, theme)
             // mod: room around the tiles, like the panels of common phone keyboards
-            if (ThemeManager.prefs.cardStyle.getValue()) {
+            if (ThemeManager.prefs.cardStyle.getValue() || org.fcitx.fcitx5.android.input.glass.Glass.isDialogGlassActive(theme)) {
                 setPadding(dp(9), dp(4), dp(9), dp(4))
                 clipToPadding = false
             }
