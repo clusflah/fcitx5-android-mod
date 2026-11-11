@@ -2,14 +2,22 @@
 <!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
 <resources>
     <string name="liquid_glass">液态玻璃</string>
+    <string name="glass_light_label">亮色</string>
+    <string name="glass_dark_label">暗色</string>
     <string name="glass_mode">液态玻璃模式</string>
     <string name="glass_mode_follow_theme">跟随主题（仅玻璃预设开启）</string>
     <string name="glass_mode_backdrop">背景玻璃（全部主题开启）</string>
     <string name="glass_mode_see_through">透视玻璃（实验）</string>
     <string name="glass_mode_off">关闭</string>
     <string name="glass_backdrop_image">背景图片（底图）</string>
+    <string name="glass_backdrop_image_light">亮色背景图片（底图）</string>
+    <string name="glass_backdrop_image_dark">暗色背景图片（底图）</string>
     <string name="glass_backdrop_image_unset">未设置（点击选择图片作为液态玻璃底图）</string>
+    <string name="glass_backdrop_image_unset_light">未设置（默认使用亮色流光衬底，点击选择图片）</string>
+    <string name="glass_backdrop_image_unset_dark">未设置（默认使用暗色流光衬底，点击选择图片）</string>
     <string name="glass_backdrop_image_set">已设置自定义底图（点击更换、重新裁剪或清除）</string>
+    <string name="glass_backdrop_copy_from_light">复用亮色底图</string>
+    <string name="glass_backdrop_copy_from_dark">复用暗色底图</string>
     <string name="glass_backdrop_clear">清除底图（恢复流光衬底）</string>
     <string name="glass_backdrop_brightness">底图亮度</string>
     <string name="glass_blur_radius">模糊半径</string>

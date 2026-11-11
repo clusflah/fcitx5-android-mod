@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.view.Menu
 import android.view.ViewGroup
+import android.webkit.MimeTypeMap
 import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContract
@@ -26,11 +27,16 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
+import androidx.lifecycle.lifecycleScope
 import com.canhub.cropper.CropImageOptions
 import com.canhub.cropper.CropImageView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 import org.fcitx.fcitx5.android.R
+import org.fcitx.fcitx5.android.ui.common.withLoadingDialog
 import org.fcitx.fcitx5.android.utils.item
 import org.fcitx.fcitx5.android.utils.parcelable
 import org.fcitx.fcitx5.android.utils.subMenu
@@ -57,6 +63,8 @@ class CropImageActivity : AppCompatActivity() {
     companion object {
         const val CROP_OPTIONS = "crop_options"
         const val CROP_RESULT = "crop_result"
+        private const val STATE_SOURCE_URI = "state_source_uri"
+        private const val STATE_TEMP_SRC_PATH = "state_temp_src_path"
     }
 
     sealed class CropOption : Parcelable {
@@ -122,30 +130,95 @@ class CropImageActivity : AppCompatActivity() {
     private lateinit var cropView: CropImageView
 
     private lateinit var sourceImageUri: Uri
+    private var tempSourceFile: File? = null
+    private var isCropping = false
 
     private val launcher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) {
             setResult(RESULT_CANCELED)
             finish()
         } else {
-            sourceImageUri = uri
-            cropView.setImageUriAsync(uri)
+            // mod: copy transient Photo Picker content:// URI to app cacheDir immediately while
+            // CropImageActivity holds the picker URI grant; Android 16+ revokes picker_get_content
+            // grants as soon as CropImageActivity finishes, which otherwise throws SecurityException
+            // when the caller reads srcUri after returning.
+            lifecycleScope.launch {
+                val localUri = if (uri.scheme == "content") {
+                    try {
+                        val cached = withContext(Dispatchers.IO) {
+                            pruneStaleCropCache()
+                            val ext = MimeTypeMap.getSingleton()
+                                .getExtensionFromMimeType(contentResolver.getType(uri))
+                                ?.takeIf { it.isNotBlank() }
+                            val suffix = if (ext != null) ".$ext" else ".img"
+                            val dst = File.createTempFile("crop_src_", suffix, cacheDir)
+                            try {
+                                contentResolver.openInputStream(uri)?.use { input ->
+                                    dst.outputStream().use { out -> input.copyTo(out) }
+                                } ?: throw IllegalStateException("Cannot open input stream for $uri")
+                                dst
+                            } catch (e: Exception) {
+                                dst.delete()
+                                throw e
+                            }
+                        }
+                        tempSourceFile = cached
+                        Uri.fromFile(cached)
+                    } catch (e: Exception) {
+                        Timber.e("Exception when caching picked image: ${e.stackTraceToString()}")
+                        toast(e)
+                        setResult(RESULT_CANCELED)
+                        finish()
+                        return@launch
+                    }
+                } else {
+                    uri
+                }
+                sourceImageUri = localUri
+                cropView.setImageUriAsync(localUri)
+            }
+        }
+    }
+
+    private fun pruneStaleCropCache() {
+        val cutoff = System.currentTimeMillis() - 3_600_000L
+        cacheDir.listFiles()?.forEach { f ->
+            if ((f.name.startsWith("crop_src_") || f.name.startsWith("cropped")) && f.lastModified() < cutoff) {
+                runCatching { f.delete() }
+            }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         cropOption = intent.parcelable<CropOption>(CROP_OPTIONS) ?: CropOption.New(1, 1)
+        savedInstanceState?.parcelable<Uri>(STATE_SOURCE_URI)?.let {
+            sourceImageUri = it
+        }
+        savedInstanceState?.getString(STATE_TEMP_SRC_PATH)?.let { path ->
+            tempSourceFile = File(path).takeIf { it.exists() }
+        }
         enableEdgeToEdge()
         setupRootView()
         setContentView(root)
         setupCropView(cropOption)
         onBackPressedDispatcher.addCallback {
+            tempSourceFile?.delete()
             setResult(RESULT_CANCELED)
             finish()
         }
         toolbar.setNavigationOnClickListener {
             onBackPressedDispatcher.onBackPressed()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (::sourceImageUri.isInitialized) {
+            outState.putParcelable(STATE_SOURCE_URI, sourceImageUri)
+        }
+        tempSourceFile?.let {
+            outState.putString(STATE_TEMP_SRC_PATH, it.absolutePath)
         }
     }
 
@@ -215,7 +288,11 @@ class CropImageActivity : AppCompatActivity() {
         cropView.setAspectRatio(option.width, option.height)
         when (option) {
             is CropOption.New -> {
-                launcher.launch("image/*")
+                if (::sourceImageUri.isInitialized) {
+                    cropView.setImageUriAsync(sourceImageUri)
+                } else {
+                    launcher.launch("image/*")
+                }
             }
             is CropOption.Edit -> {
                 sourceImageUri = option.sourceUri
@@ -232,27 +309,38 @@ class CropImageActivity : AppCompatActivity() {
     }
 
     private fun onCropImage() {
-        val tempOutFile = File.createTempFile("cropped", ".png", cacheDir)
-        try {
-            val bitmap = cropView.getCroppedImage(
-                reqWidth = cropOption.width,
-                reqHeight = cropOption.height,
-                options = CropImageView.RequestSizeOptions.RESIZE_INSIDE,
-            )
-            tempOutFile.outputStream().use { bitmap!!.compress(Bitmap.CompressFormat.PNG, 100, it) }
-            val success = CropResult.Success(
-                rect = cropView.cropRect!!,
-                rotation = cropView.rotatedDegrees,
-                file = tempOutFile,
-                srcUri = sourceImageUri
-            )
-            setResult(RESULT_OK, Intent().putExtra(CROP_RESULT, success))
-        } catch (e: Exception) {
-            tempOutFile.delete()
-            Timber.e("Exception when cropping image: ${e.stackTraceToString()}")
-            toast(e)
-            setResult(RESULT_CANCELED)
+        if (isCropping || !::sourceImageUri.isInitialized) return
+        val rect = cropView.cropRect ?: return
+        val rotation = cropView.rotatedDegrees
+        isCropping = true
+        lifecycleScope.withLoadingDialog(this) {
+            val tempOutFile = File.createTempFile("cropped", ".png", cacheDir)
+            try {
+                val bitmap = cropView.getCroppedImage(
+                    reqWidth = cropOption.width,
+                    reqHeight = cropOption.height,
+                    options = CropImageView.RequestSizeOptions.RESIZE_INSIDE,
+                ) ?: throw IllegalStateException("Failed to crop image")
+                withContext(Dispatchers.IO) {
+                    tempOutFile.outputStream().use {
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+                    }
+                }
+                val success = CropResult.Success(
+                    rect = rect,
+                    rotation = rotation,
+                    file = tempOutFile,
+                    srcUri = sourceImageUri
+                )
+                setResult(RESULT_OK, Intent().putExtra(CROP_RESULT, success))
+            } catch (e: Exception) {
+                tempOutFile.delete()
+                tempSourceFile?.delete()
+                Timber.e("Exception when cropping image: ${e.stackTraceToString()}")
+                toast(e)
+                setResult(RESULT_CANCELED)
+            }
+            finish()
         }
-        finish()
     }
 }

@@ -2,14 +2,22 @@
 <!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
 <resources>
     <string name="liquid_glass">Liquid Glass</string>
+    <string name="glass_light_label">Light</string>
+    <string name="glass_dark_label">Dark</string>
     <string name="glass_mode">Liquid Glass Mode</string>
     <string name="glass_mode_follow_theme">Follow Theme (Glass presets only)</string>
     <string name="glass_mode_backdrop">Backdrop Glass (All themes)</string>
     <string name="glass_mode_see_through">See-through Glass (Experimental)</string>
     <string name="glass_mode_off">Off</string>
     <string name="glass_backdrop_image">Backdrop Image</string>
+    <string name="glass_backdrop_image_light">Light Backdrop Image</string>
+    <string name="glass_backdrop_image_dark">Dark Backdrop Image</string>
     <string name="glass_backdrop_image_unset">Not set (tap to choose an image as Liquid Glass backdrop)</string>
+    <string name="glass_backdrop_image_unset_light">Not set (uses light aurora; tap to choose an image)</string>
+    <string name="glass_backdrop_image_unset_dark">Not set (uses dark aurora; tap to choose an image)</string>
     <string name="glass_backdrop_image_set">Custom backdrop set (tap to replace, recrop, or clear)</string>
+    <string name="glass_backdrop_copy_from_light">Use Light Backdrop Image</string>
+    <string name="glass_backdrop_copy_from_dark">Use Dark Backdrop Image</string>
     <string name="glass_backdrop_clear">Clear backdrop (restore dynamic aurora)</string>
     <string name="glass_backdrop_brightness">Backdrop Brightness</string>
     <string name="glass_blur_radius">Blur Radius</string>

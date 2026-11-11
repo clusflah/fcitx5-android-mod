@@ -136,8 +136,8 @@ class ThemeListFragment : Fragment() {
             override fun onAddNewTheme() = addTheme()
             override fun onSelectTheme(theme: Theme) = selectTheme(theme)
             override fun onEditTheme(theme: Theme.Custom) = editTheme(theme)
-            override fun onEditGlassBackdrop() {
-                (parentFragment as? ThemeFragment)?.openGlassBackdropEditor()
+            override fun onEditGlassBackdrop(isDark: Boolean) {
+                (parentFragment as? ThemeFragment)?.openGlassBackdropEditor(isDark)
             }
             override fun onExportTheme(theme: Theme.Custom) = exportTheme(theme)
         }

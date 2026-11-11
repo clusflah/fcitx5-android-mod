@@ -30,6 +30,7 @@ class GlassPrefs(sharedPreferences: SharedPreferences) :
     private val enabled: Boolean
         get() = mode.getValue() != GlassMode.Off
 
+    // Light custom backdrop metadata (keeps original keys for seamless upgrade)
     val hasCustomBackdrop = ManagedPreference.PBool(
         sharedPreferences,
         "glass_has_custom_backdrop",
@@ -48,14 +49,50 @@ class GlassPrefs(sharedPreferences: SharedPreferences) :
         0
     ).apply { register() }
 
-    val backdropBrightness = int(
-        R.string.glass_backdrop_brightness,
-        "glass_backdrop_brightness",
-        85,
-        10,
-        100,
-        "%"
-    ) { enabled && hasCustomBackdrop.getValue() }
+    // Dark custom backdrop metadata
+    val hasCustomBackdropDark = ManagedPreference.PBool(
+        sharedPreferences,
+        "glass_has_custom_backdrop_dark",
+        false
+    ).apply { register() }
+
+    val backdropCropRectDark = ManagedPreference.PString(
+        sharedPreferences,
+        "glass_backdrop_crop_rect_dark",
+        ""
+    ).apply { register() }
+
+    val backdropCropRotationDark = ManagedPreference.PInt(
+        sharedPreferences,
+        "glass_backdrop_crop_rotation_dark",
+        0
+    ).apply { register() }
+
+    val hasAnyCustomBackdrop: Boolean
+        get() = hasCustomBackdrop.getValue() || hasCustomBackdropDark.getValue()
+
+    val hasBothCustomBackdrops: Boolean
+        get() = hasCustomBackdrop.getValue() && hasCustomBackdropDark.getValue()
+
+    val backdropBrightnessLight: ManagedPreference.PInt
+    val backdropBrightnessDark: ManagedPreference.PInt
+
+    init {
+        val (bLight, bDark) = twinInt(
+            R.string.glass_backdrop_brightness,
+            R.string.glass_light_label,
+            "glass_backdrop_brightness",
+            85,
+            R.string.glass_dark_label,
+            "glass_backdrop_brightness_dark",
+            75,
+            10,
+            100,
+            "%"
+        ) { enabled && hasAnyCustomBackdrop }
+        backdropBrightnessLight = bLight
+        backdropBrightnessDark = bDark
+    }
 
     val blurRadius = int(
         R.string.glass_blur_radius,
@@ -72,10 +109,10 @@ class GlassPrefs(sharedPreferences: SharedPreferences) :
     init {
         val (light, dark) = twinInt(
             R.string.glass_tint_opacity,
-            R.string.light_mode_theme,
+            R.string.glass_light_label,
             "glass_tint_opacity",
             45,
-            R.string.dark_mode_theme,
+            R.string.glass_dark_label,
             "glass_tint_opacity_dark",
             55,
             0,
@@ -125,14 +162,14 @@ class GlassPrefs(sharedPreferences: SharedPreferences) :
         "glass_dynamic_backdrop",
         true,
         R.string.glass_dynamic_backdrop_summary
-    ) { enabled && !hasCustomBackdrop.getValue() }
+    ) { enabled && !hasBothCustomBackdrops }
 
     val animateBackdrop = switch(
         R.string.glass_animate_backdrop,
         "glass_animate_backdrop",
         false,
         R.string.glass_animate_backdrop_summary
-    ) { enabled && !hasCustomBackdrop.getValue() && dynamicBackdrop.getValue() }
+    ) { enabled && !hasBothCustomBackdrops && dynamicBackdrop.getValue() }
 
     val powerSaveFallback = switch(
         R.string.glass_power_save_fallback,

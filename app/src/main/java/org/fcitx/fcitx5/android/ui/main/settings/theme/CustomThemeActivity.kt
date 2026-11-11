@@ -315,9 +315,16 @@ class CustomThemeActivity : AppCompatActivity() {
                         if (newCreated) {
                             srcImageExtension = MimeTypeMap.getSingleton()
                                 .getExtensionFromMimeType(contentResolver.getType(it.srcUri))
+                                ?: MimeTypeMap.getFileExtensionFromUrl(it.srcUri.toString())
+                                    .takeIf { ext -> ext.isNotBlank() && ext != "img" }
                             srcImageBuffer =
                                 contentResolver.openInputStream(it.srcUri)!!
                                     .use { x -> x.readBytes() }
+                            if (it.srcUri.scheme == "file") {
+                                it.srcUri.path?.let(::File)?.takeIf { f ->
+                                    f.parentFile == cacheDir && f.name.startsWith("crop_src_")
+                                }?.delete()
+                            }
                         }
                         cropRect = it.rect
                         cropRotation = it.rotation
