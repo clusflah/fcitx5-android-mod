@@ -315,15 +315,58 @@ object Glass {
     }
 
     /**
-     * Adds a subtle 1dp soft shadow to labels when see-through or low-opacity glass is active
-     * to guarantee readability against arbitrary backgrounds (§3.5).
+     * Adds a subtle soft shadow to labels when Liquid Glass is active to guarantee readability
+     * against arbitrary or translucent floating backgrounds (§3.5).
      */
     fun applyKeyTextShadow(textView: TextView, theme: Theme) {
         val style = GlassStyle.resolve(theme)
         if (!style.enabled) return
-        if (style.seeThrough || style.tintOpacity < 0.65f) {
-            val shadowColor = if (theme.isDark) 0x88000000.toInt() else 0x55ffffff
-            textView.setShadowLayer(2.2f, 0f, 1f, shadowColor)
+        val strong = style.seeThrough || style.tintOpacity < 0.65f
+        val shadowColor = if (theme.isDark) {
+            if (strong) 0xb0000000.toInt() else 0x8c000000.toInt()
+        } else {
+            if (strong) 0xb0ffffff.toInt() else 0x88ffffff.toInt()
+        }
+        textView.setShadowLayer(if (strong) 2.8f else 2.3f, 0f, if (theme.isDark) 0.8f else 0.5f, shadowColor)
+    }
+
+    /**
+     * Enhances (or restores) text halo contrast on all descendant [TextView]s when floating
+     * keyboard translucency is toggled at runtime across both Liquid Glass and standard themes.
+     */
+    fun applyFloatingTextContrast(view: View, theme: Theme, translucent: Boolean) {
+        if (view is TextView) {
+            if (translucent) {
+                val isLightText = GlassBackdrop.fastLuminance(view.currentTextColor) > 0.45f
+                val halo = if (isLightText) 0xbe000000.toInt() else 0xbeffffff.toInt()
+                view.setShadowLayer(3.0f, 0f, if (isLightText) 0.8f else 0.4f, halo)
+            } else if (isActive(theme)) {
+                applyKeyTextShadow(view, theme)
+            } else {
+                view.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+            }
+        } else if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                applyFloatingTextContrast(view.getChildAt(i), theme, translucent)
+            }
+        }
+    }
+
+    /**
+     * Scales background drawable alpha on non-Liquid-Glass themes when floating translucency is active,
+     * keeping child key labels and toolbar icons at 100% crisp opacity.
+     */
+    fun applyNonGlassFloatingAlpha(view: View, alphaByte: Int, skipRoot: Boolean = true) {
+        if (!skipRoot) {
+            val bg = view.background
+            if (bg != null && bg !is GlassDrawable && bg !is android.graphics.drawable.RippleDrawable) {
+                bg.alpha = alphaByte
+            }
+        }
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                applyNonGlassFloatingAlpha(view.getChildAt(i), alphaByte, skipRoot = false)
+            }
         }
     }
 
@@ -415,7 +458,8 @@ object Glass {
             extraOpacityBoost = 0.22f,
             enablePressMorph = pressMorph,
             scaleViewOnPress = scaleViewOnPress,
-            outlineAlpha = 0.28f
+            outlineAlpha = 0.28f,
+            allowFloatingTranslucency = false
         )
     }
 
@@ -506,7 +550,8 @@ object Glass {
             extraOpacityBoost = extraOpacityBoost,
             enablePressMorph = pressMorph,
             scaleViewOnPress = scaleViewOnPress,
-            surfaceAlpha = surfaceAlpha
+            surfaceAlpha = surfaceAlpha,
+            allowFloatingTranslucency = false
         )
     }
 }

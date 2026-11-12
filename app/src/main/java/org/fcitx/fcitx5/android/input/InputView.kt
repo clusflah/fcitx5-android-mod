@@ -157,17 +157,34 @@ class InputView(
         keyboardHeightPercentBase,
         keyboardPrefs.floatingKeyboardPortrait,
         keyboardPrefs.floatingKeyboardLandscape,
+        keyboardPrefs.floatingKeyboardOpacity,
     )
 
     // mod: portrait & landscape floating keyboard, see FloatingKeyboard
     private val floating = FloatingKeyboard(service, theme) { updateKeyboardSize() }
+
+    private var glassBackdrop: org.fcitx.fcitx5.android.input.glass.GlassBackdrop? = null
+
+    private val floatingBorderDrawable by lazy {
+        android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = dp(16f)
+            setColor(android.graphics.Color.TRANSPARENT)
+            val strokeColor = if (org.fcitx.fcitx5.android.input.glass.Glass.isActive(theme)) {
+                if (theme.isDark) 0x44ebf4ff else 0x62ffffff
+            } else {
+                if (theme.isDark) 0x33ffffff else 0x24000000
+            }
+            setStroke(dp(1), strokeColor)
+        }
+    }
 
     private val glassBackdropWindow =
         org.fcitx.fcitx5.android.input.glass.GlassBackdropWindow(
             service, theme, org.fcitx.fcitx5.android.input.glass.Glass.style(theme)
         )
 
-    fun onWindowShown() = glassBackdropWindow.onWindowShown(keyboardView, floating.enabled)
+    fun onWindowShown() = glassBackdropWindow.onWindowShown(keyboardView, floating.enabled, floating.opacity)
     fun onWindowHidden() = glassBackdropWindow.onWindowHidden()
 
     /** the floating keyboard's bounds in the window (all that takes touches), or null when docked */
@@ -235,10 +252,11 @@ class InputView(
         }
         if (isFloatingWidthReset || keyboardSizePrefs.any { it.key == key }) {
             updateKeyboardSize()
-            glassBackdropWindow.syncBounds(keyboardView, floating.enabled)
+            glassBackdropWindow.syncBounds(keyboardView, floating.enabled, floating.opacity)
         }
     }
 
+    private val scaledKeyboardFrame: ScaledKeyboardFrame
     val keyboardView: View
 
     init {
@@ -269,7 +287,7 @@ class InputView(
         // a panel left open by the previous input view must not keep swallowing input
         org.fcitx.fcitx5.android.input.translate.TranslateDraft.stop()
 
-        keyboardView = constraintLayout {
+        val keyboardContent = constraintLayout {
             // allow MotionEvent to be delivered to keyboard while pressing on padding views.
             // although it should be default for apps targeting Honeycomb (3.0, API 11) and higher,
             // but it's not the case on some devices ... just set it here
@@ -314,6 +332,12 @@ class InputView(
             })
         }
 
+        scaledKeyboardFrame = ScaledKeyboardFrame(context).apply {
+            id = View.generateViewId()
+            addView(keyboardContent, android.widget.FrameLayout.LayoutParams(matchParent, wrapContent))
+        }
+        keyboardView = scaledKeyboardFrame
+
         add(preedit.ui.root, lParams(matchConstraints, wrapContent) {
             above(keyboardView)
             // mod: follow the keyboard when it floats
@@ -325,10 +349,19 @@ class InputView(
             bottomOfParent()
         })
 
+        glassBackdrop = org.fcitx.fcitx5.android.input.glass.Glass.attachBackdrop(keyboardView, customBackground, theme, keyBorder)
         updateKeyboardSize()
-        org.fcitx.fcitx5.android.input.glass.Glass.attachBackdrop(keyboardView, customBackground, theme, keyBorder)
+        windowManager.view.setOnHierarchyChangeListener(object : OnHierarchyChangeListener {
+            override fun onChildViewAdded(parent: View?, child: View?) {
+                if (floating.isTranslucent && child != null) {
+                    applyFloatingTranslucencyToSubtree(child)
+                }
+            }
+
+            override fun onChildViewRemoved(parent: View?, child: View?) {}
+        })
         keyboardView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            glassBackdropWindow.syncBounds(keyboardView, floating.enabled)
+            glassBackdropWindow.syncBounds(keyboardView, floating.enabled, floating.opacity)
         }
         add(popup.root, lParams(matchParent, matchParent) {
             centerVertically()
@@ -345,6 +378,7 @@ class InputView(
             return
         }
         floating.handle.visibility = GONE
+        scaledKeyboardFrame.contentScale = 1f
         keyboardView.apply {
             updateLayoutParams<LayoutParams> {
                 width = LayoutParams.MATCH_PARENT
@@ -394,12 +428,14 @@ class InputView(
         }
         preedit.ui.root.setPadding(sidePadding, 0, sidePadding, 0)
         kawaiiBar.view.setPadding(sidePadding, 0, sidePadding, 0)
+        applyFloatingTranslucency()
     }
 
     /** mod: a small keyboard with rounded corners where the user left it, the bar at its bottom moves / resizes it */
     private fun updateFloatingKeyboard() {
         floating.fit(width, height)
         floating.handle.visibility = VISIBLE
+        scaledKeyboardFrame.contentScale = floating.uiScale
         keyboardView.apply {
             updateLayoutParams<LayoutParams> {
                 width = floating.keyboardWidth
@@ -412,11 +448,12 @@ class InputView(
             outlineProvider = floating.outlineProvider
             clipToOutline = true
             elevation = floating.elevation
+            invalidateOutline()
         }
         // key previews must stay above the raised keyboard
-        popup.root.elevation = floating.elevation * 2
+        popup.root.elevation = kotlin.math.max(floating.elevation * 2f, dp(8f))
         windowManager.view.updateLayoutParams<LayoutParams> {
-            height = floating.keysHeight
+            height = floating.unscaledKeysHeight
             startToEnd = unset
             endToStart = unset
             startOfParent()
@@ -430,6 +467,56 @@ class InputView(
         }
         preedit.ui.root.setPadding(dp(8), 0, dp(8), dp(2))
         kawaiiBar.view.setPadding(0, 0, 0, 0)
+        applyFloatingTranslucency()
+    }
+
+    /**
+     * mod: makes floating keyboard background & key bodies optically translucent so underlying
+     * app content remains faintly visible while keeping key labels & icons 100% crisp.
+     */
+    private fun applyFloatingTranslucency() {
+        val glass = org.fcitx.fcitx5.android.input.glass.Glass
+        val translucent = floating.isTranslucent
+        keyboardView.foreground = if (floating.enabled) floatingBorderDrawable else null
+        if (!translucent) {
+            customBackground.imageAlpha = 255
+            glassBackdrop?.floatingSurfaceAlpha = 1f
+            if (!glass.isActive(theme)) {
+                glass.applyNonGlassFloatingAlpha(keyboardView, 255)
+                glass.applyNonGlassFloatingAlpha(preedit.ui.root, 255, skipRoot = false)
+            }
+            glass.applyFloatingTextContrast(keyboardView, theme, false)
+            glass.applyFloatingTextContrast(preedit.ui.root, theme, false)
+            glass.invalidateGlassDescendants(this)
+            keyboardView.invalidate()
+            return
+        }
+
+        val op = floating.opacity
+        val cardAlpha = (op * op * 0.72f).coerceIn(0.05f, 0.95f)
+        customBackground.imageAlpha = (cardAlpha * 255f).toInt().coerceIn(12, 255)
+        glassBackdrop?.floatingSurfaceAlpha = (0.10f + op * 0.58f).coerceIn(0.20f, 0.95f)
+
+        if (!glass.isActive(theme)) {
+            val nonGlassAlpha = ((0.18f + op * 0.68f) * 255f).toInt().coerceIn(45, 255)
+            glass.applyNonGlassFloatingAlpha(keyboardView, nonGlassAlpha)
+            glass.applyNonGlassFloatingAlpha(preedit.ui.root, nonGlassAlpha, skipRoot = false)
+        }
+        glass.applyFloatingTextContrast(keyboardView, theme, true)
+        glass.applyFloatingTextContrast(preedit.ui.root, theme, true)
+        glass.invalidateGlassDescendants(this)
+        keyboardView.invalidate()
+    }
+
+    private fun applyFloatingTranslucencyToSubtree(subtree: View) {
+        val glass = org.fcitx.fcitx5.android.input.glass.Glass
+        if (!glass.isActive(theme)) {
+            val op = floating.opacity
+            val nonGlassAlpha = ((0.18f + op * 0.68f) * 255f).toInt().coerceIn(45, 255)
+            glass.applyNonGlassFloatingAlpha(subtree, nonGlassAlpha, skipRoot = false)
+        }
+        glass.applyFloatingTextContrast(subtree, theme, true)
+        glass.invalidateGlassDescendants(subtree)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -512,6 +599,73 @@ class InputView(
         glassBackdropWindow.dismiss()
         scope.clear()
         super.onDetachedFromWindow()
+    }
+
+    /**
+     * Measures its child at unscaled `(width / contentScale)` and scales it uniformly by [contentScale]
+     * so toolbar buttons, letters, icons, and key margins shrink proportionally when floating.
+     */
+    private class ScaledKeyboardFrame(context: android.content.Context) : android.widget.FrameLayout(context) {
+        var contentScale: Float = 1f
+            set(value) {
+                val clamped = value.coerceIn(0.40f, 1f)
+                if (field != clamped) {
+                    field = clamped
+                    getChildAt(0)?.let { child ->
+                        child.pivotX = 0f
+                        child.pivotY = 0f
+                        child.scaleX = clamped
+                        child.scaleY = clamped
+                    }
+                    requestLayout()
+                }
+            }
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val child = getChildAt(0)
+            val s = contentScale
+            if (child == null || s >= 0.999f) {
+                child?.apply {
+                    pivotX = 0f
+                    pivotY = 0f
+                    scaleX = 1f
+                    scaleY = 1f
+                }
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+                return
+            }
+            val visualW = MeasureSpec.getSize(widthMeasureSpec).coerceAtLeast(1)
+            val innerW = kotlin.math.round(visualW / s).toInt().coerceAtLeast(1)
+            val childWSpec = MeasureSpec.makeMeasureSpec(innerW, MeasureSpec.EXACTLY)
+            val childHSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+            child.measure(childWSpec, childHSpec)
+            val innerH = child.measuredHeight.coerceAtLeast(1)
+            val scaledH = kotlin.math.round(innerH * s).toInt().coerceAtLeast(1)
+            val visualH = when (MeasureSpec.getMode(heightMeasureSpec)) {
+                MeasureSpec.EXACTLY -> MeasureSpec.getSize(heightMeasureSpec)
+                MeasureSpec.AT_MOST -> kotlin.math.min(scaledH, MeasureSpec.getSize(heightMeasureSpec))
+                else -> scaledH
+            }
+            setMeasuredDimension(visualW, visualH)
+        }
+
+        override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+            val child = getChildAt(0) ?: return
+            val s = contentScale
+            if (s >= 0.999f) {
+                child.pivotX = 0f
+                child.pivotY = 0f
+                child.scaleX = 1f
+                child.scaleY = 1f
+                super.onLayout(changed, left, top, right, bottom)
+                return
+            }
+            child.pivotX = 0f
+            child.pivotY = 0f
+            child.scaleX = s
+            child.scaleY = s
+            child.layout(0, 0, child.measuredWidth, child.measuredHeight)
+        }
     }
 
 }

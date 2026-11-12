@@ -52,6 +52,9 @@ class GlassBackdrop(
     var version: Int = 0
         private set
 
+    /** Surface body alpha multiplier applied to keyboard glass elements when floating translucency is active */
+    var floatingSurfaceAlpha: Float = 1f
+
     private val luminanceGrid = FloatArray(GRID_W * GRID_H) { if (theme.isDark) 0.12f else 0.82f }
 
     fun update(source: Drawable?, width: Int, height: Int) {

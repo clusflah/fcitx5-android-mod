@@ -225,7 +225,8 @@ class PickerPageUi(
                                 false
                             }
                             CustomGestureView.GestureType.Move -> {
-                                onPopupChangeFocus(view.id, event.x, event.y)
+                                val s = view.parentWindowScale
+                                onPopupChangeFocus(view.id, event.x * s, event.y * s)
                             }
                             CustomGestureView.GestureType.Up -> {
                                 onPopupTrigger(view.id).also {

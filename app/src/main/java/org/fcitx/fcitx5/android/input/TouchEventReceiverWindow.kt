@@ -43,8 +43,14 @@ class TouchEventReceiverWindow(
 
     fun show() {
         val (x, y) = cachedLocation.also { contentView.getLocationInWindow(it) }
-        val width = contentView.width
-        val height = contentView.height
+        var s = contentView.scaleX
+        var p = contentView.parent
+        while (p is View) {
+            s *= p.scaleX
+            p = p.parent
+        }
+        val width = kotlin.math.round(contentView.width * s).toInt()
+        val height = kotlin.math.round(contentView.height * s).toInt()
         showAt(x, y, width, height)
     }
 

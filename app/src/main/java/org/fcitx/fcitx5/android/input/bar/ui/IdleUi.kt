@@ -129,6 +129,19 @@ class IdleUi(
         }
     }
 
+    private val pinnedScroll = android.widget.HorizontalScrollView(ctx).apply {
+        isHorizontalScrollBarEnabled = false
+        overScrollMode = View.OVER_SCROLL_NEVER
+        org.fcitx.fcitx5.android.input.glass.Glass.attachScrollInvalidator(this, theme)
+        addView(
+            buttonsUi.pinnedRoot,
+            android.view.ViewGroup.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
+    }
+
     private val idleBody = constraintLayout {
         val size = dp(KawaiiBarComponent.HEIGHT)
         add(menuButton, lParams(size, size) {
@@ -139,14 +152,17 @@ class IdleUi(
             endOfParent()
             centerVertically()
         })
-        // mod: toolbar buttons pinned in Settings stay left of the hide-keyboard button
-        add(buttonsUi.pinnedRoot, lParams(wrapContent, size) {
+        // mod: toolbar buttons pinned in Settings stay left of the hide-keyboard button without overlapping menuButton
+        add(pinnedScroll, lParams(wrapContent, size) {
+            after(menuButton)
             before(hideKeyboardButton)
+            horizontalBias = 1f
+            constrainedWidth = true
             centerVertically()
         })
         add(animator, lParams(matchConstraints, matchParent) {
             after(menuButton)
-            before(buttonsUi.pinnedRoot)
+            before(pinnedScroll)
             centerVertically()
         })
     }
