@@ -312,9 +312,12 @@ class AiAssistActivity : AppCompatActivity() {
 
         val outerScroll = ScrollView(this).apply { addView(root) }
         setContentView(outerScroll)
-        // mod: keyboard floating (landscape): the card is as wide as the keyboard, on the other side
-        // of the screen so the keyboard doesn't cover it when typing into the card
+        // mod: keyboard floating: side-by-side horizontally when wide enough (landscape / wide tablet),
+        // or positioned above / below the floating keyboard in portrait so typing never covers the card
         val floating = org.fcitx.fcitx5.android.input.FloatingKeyboard.horizontalBounds(this)
+        val portraitFloating = if (floating == null) {
+            org.fcitx.fcitx5.android.input.FloatingKeyboard.portraitVerticalBounds(this)
+        } else null
         if (floating != null) {
             val (kbX, kbWidth) = floating
             val screen = resources.displayMetrics.widthPixels
@@ -335,7 +338,7 @@ class AiAssistActivity : AppCompatActivity() {
             // sit lower on the screen, nearer the keyboard and the thumb: a quarter of the screen
             // below the middle, less half the card's own height once it is measured
             val lower = resources.displayMetrics.heightPixels / 4
-            if (floating == null) {
+            if (floating == null && portraitFloating == null) {
                 window.attributes = window.attributes.apply { y = lower }
                 window.decorView.post {
                     window.attributes = window.attributes.apply {
@@ -348,6 +351,30 @@ class AiAssistActivity : AppCompatActivity() {
             AiDialogStyle.compact(providerSpinner, header.getChildAt(header.childCount - 1) as Button)
             // keep the card low: the field grows as text is typed or pasted
             input.minLines = 1
+        }
+        if (portraitFloating != null) {
+            val (kbTopY, kbBottomY) = portraitFloating
+            val screenH = resources.displayMetrics.heightPixels
+            val topSafe = dp(48)
+            val gap = dp(12)
+            window.attributes = window.attributes.apply {
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                y = topSafe
+            }
+            window.decorView.post {
+                val cardH = window.decorView.height
+                val spaceAbove = kbTopY - topSafe
+                val spaceBelow = screenH - kbBottomY - dp(24)
+                val targetY = if (spaceAbove >= spaceBelow) {
+                    (kbTopY - cardH - gap).coerceAtLeast(topSafe)
+                } else {
+                    (kbBottomY + gap).coerceIn(topSafe, (screenH - cardH - dp(24)).coerceAtLeast(topSafe))
+                }
+                window.attributes = window.attributes.apply {
+                    gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                    y = targetY
+                }
+            }
         }
         renderPrompts()
         // selected text passed in from the keyboard: translate right away

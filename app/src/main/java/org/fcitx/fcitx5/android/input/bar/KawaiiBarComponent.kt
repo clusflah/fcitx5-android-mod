@@ -768,8 +768,15 @@ class KawaiiBarComponent : UniqueViewComponent<KawaiiBarComponent, FrameLayout>(
                     windowManager.attachWindow(StatusAreaWindow())
                 }
                 floatingButton.setOnClickListener {
-                    val floating = AppPrefs.getInstance().keyboard.floatingKeyboardLandscape
-                    floating.setValue(!floating.getValue())
+                    org.fcitx.fcitx5.android.input.FloatingKeyboard.toggle(context)
+                }
+                floatingButton.setOnLongClickListener {
+                    org.fcitx.fcitx5.android.input.FloatingKeyboard.resetGeometry(context)
+                    if (!org.fcitx.fcitx5.android.input.FloatingKeyboard.isEnabled(context)) {
+                        org.fcitx.fcitx5.android.input.FloatingKeyboard.toggle(context)
+                    }
+                    context.toast(R.string.floating_keyboard_reset_toast)
+                    true
                 }
             }
             // the strip shows a code if there is one, otherwise the SMS permission prompt

@@ -61,7 +61,7 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
 
     private val bar: KawaiiBarComponent by manager.must()
 
-    /** mod: tiles first in the panel: 键盘选择, AI 联想 (green while on) and 编辑工具栏 */
+    /** mod: tiles first in the panel: 键盘选择, AI 联想 (green while on), 悬浮键盘 (green while on) and 编辑工具栏 */
     private fun toolEntries(): List<StatusAreaEntry> {
         val prefs = AppPrefs.getInstance().keyboard
         return listOf(
@@ -69,6 +69,10 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
             StatusAreaEntry.Tool(
                 ToolbarButton.AiPredict, context.getString(R.string.ai_predict), ToolbarButton.AiPredict.icon,
                 prefs.aiPredictAuto.getValue()
+            ),
+            StatusAreaEntry.Tool(
+                ToolbarButton.Floating, context.getString(R.string.floating_keyboard), ToolbarButton.Floating.icon,
+                org.fcitx.fcitx5.android.input.FloatingKeyboard.isEnabled(context)
             ),
             StatusAreaEntry.Tool(null, "编辑工具栏", R.drawable.ic_baseline_edit_24, false)
         )
@@ -121,8 +125,11 @@ class StatusAreaWindow : InputWindow.ExtendedInputWindow<StatusAreaWindow>(),
                             return
                         }
                         bar.runToolbarButton(entry.button)
-                        // AI 联想 toggles in place: show its new color
+                        // AI 联想 toggles in place: show its new color; 悬浮键盘 returns straight to typing
                         if (entry.button == ToolbarButton.AiPredict) onStatusAreaUpdate(lastActions)
+                        if (entry.button == ToolbarButton.Floating) {
+                            windowManager.attachWindow(org.fcitx.fcitx5.android.input.keyboard.KeyboardWindow)
+                        }
                     }
                     is StatusAreaEntry.Fcitx -> {
                         val actions = entry.action.menu

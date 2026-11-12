@@ -321,13 +321,26 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             keyboardBottomPaddingLandscape = secondary
         }
 
-        /** mod: in landscape the keyboard floats over the app, see input/FloatingKeyboard.kt */
+        /** mod: floating keyboard over the app in portrait & landscape, see input/FloatingKeyboard.kt */
+        val floatingKeyboardPortrait = switch(
+            R.string.floating_keyboard_portrait, "floating_keyboard_portrait", false,
+            R.string.floating_keyboard_portrait_summary
+        )
         val floatingKeyboardLandscape = switch(
             R.string.floating_keyboard_landscape, "floating_keyboard_landscape", false,
             R.string.floating_keyboard_landscape_summary
         )
 
         // where the floating keyboard sits and how big it is, in px; -1 until the user moves or resizes it
+        val floatingKeyboardPortraitX =
+            ManagedPreference.PInt(sharedPreferences, "floating_keyboard_portrait_x", -1).apply { register() }
+        val floatingKeyboardPortraitBottom =
+            ManagedPreference.PInt(sharedPreferences, "floating_keyboard_portrait_bottom", -1).apply { register() }
+        val floatingKeyboardPortraitWidth =
+            ManagedPreference.PInt(sharedPreferences, "floating_keyboard_portrait_width", -1).apply { register() }
+        val floatingKeyboardPortraitHeight =
+            ManagedPreference.PInt(sharedPreferences, "floating_keyboard_portrait_height", -1).apply { register() }
+
         val floatingKeyboardX =
             ManagedPreference.PInt(sharedPreferences, "floating_keyboard_x", -1).apply { register() }
         val floatingKeyboardBottom =

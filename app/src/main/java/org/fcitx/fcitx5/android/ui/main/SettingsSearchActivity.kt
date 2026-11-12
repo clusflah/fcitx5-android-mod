@@ -78,7 +78,7 @@ class SettingsSearchActivity : AppCompatActivity() {
             Entry(getString(R.string.mod_welcome), getString(R.string.mod_welcome), "入门 上手 介绍 九宫格 全键盘",
                 activity = ModWelcomeActivity::class.java),
             Entry(getString(R.string.toolbar_buttons), getString(R.string.virtual_keyboard),
-                "工具栏 按钮 撤销 重做 剪贴板 翻译 键盘选择 bitwarden 排序 常驻",
+                "工具栏 按钮 撤销 重做 剪贴板 翻译 键盘选择 悬浮键盘 bitwarden 排序 常驻",
                 activity = ToolbarButtonsActivity::class.java),
         ) +
                 pageEntries(prefs.keyboard, R.string.virtual_keyboard, SettingsRoute.VirtualKeyboard, null) +
