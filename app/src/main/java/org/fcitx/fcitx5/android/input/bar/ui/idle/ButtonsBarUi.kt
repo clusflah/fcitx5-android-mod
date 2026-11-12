@@ -122,11 +122,22 @@ class ButtonsBarUi(override val ctx: Context, private val theme: Theme) : Ui {
             contentDescription = ctx.getString(R.string.switch_to_voice_input)
         }
 
-    /** mod: floats the keyboard (FloatingKeyboard); only offered in landscape */
-    val floatingButton = toolButton(R.drawable.ic_floating_keyboard, prefs.showFloatingButton, {
-        ctx.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-    }).apply {
-        contentDescription = ctx.getString(R.string.floating_keyboard_landscape)
+    /** mod: floats the keyboard (FloatingKeyboard) in both portrait and landscape */
+    val floatingButton = toolButton(R.drawable.ic_floating_keyboard, prefs.showFloatingButton).apply {
+        contentDescription = ctx.getString(R.string.floating_keyboard)
+        fun syncActiveTint() {
+            setIconTint(
+                if (org.fcitx.fcitx5.android.input.FloatingKeyboard.isEnabled(ctx))
+                    theme.genericActiveBackgroundColor
+                else
+                    theme.altKeyTextColor
+            )
+        }
+        syncActiveTint()
+        val stateListener = ManagedPreference.OnChangeListener<Boolean> { _, _ -> syncActiveTint() }
+        visibilityListeners.add(stateListener)
+        prefs.floatingKeyboardPortrait.registerOnChangeListener(stateListener)
+        prefs.floatingKeyboardLandscape.registerOnChangeListener(stateListener)
     }
 
     fun setVoiceAllowed(allowed: Boolean) {

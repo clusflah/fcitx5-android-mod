@@ -1,8 +1,8 @@
 /*
  * SPDX-License-Identifier: LGPL-2.1-or-later
- * mod: the landscape floating keyboard (设置 → 虚拟键盘 → 横屏悬浮键盘, or the toolbar button).
- * InputView keeps its layout and only places / sizes its keyboardView with this geometry;
- * the bar at the bottom of the keyboard moves it (middle) and resizes it (the two corners).
+ * mod: floating keyboard in both portrait and landscape (设置 → 虚拟键盘 → 竖屏/横屏悬浮键盘,
+ * toolbar button, or 更多 panel). InputView keeps its layout and only places / sizes its
+ * keyboardView with this geometry; the bar at the bottom moves it (middle) and resizes it (corners).
  */
 package org.fcitx.fcitx5.android.input
 
@@ -31,9 +31,11 @@ class FloatingKeyboard(
 ) {
     private val prefs = AppPrefs.getInstance().keyboard
 
+    private val isLandscape: Boolean
+        get() = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     val enabled: Boolean
-        get() = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
-                prefs.floatingKeyboardLandscape.getValue()
+        get() = isEnabled(context)
 
     /** left edge of the keyboard, px */
     var keyboardX = 0
@@ -52,47 +54,82 @@ class FloatingKeyboard(
 
     val handleHeight = context.dp(24)
 
-    private val minWidth = context.dp(240)
+    private val minWidth = context.dp(220)
     private val minKeysHeight = context.dp(110)
     private val otherHeight = context.dp(KawaiiBarComponent.HEIGHT) + handleHeight
+    private val topSafeMargin = context.dp(36)
 
     private var parentWidth = 0
     private var parentHeight = 0
-    private var loaded = false
+    private var loadedOrientation = Configuration.ORIENTATION_UNDEFINED
 
-    /** loads the saved geometry (or the default: one-hand size, lower right) and keeps it inside the window */
+    private fun xPref(landscape: Boolean = isLandscape) =
+        if (landscape) prefs.floatingKeyboardX else prefs.floatingKeyboardPortraitX
+
+    private fun bottomPref(landscape: Boolean = isLandscape) =
+        if (landscape) prefs.floatingKeyboardBottom else prefs.floatingKeyboardPortraitBottom
+
+    private fun widthPref(landscape: Boolean = isLandscape) =
+        if (landscape) prefs.floatingKeyboardWidth else prefs.floatingKeyboardPortraitWidth
+
+    private fun heightPref(landscape: Boolean = isLandscape) =
+        if (landscape) prefs.floatingKeyboardHeight else prefs.floatingKeyboardPortraitHeight
+
+    fun reload() {
+        loadedOrientation = Configuration.ORIENTATION_UNDEFINED
+    }
+
+    /** loads the saved geometry (or orientation-appropriate defaults) and keeps it inside the window */
     fun fit(parentWidth: Int, parentHeight: Int) {
         val metrics = context.resources.displayMetrics
         this.parentWidth = if (parentWidth > 0) parentWidth else metrics.widthPixels
         this.parentHeight = if (parentHeight > 0) parentHeight else metrics.heightPixels
-        if (loaded) {
+        val orientation = context.resources.configuration.orientation
+        if (loadedOrientation == orientation) {
             clamp()
             return
         }
-        loaded = true
-        keyboardWidth = prefs.floatingKeyboardWidth.getValue().takeIf { it > 0 }
-            ?: min(context.dp(400), this.parentWidth / 2)
-        keysHeight = prefs.floatingKeyboardHeight.getValue().takeIf { it > 0 }
-            ?: (keyboardWidth * 0.58f).roundToInt()
-        keyboardX = prefs.floatingKeyboardX.getValue().takeIf { it >= 0 }
-            ?: (this.parentWidth - keyboardWidth - context.dp(24))
-        keyboardBottom = prefs.floatingKeyboardBottom.getValue().takeIf { it >= 0 } ?: context.dp(16)
+        loadedOrientation = orientation
+        val landscape = orientation == Configuration.ORIENTATION_LANDSCAPE
+        if (landscape) {
+            keyboardWidth = widthPref(true).getValue().takeIf { it > 0 }
+                ?: min(context.dp(400), this.parentWidth / 2)
+            keysHeight = heightPref(true).getValue().takeIf { it > 0 }
+                ?: (keyboardWidth * 0.58f).roundToInt()
+            keyboardX = xPref(true).getValue().takeIf { it >= 0 }
+                ?: (this.parentWidth - keyboardWidth - context.dp(24))
+            keyboardBottom = bottomPref(true).getValue().takeIf { it >= 0 } ?: context.dp(16)
+        } else {
+            keyboardWidth = widthPref(false).getValue().takeIf { it > 0 }
+                ?: defaultPortraitWidth(context, this.parentWidth)
+            keysHeight = heightPref(false).getValue().takeIf { it > 0 }
+                ?: (keyboardWidth * 0.65f).roundToInt()
+            keyboardX = xPref(false).getValue().takeIf { it >= 0 }
+                ?: defaultPortraitX(context, this.parentWidth, keyboardWidth)
+            keyboardBottom = bottomPref(false).getValue().takeIf { it >= 0 } ?: context.dp(48)
+        }
         clamp()
     }
 
     private fun clamp() {
         keyboardWidth = keyboardWidth.coerceIn(min(minWidth, parentWidth), parentWidth)
-        val maxKeysHeight = max(minKeysHeight, (parentHeight * 0.8f).roundToInt() - otherHeight)
+        val maxKeysHeight = max(
+            minKeysHeight,
+            min((parentHeight * 0.8f).roundToInt(), parentHeight - topSafeMargin) - otherHeight
+        )
         keysHeight = keysHeight.coerceIn(minKeysHeight, maxKeysHeight)
         keyboardX = keyboardX.coerceIn(0, max(0, parentWidth - keyboardWidth))
-        keyboardBottom = keyboardBottom.coerceIn(0, max(0, parentHeight - keysHeight - otherHeight))
+        keyboardBottom = keyboardBottom.coerceIn(
+            0,
+            max(0, parentHeight - keysHeight - otherHeight - topSafeMargin)
+        )
     }
 
     private fun save() {
-        prefs.floatingKeyboardX.setValue(keyboardX)
-        prefs.floatingKeyboardBottom.setValue(keyboardBottom)
-        prefs.floatingKeyboardWidth.setValue(keyboardWidth)
-        prefs.floatingKeyboardHeight.setValue(keysHeight)
+        xPref().setValue(keyboardX)
+        bottomPref().setValue(keyboardBottom)
+        widthPref().setValue(keyboardWidth)
+        heightPref().setValue(keysHeight)
     }
 
     /** rounded corners for the floating keyboard */
@@ -199,21 +236,104 @@ class FloatingKeyboard(
     val handle: View = Handle()
 
     companion object {
+        private fun defaultPortraitWidth(context: Context, screenW: Int): Int =
+            min(context.dp(340), (screenW * 0.86f).roundToInt()).coerceAtLeast(min(context.dp(220), screenW))
+
+        private fun defaultPortraitX(context: Context, screenW: Int, kbWidth: Int): Int =
+            if (screenW >= context.dp(520)) {
+                screenW - kbWidth - context.dp(24)
+            } else {
+                (screenW - kbWidth) / 2
+            }
+
+        fun isEnabled(context: Context): Boolean {
+            val prefs = AppPrefs.getInstance().keyboard
+            return if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                prefs.floatingKeyboardLandscape.getValue()
+            } else {
+                prefs.floatingKeyboardPortrait.getValue()
+            }
+        }
+
+        fun toggle(context: Context): Boolean {
+            val prefs = AppPrefs.getInstance().keyboard
+            val pref = if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                prefs.floatingKeyboardLandscape
+            } else {
+                prefs.floatingKeyboardPortrait
+            }
+            val next = !pref.getValue()
+            pref.setValue(next)
+            return next
+        }
+
+        fun resetGeometry(context: Context) {
+            val prefs = AppPrefs.getInstance().keyboard
+            if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                prefs.floatingKeyboardX.setValue(-1)
+                prefs.floatingKeyboardBottom.setValue(-1)
+                prefs.floatingKeyboardHeight.setValue(-1)
+                prefs.floatingKeyboardWidth.setValue(-1)
+            } else {
+                prefs.floatingKeyboardPortraitX.setValue(-1)
+                prefs.floatingKeyboardPortraitBottom.setValue(-1)
+                prefs.floatingKeyboardPortraitHeight.setValue(-1)
+                prefs.floatingKeyboardPortraitWidth.setValue(-1)
+            }
+        }
+
         /**
-         * Where the floating keyboard sits across the screen, (left, width) in px, or null when it isn't
-         * floating. Used by windows the keyboard opens (the AI assistant) to take the same size.
+         * Where the floating keyboard sits across the screen, (left, width) in px, when there is room
+         * to place an auxiliary card (the AI assistant) side-by-side horizontally; null otherwise.
          */
         fun horizontalBounds(context: Context): Pair<Int, Int>? {
+            if (!isEnabled(context)) return null
             val prefs = AppPrefs.getInstance().keyboard
-            if (context.resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE ||
-                !prefs.floatingKeyboardLandscape.getValue()
-            ) return null
+            val isLandscape = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
             val screen = context.resources.displayMetrics.widthPixels
-            val width = (prefs.floatingKeyboardWidth.getValue().takeIf { it > 0 }
-                ?: min(context.dp(400), screen / 2)).coerceAtMost(screen)
-            val x = (prefs.floatingKeyboardX.getValue().takeIf { it >= 0 }
-                ?: (screen - width - context.dp(24))).coerceIn(0, max(0, screen - width))
+            if (isLandscape) {
+                val width = (prefs.floatingKeyboardWidth.getValue().takeIf { it > 0 }
+                    ?: min(context.dp(400), screen / 2)).coerceAtMost(screen)
+                val x = (prefs.floatingKeyboardX.getValue().takeIf { it >= 0 }
+                    ?: (screen - width - context.dp(24))).coerceIn(0, max(0, screen - width))
+                return x to width
+            }
+            val width = (prefs.floatingKeyboardPortraitWidth.getValue().takeIf { it > 0 }
+                ?: defaultPortraitWidth(context, screen)).coerceAtMost(screen)
+            // On wide portrait displays (tablets / unfolded foldables), allow side-by-side placement too
+            if (screen < width * 2 + context.dp(16)) return null
+            val x = (prefs.floatingKeyboardPortraitX.getValue().takeIf { it >= 0 }
+                ?: defaultPortraitX(context, screen, width)).coerceIn(0, max(0, screen - width))
             return x to width
+        }
+
+        /**
+         * Vertical screen bounds (topY, bottomY) in px of the portrait floating keyboard when side-by-side
+         * horizontal placement is not available, so floating dialogs (e.g. AI assistant) can sit above or
+         * below the floating keyboard instead of being covered by it.
+         */
+        fun portraitVerticalBounds(context: Context): Pair<Int, Int>? {
+            if (!isEnabled(context)) return null
+            if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) return null
+            val prefs = AppPrefs.getInstance().keyboard
+            val dm = context.resources.displayMetrics
+            val screenW = dm.widthPixels
+            val screenH = dm.heightPixels
+            val minW = min(context.dp(220), screenW)
+            val width = (prefs.floatingKeyboardPortraitWidth.getValue().takeIf { it > 0 }
+                ?: defaultPortraitWidth(context, screenW)).coerceIn(minW, screenW)
+            val otherH = context.dp(KawaiiBarComponent.HEIGHT) + context.dp(24)
+            val topSafe = context.dp(36)
+            val minKeysH = context.dp(110)
+            val maxKeysH = max(minKeysH, min((screenH * 0.8f).roundToInt(), screenH - topSafe) - otherH)
+            val keysH = (prefs.floatingKeyboardPortraitHeight.getValue().takeIf { it > 0 }
+                ?: (width * 0.65f).roundToInt()).coerceIn(minKeysH, maxKeysH)
+            val totalH = keysH + otherH
+            val bottomGap = (prefs.floatingKeyboardPortraitBottom.getValue().takeIf { it >= 0 }
+                ?: context.dp(48)).coerceIn(0, max(0, screenH - totalH - topSafe))
+            val bottomY = screenH - bottomGap
+            val topY = (bottomY - totalH).coerceAtLeast(0)
+            return topY to bottomY
         }
     }
 }

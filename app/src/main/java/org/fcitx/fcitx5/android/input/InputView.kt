@@ -155,10 +155,11 @@ class InputView(
         keyboardBottomPadding,
         keyboardBottomPaddingLandscape,
         keyboardHeightPercentBase,
+        keyboardPrefs.floatingKeyboardPortrait,
         keyboardPrefs.floatingKeyboardLandscape,
     )
 
-    // mod: landscape floating keyboard, see FloatingKeyboard
+    // mod: portrait & landscape floating keyboard, see FloatingKeyboard
     private val floating = FloatingKeyboard(service, theme) { updateKeyboardSize() }
 
     private val glassBackdropWindow =
@@ -226,7 +227,13 @@ class InputView(
 
     @Keep
     private val onKeyboardSizeChangeListener = ManagedPreferenceProvider.OnChangeListener { key ->
-        if (keyboardSizePrefs.any { it.key == key }) {
+        val isFloatingWidthReset =
+            (key == keyboardPrefs.floatingKeyboardWidth.key && keyboardPrefs.floatingKeyboardWidth.getValue() < 0) ||
+            (key == keyboardPrefs.floatingKeyboardPortraitWidth.key && keyboardPrefs.floatingKeyboardPortraitWidth.getValue() < 0)
+        if (isFloatingWidthReset) {
+            floating.reload()
+        }
+        if (isFloatingWidthReset || keyboardSizePrefs.any { it.key == key }) {
             updateKeyboardSize()
             glassBackdropWindow.syncBounds(keyboardView, floating.enabled)
         }
@@ -421,7 +428,7 @@ class InputView(
             height = floating.handleHeight
             bottomMargin = 0
         }
-        preedit.ui.root.setPadding(0, 0, 0, 0)
+        preedit.ui.root.setPadding(dp(8), 0, dp(8), dp(2))
         kawaiiBar.view.setPadding(0, 0, 0, 0)
     }
 
