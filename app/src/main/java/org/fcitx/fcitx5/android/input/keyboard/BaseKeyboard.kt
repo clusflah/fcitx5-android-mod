@@ -280,7 +280,8 @@ abstract class BaseKeyboard(
                             view as KeyView
                             when (event.type) {
                                 GestureType.Move -> {
-                                    onPopupChangeFocus(view.id, event.x, event.y)
+                                    val s = view.parentWindowScale
+                                    onPopupChangeFocus(view.id, event.x * s, event.y * s)
                                 }
                                 GestureType.Up -> {
                                     onPopupTrigger(view.id)
@@ -302,7 +303,8 @@ abstract class BaseKeyboard(
                             view as KeyView
                             when (event.type) {
                                 GestureType.Move -> {
-                                    onPopupChangeFocus(view.id, event.x, event.y)
+                                    val s = view.parentWindowScale
+                                    onPopupChangeFocus(view.id, event.x * s, event.y * s)
                                 }
                                 GestureType.Up -> {
                                     onPopupTrigger(view.id)

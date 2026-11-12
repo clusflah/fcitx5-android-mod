@@ -1,12 +1,12 @@
 /*
  * SPDX-License-Identifier: LGPL-2.1-or-later
  * mod: Tier B cross-window blur sub-window positioned behind keyboardView on Android 12+ (API 31+).
+ * Active for Liquid Glass SeeThrough mode and for translucent floating keyboards.
  */
 package org.fcitx.fcitx5.android.input.glass
 
 import android.app.Dialog
 import android.content.Context
-import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
@@ -29,19 +29,24 @@ class GlassBackdropWindow(
     private var imeWindowShown = false
     private val loc = IntArray(2)
 
-    private val isSupported: Boolean
-        get() = !failed &&
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                style.enabled &&
-                style.seeThrough &&
-                GlassCapabilities.isCrossWindowBlurEnabled
+    private fun shouldShow(isFloating: Boolean, floatingOpacity: Float): Boolean {
+        if (failed || Build.VERSION.SDK_INT < Build.VERSION_CODES.S || !GlassCapabilities.isCrossWindowBlurEnabled) {
+            return false
+        }
+        val seeThroughActive = style.enabled && style.seeThrough
+        val floatingTranslucent = isFloating && floatingOpacity < 0.99f
+        return seeThroughActive || floatingTranslucent
+    }
 
-    fun onWindowShown(keyboardView: View, isFloating: Boolean) {
+    fun onWindowShown(keyboardView: View, isFloating: Boolean, floatingOpacity: Float = 1f) {
         imeWindowShown = true
-        if (!isSupported) return
+        if (!shouldShow(isFloating, floatingOpacity)) {
+            dismiss()
+            return
+        }
         keyboardView.post {
             if (imeWindowShown) {
-                ensureShownAndSync(keyboardView, isFloating)
+                ensureShownAndSync(keyboardView, isFloating, floatingOpacity)
             }
         }
     }
@@ -51,15 +56,45 @@ class GlassBackdropWindow(
         dismiss()
     }
 
-    fun syncBounds(keyboardView: View, isFloating: Boolean) {
-        if (!imeWindowShown || !isSupported) {
+    fun syncBounds(keyboardView: View, isFloating: Boolean, floatingOpacity: Float = 1f) {
+        if (!imeWindowShown || !shouldShow(isFloating, floatingOpacity)) {
             dismiss()
             return
         }
-        ensureShownAndSync(keyboardView, isFloating)
+        ensureShownAndSync(keyboardView, isFloating, floatingOpacity)
     }
 
-    private fun ensureShownAndSync(keyboardView: View, isFloating: Boolean) {
+    private fun computeVeilColor(isFloating: Boolean, floatingOpacity: Float): Int {
+        val op = floatingOpacity.coerceIn(0.2f, 1f)
+        val veilRatio = when {
+            style.enabled && style.seeThrough && !isFloating ->
+                if (theme.isDark) 0.42f else 0.34f
+            style.enabled && style.seeThrough && isFloating ->
+                (if (theme.isDark) 0.32f else 0.24f) * op
+            else ->
+                // Subtle floating glare shield so underlying content stays clearly visible
+                (if (theme.isDark) 0.12f else 0.08f) * op
+        }
+        val veilAlpha = (veilRatio * 255f).roundToInt().coerceIn(4, 240)
+        val veilRgb = theme.backgroundColor and 0x00ffffff
+        return (veilAlpha shl 24) or veilRgb
+    }
+
+    private fun computeBlurRadiusPx(isFloating: Boolean, floatingOpacity: Float): Int {
+        val op = floatingOpacity.coerceIn(0.2f, 1f)
+        return when {
+            style.enabled && style.seeThrough && !isFloating ->
+                context.dp(style.blurRadiusDp.coerceAtLeast(12))
+            style.enabled && style.seeThrough && isFloating ->
+                context.dp((style.blurRadiusDp * (0.20f + 0.65f * op)).roundToInt().coerceAtLeast(3))
+            else ->
+                // Gentle 3dp optical defocus: softens 1px font strokes so key labels stay crisp,
+                // while keeping lines of text, buttons, and colors underneath faintly recognizable.
+                context.dp(3)
+        }
+    }
+
+    private fun ensureShownAndSync(keyboardView: View, isFloating: Boolean, floatingOpacity: Float) {
         if (!keyboardView.isAttachedToWindow || keyboardView.width <= 0 || keyboardView.height <= 0) {
             return
         }
@@ -70,7 +105,8 @@ class GlassBackdropWindow(
         val w = keyboardView.width
         val h = keyboardView.height
         val cornerRadius = if (isFloating) context.dp(16f) else 0f
-        val blurPx = context.dp(style.blurRadiusDp.coerceAtLeast(12))
+        val veilColor = computeVeilColor(isFloating, floatingOpacity)
+        val blurPx = computeBlurRadiusPx(isFloating, floatingOpacity)
 
         runCatching {
             var dlg = dialog
@@ -83,9 +119,7 @@ class GlassBackdropWindow(
                 }
                 val win = dlg.window ?: return
                 val bg = GradientDrawable().apply {
-                    val veilAlpha = ((if (theme.isDark) 0.42f else 0.34f) * 255f).roundToInt()
-                    val veilRgb = theme.backgroundColor and 0x00ffffff
-                    setColor((veilAlpha shl 24) or veilRgb)
+                    setColor(veilColor)
                     this.cornerRadius = cornerRadius
                 }
                 backgroundDrawable = bg
@@ -113,7 +147,10 @@ class GlassBackdropWindow(
                 dialog = dlg
             } else {
                 val win = dlg.window ?: return
-                backgroundDrawable?.cornerRadius = cornerRadius
+                backgroundDrawable?.apply {
+                    setColor(veilColor)
+                    this.cornerRadius = cornerRadius
+                }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     win.setBackgroundBlurRadius(blurPx)
                 }

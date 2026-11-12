@@ -150,7 +150,7 @@ class GlassRenderer(private val isDark: Boolean, private val style: GlassStyle) 
         }
 
         // 4. Frosted surface tint
-        if (clampedSurfaceAlpha < 0.99f && !style.seeThrough) {
+        if (clampedSurfaceAlpha < 0.99f) {
             val scaledAlpha = (Color.alpha(tintColor) * clampedSurfaceAlpha).roundToInt().coerceIn(0, 255)
             tintPaint.color = (tintColor and 0x00ffffff) or (scaledAlpha shl 24)
         } else {
@@ -159,9 +159,10 @@ class GlassRenderer(private val isDark: Boolean, private val style: GlassStyle) 
         canvas.drawRoundRect(rect, radius, radius, tintPaint)
 
         // 5. Internal top-to-bottom sheen gradient
-        val topSheenAlpha = ((if (isDark) 0x16 else 0x28) * (1f + pressProgress * 0.5f)).roundToInt().coerceIn(0, 255)
-        val bottomSheenAlpha = if (isDark) 0x04 else 0x06
-        if (rect.top != lastSheenTop || rect.bottom != lastSheenBottom || pressProgress > 0f) {
+        val sheenScale = if (clampedSurfaceAlpha < 0.99f) (0.35f + 0.65f * clampedSurfaceAlpha) else 1f
+        val topSheenAlpha = ((if (isDark) 0x16 else 0x28) * (1f + pressProgress * 0.5f) * sheenScale).roundToInt().coerceIn(0, 255)
+        val bottomSheenAlpha = ((if (isDark) 0x04 else 0x06) * sheenScale).roundToInt().coerceIn(0, 255)
+        if (rect.top != lastSheenTop || rect.bottom != lastSheenBottom || pressProgress > 0f || clampedSurfaceAlpha < 0.99f) {
             lastSheenTop = rect.top
             lastSheenBottom = rect.bottom
             sheenPaint.shader = LinearGradient(

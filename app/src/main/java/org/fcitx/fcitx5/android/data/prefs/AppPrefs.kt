@@ -330,6 +330,15 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
             R.string.floating_keyboard_landscape, "floating_keyboard_landscape", false,
             R.string.floating_keyboard_landscape_summary
         )
+        val floatingKeyboardOpacity = int(
+            R.string.floating_keyboard_opacity,
+            "floating_keyboard_opacity",
+            55,
+            20,
+            100,
+            "%",
+            5
+        )
 
         // where the floating keyboard sits and how big it is, in px; -1 until the user moves or resizes it
         val floatingKeyboardPortraitX =

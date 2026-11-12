@@ -38,7 +38,8 @@ class GlassDrawable(
     private val enablePressMorph: Boolean = false,
     scaleViewOnPress: Boolean = false,
     private val surfaceAlpha: Float = 1f,
-    private val outlineAlpha: Float = 0f
+    private val outlineAlpha: Float = 0f,
+    private val allowFloatingTranslucency: Boolean = true
 ) : Drawable() {
 
     private val viewRef = if (hostView != null) WeakReference(hostView) else null
@@ -149,6 +150,12 @@ class GlassDrawable(
             resolvedTint
         }
 
+        val effectiveSurfaceAlpha = if (allowFloatingTranslucency && backdrop != null) {
+            (surfaceAlpha * backdrop.floatingSurfaceAlpha).coerceIn(0.10f, 1f)
+        } else {
+            surfaceAlpha
+        }
+
         renderer.draw(
             canvas = canvas,
             rect = drawRect,
@@ -161,7 +168,7 @@ class GlassDrawable(
             pressProgress = max(0f, press),
             refractionScale = refractionScale,
             density = density,
-            surfaceAlpha = surfaceAlpha
+            surfaceAlpha = effectiveSurfaceAlpha
         )
     }
 

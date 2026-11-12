@@ -37,6 +37,13 @@ class FloatingKeyboard(
     val enabled: Boolean
         get() = isEnabled(context)
 
+    /** 0.20..1.00 user-configured floating opacity */
+    val opacity: Float
+        get() = prefs.floatingKeyboardOpacity.getValue().coerceIn(20, 100) / 100f
+
+    val isTranslucent: Boolean
+        get() = enabled && opacity < 0.99f
+
     /** left edge of the keyboard, px */
     var keyboardX = 0
         private set
@@ -54,10 +61,35 @@ class FloatingKeyboard(
 
     val handleHeight = context.dp(24)
 
-    private val minWidth = context.dp(220)
-    private val minKeysHeight = context.dp(110)
-    private val otherHeight = context.dp(KawaiiBarComponent.HEIGHT) + handleHeight
+    private val minWidth = context.dp(210)
+    private val minKeysHeight = context.dp(84)
+    val otherHeight = context.dp(KawaiiBarComponent.HEIGHT) + handleHeight
     private val topSafeMargin = context.dp(36)
+
+    val totalHeight: Int
+        get() = keysHeight + otherHeight
+
+    /**
+     * Uniform UI scale factor (0.42..1.00) so toolbar buttons, key letters, icons, and margins
+     * shrink proportionally when the floating keyboard is smaller than a normal phone keyboard.
+     */
+    val uiScale: Float
+        get() {
+            if (!enabled || keyboardWidth <= 0 || keysHeight <= 0) return 1f
+            val metrics = context.resources.displayMetrics
+            val shortSide = min(metrics.widthPixels, metrics.heightPixels)
+            val refWidth = shortSide.coerceIn(context.dp(340), context.dp(400)).toFloat()
+            val refHeight = context.dp(256).toFloat()
+            return min(1f, min(keyboardWidth / refWidth, totalHeight / refHeight)).coerceAtLeast(0.42f)
+        }
+
+    /** Internal unscaled keys height so (otherHeight + unscaledKeysHeight) * uiScale == totalHeight */
+    val unscaledKeysHeight: Int
+        get() {
+            val s = uiScale
+            val innerTotal = (totalHeight / s).roundToInt()
+            return max(context.dp(140), innerTotal - otherHeight)
+        }
 
     private var parentWidth = 0
     private var parentHeight = 0
@@ -136,11 +168,17 @@ class FloatingKeyboard(
     val outlineProvider = object : ViewOutlineProvider() {
         override fun getOutline(view: View, outline: Outline) {
             outline.setRoundRect(0, 0, view.width, view.height, context.dp(16f))
-            if (org.fcitx.fcitx5.android.input.glass.Glass.isActive(theme)) outline.alpha = 0.35f
+            // Suppress hardware RenderNode interior shadow fill when floating translucency is active
+            outline.alpha = when {
+                isTranslucent -> 0f
+                org.fcitx.fcitx5.android.input.glass.Glass.isActive(theme) -> 0.35f
+                else -> 1f
+            }
         }
     }
 
-    val elevation = if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).seeThrough) 0f else context.dp(8f)
+    val elevation: Float
+        get() = if (org.fcitx.fcitx5.android.input.glass.Glass.style(theme).seeThrough || isTranslucent) 0f else context.dp(8f)
 
     private enum class Drag { Move, ResizeLeft, ResizeRight }
 
@@ -149,7 +187,7 @@ class FloatingKeyboard(
     private inner class Handle : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = theme.keyTextColor
-            alpha = 0x66
+            alpha = 0x80
             strokeCap = Paint.Cap.ROUND
             strokeWidth = dp(2f)
         }

@@ -81,7 +81,18 @@ abstract class KeyView(ctx: Context, val theme: Theme, val def: KeyDef.Appearanc
     private var boundsValid = false
     val bounds: Rect
         get() = cachedBounds.also {
-            if (!boundsValid) updateBounds()
+            updateBounds()
+        }
+
+    val parentWindowScale: Float
+        get() {
+            var s = 1f
+            var p = parent
+            while (p is View) {
+                s *= p.scaleX
+                p = p.parent
+            }
+            return s
         }
 
     /**
@@ -193,7 +204,13 @@ abstract class KeyView(ctx: Context, val theme: Theme, val def: KeyDef.Appearanc
 
     fun updateBounds() {
         val (x, y) = cachedLocation.also { appearanceView.getLocationInWindow(it) }
-        cachedBounds.set(x, y, x + appearanceView.width, y + appearanceView.height)
+        val s = parentWindowScale
+        cachedBounds.set(
+            x,
+            y,
+            x + (appearanceView.width * s).roundToInt(),
+            y + (appearanceView.height * s).roundToInt()
+        )
         boundsValid = true
     }
 

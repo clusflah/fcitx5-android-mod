@@ -14,6 +14,7 @@
     <string name="floating_keyboard_portrait_summary">In portrait the keyboard floats over the app: drag the bottom bar to move, drag a bottom corner to resize, long-press the toolbar button to reset. Toggleable from the toolbar and More panel too.</string>
     <string name="floating_keyboard_landscape">Floating keyboard in landscape</string>
     <string name="floating_keyboard_landscape_summary">In landscape the keyboard floats over the app: drag the bottom bar to move, drag a bottom corner to resize, long-press the toolbar button to reset. Toggleable from the toolbar and More panel too.</string>
+    <string name="floating_keyboard_opacity">Floating keyboard opacity</string>
     <string name="floating_keyboard_reset_toast">Floating keyboard position and size reset</string>
     <string name="check_update">Check for updates</string>
     <string name="check_update_summary">Download the latest release of this fork from GitHub and install it</string>
