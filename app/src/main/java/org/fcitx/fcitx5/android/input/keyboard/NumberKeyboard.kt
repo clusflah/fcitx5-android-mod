@@ -7,6 +7,7 @@ package org.fcitx.fcitx5.android.input.keyboard
 import android.annotation.SuppressLint
 import android.content.Context
 import org.fcitx.fcitx5.android.R
+import org.fcitx.fcitx5.android.core.FcitxKeyMapping
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.input.picker.PickerWindow
 import org.fcitx.fcitx5.android.input.popup.PopupAction
@@ -53,6 +54,28 @@ class NumberKeyboard(
                 ReturnKey()
             )
         )
+
+        /**
+         * Returns direct-commit ASCII text for [NumberKeyboard] keys so digits and symbols
+         * never enter an async input method engine (such as Rime T9) while switching layouts.
+         */
+        fun directCommitText(action: KeyAction): String? = when (action) {
+            is KeyAction.SymAction -> when (val sym = action.sym.sym) {
+                in 0xffb0..0xffb9 -> ('0' + (sym - 0xffb0)).toString()
+                0xffaa -> "*"
+                0xffab -> "+"
+                0xffac -> ","
+                0xffad -> "-"
+                0xffae -> "."
+                0xffaf -> "/"
+                0xffbd -> "="
+                FcitxKeyMapping.FcitxKey_space -> " "
+                else -> null
+            }
+            is KeyAction.FcitxKeyAction ->
+                action.act.takeIf { it.length == 1 && it[0] in '0'..'9' }
+            else -> null
+        }
     }
 
     val backspace: ImageKeyView by lazy { findViewById(R.id.button_backspace) }

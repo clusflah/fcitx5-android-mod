@@ -12,11 +12,13 @@ import android.widget.FrameLayout
 import androidx.annotation.Keep
 import androidx.core.content.ContextCompat
 import androidx.transition.Slide
+import android.os.SystemClock
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.core.Action
 import org.fcitx.fcitx5.android.core.CapabilityFlag
 import org.fcitx.fcitx5.android.core.CapabilityFlags
 import org.fcitx.fcitx5.android.core.FcitxEvent
+import org.fcitx.fcitx5.android.core.FcitxKeyMapping
 import org.fcitx.fcitx5.android.core.FormattedText
 import org.fcitx.fcitx5.android.core.InputMethodEntry
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
@@ -99,9 +101,12 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     private fun useT9() = t9Pref.getValue() && t9Allowed &&
             fcitx.runImmediately { inputMethodEntryCached }.uniqueName == RimeT9.RIME
 
+    private val focusChangeResetKeyboard by AppPrefs.getInstance().keyboard.focusChangeResetKeyboard
+
     /** re-pick 26-key / 九宫格 when the setting or the input method changed */
     private fun refreshTextLayout() {
-        if (currentKeyboardName == TextKeyboard.Name || currentKeyboardName == T9Keyboard.Name) {
+        val active = activeLayoutName()
+        if (active == TextKeyboard.Name || active == T9Keyboard.Name) {
             switchLayout(TextKeyboard.Name, remember = false)
         }
     }
@@ -109,16 +114,23 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     /** the "no nine-key schema" hint is shown once per process */
     private var t9MissingWarned = false
 
-    /** the last [enterT9] found Rime not ready yet: try again on the next status-area update */
+    /** the last Rime schema sync found Rime not ready yet: try again on the next status-area update */
     @Volatile
-    private var t9Pending = false
+    private var t9SyncPending = false
 
-    /** select Rime's nine-key schema for 九宫格, and the previous one again for the 26-key layout */
+    /** select Rime's nine-key schema for 九宫格, and restore non-T9 schema for 26-key / number layout */
     private fun syncRimeSchema(layout: String) {
         when (layout) {
             T9Keyboard.Name -> service.postFcitxJob {
+                if (activeLayoutName() != T9Keyboard.Name || !t9Pref.getValue() || !t9Allowed) {
+                    return@postFcitxJob
+                }
                 val entered = enterT9()
-                t9Pending = entered == null
+                if (activeLayoutName() != T9Keyboard.Name || !t9Pref.getValue() || !t9Allowed) {
+                    if (entered == true) leaveT9()
+                    return@postFcitxJob
+                }
+                t9SyncPending = entered == null
                 if (entered == false && !t9MissingWarned) {
                     t9MissingWarned = true
                     ContextCompat.getMainExecutor(service).execute {
@@ -129,30 +141,87 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
                     }
                 }
             }
+            NumberKeyboard.Name -> service.postFcitxJob {
+                if (activeLayoutName() != NumberKeyboard.Name) return@postFcitxJob
+                if (!isEmpty()) reset()
+                t9SyncPending = leaveT9() == null
+            }
             // only when 九宫格 is really off here: while fcitx starts, the input method isn't known
             // to be Rime yet and the 26-key layout shows for a moment; leaving then would switch Rime
             // back to the 26-key schema right before the 九宫格 comes up, and its keys type digits
-            TextKeyboard.Name -> if (!t9Pref.getValue() || !t9Allowed) service.postFcitxJob { leaveT9() }
+            TextKeyboard.Name -> if (!t9Pref.getValue() || !t9Allowed) {
+                service.postFcitxJob {
+                    if (activeLayoutName() == T9Keyboard.Name) return@postFcitxJob
+                    t9SyncPending = leaveT9() == null
+                }
+            } else {
+                t9SyncPending = false
+            }
         }
     }
 
-    // mod: Rime may not have its schemas yet when the 九宫格 first asks for the nine-key one (fcitx
-    // just started, e.g. coming from another keyboard app), so the keys would type digits; ask again
-    // once the status area shows Rime on a non-nine-key schema
+    // mod: Rime may not have its schemas yet when the layout first asks to enter or leave nine-key
+    // mode (fcitx just started, e.g. coming from another keyboard app); re-sync once status area arrives
     override fun onStatusAreaUpdate(actions: Array<Action>) {
-        if (!t9Pending || currentKeyboardName != T9Keyboard.Name) return
+        if (!t9SyncPending) return
         val schema = RimeT9.currentSchema(actions) ?: return
-        if (!RimeT9.isT9Schema(schema)) syncRimeSchema(T9Keyboard.Name)
+        val active = activeLayoutName()
+        when {
+            active == T9Keyboard.Name && !RimeT9.isT9Schema(schema) ->
+                syncRimeSchema(T9Keyboard.Name)
+            (active == NumberKeyboard.Name ||
+                (active == TextKeyboard.Name && (!t9Pref.getValue() || !t9Allowed))) &&
+                RimeT9.isT9Schema(schema) ->
+                syncRimeSchema(active)
+            else -> t9SyncPending = false
+        }
     }
 
+    @Volatile
     private var currentKeyboardName = ""
+
+    @Volatile
+    private var targetKeyboardName = ""
+
+    private var layoutSwitchSeq = 0
+    var restartingInput = false
+    private var lastEditorPackage: String? = null
+    private var lastEditorFieldId = 0
+    private var lastEditorInputType = 0
+    private var manualNumberSwitchUptime = 0L
+
+    private fun activeLayoutName(): String = targetKeyboardName.ifEmpty { currentKeyboardName }
+
     private var lastSymbolType: String by AppPrefs.getInstance().internal.lastSymbolLayout
 
     private val currentKeyboard: BaseKeyboard? get() = keyboards[currentKeyboardName]
 
+    private fun dispatchNumberKeyAction(action: KeyAction, source: KeyActionListener.Source) {
+        val text = NumberKeyboard.directCommitText(action)
+        if (text != null) {
+            service.commitText(text)
+            return
+        }
+        if (action is KeyAction.SymAction) {
+            when (action.sym.sym) {
+                FcitxKeyMapping.FcitxKey_BackSpace -> {
+                    service.handleBackspaceKey()
+                    return
+                }
+                FcitxKeyMapping.FcitxKey_Return -> {
+                    service.handleReturnKey()
+                    return
+                }
+            }
+        }
+        commonKeyActionListener.listener.onKeyAction(action, source)
+    }
+
     private val keyActionListener = KeyActionListener { it, source ->
         if (it is KeyAction.LayoutSwitchAction) {
             switchLayout(it.act)
+        } else if (activeLayoutName() == NumberKeyboard.Name) {
+            dispatchNumberKeyAction(it, source)
         } else {
             commonKeyActionListener.listener.onKeyAction(it, source)
         }
@@ -179,6 +248,7 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     }
 
     private fun attachLayout(target: String) {
+        targetKeyboardName = target
         currentKeyboardName = target
         // mod: 九宫格 display rules (pinyin preedit, no pinyin beside candidates) follow the layout
         T9Pinyin.active = target == T9Keyboard.Name
@@ -200,9 +270,33 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
             t9Pref.setValue(false)
             return
         }
+        val seq = ++layoutSwitchSeq
+        val initialTarget =
+            if (requested == TextKeyboard.Name && useT9()) T9Keyboard.Name else requested
+        if (keyboards.containsKey(initialTarget)) {
+            // Mark target layout immediately on the main thread so rapid taps or async callbacks
+            // do not race against the posted layout swap.
+            targetKeyboardName = initialTarget
+            if (remember && initialTarget == NumberKeyboard.Name) {
+                manualNumberSwitchUptime = SystemClock.uptimeMillis()
+            }
+            if (initialTarget == NumberKeyboard.Name) {
+                T9Pinyin.active = false
+                panelPreedit = ""
+                clientPreedit = ""
+                currentKeyboard?.rimeComposing = false
+                (keyboards[T9Keyboard.Name] as? T9Keyboard)?.onPreeditUpdate("")
+                service.clearComposing()
+            }
+        } else {
+            targetKeyboardName = currentKeyboardName
+        }
         ContextCompat.getMainExecutor(service).execute {
-            val target = if (requested == TextKeyboard.Name && useT9()) T9Keyboard.Name else requested
+            if (seq != layoutSwitchSeq) return@execute
+            val target =
+                if (requested == TextKeyboard.Name && useT9()) T9Keyboard.Name else requested
             if (keyboards.containsKey(target)) {
+                targetKeyboardName = target
                 if (remember && target != TextKeyboard.Name && target != T9Keyboard.Name) {
                     lastSymbolType = target
                 }
@@ -214,6 +308,7 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
                     notifyBarLayoutChanged()
                 }
             } else {
+                targetKeyboardName = currentKeyboardName
                 if (remember) {
                     lastSymbolType = PickerWindow.Key.Symbol.name
                 }
@@ -223,6 +318,14 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     }
 
     override fun onStartInput(info: EditorInfo, capFlags: CapabilityFlags) {
+        val restarting = restartingInput
+        restartingInput = false
+        val sameEditor = info.packageName == lastEditorPackage &&
+            info.fieldId == lastEditorFieldId &&
+            info.inputType == lastEditorInputType
+        lastEditorPackage = info.packageName
+        lastEditorFieldId = info.fieldId
+        lastEditorInputType = info.inputType
         SpaceVoiceIcon.allowed = !capFlags.has(CapabilityFlag.Password)
         val variation = info.inputType and InputType.TYPE_MASK_VARIATION
         // 26-key layout only for passwords and e-mail addresses. URL fields stay 九宫格 (browser
@@ -242,10 +345,17 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
             InputType.TYPE_CLASS_PHONE -> NumberKeyboard.Name
             else -> TextKeyboard.Name
         }
-        switchLayout(targetLayout, remember = false)
+        val preserveNumberLayout = restarting && sameEditor &&
+            activeLayoutName() == NumberKeyboard.Name &&
+            (!focusChangeResetKeyboard ||
+                SystemClock.uptimeMillis() - manualNumberSwitchUptime < 800L)
+        if (!preserveNumberLayout) {
+            switchLayout(targetLayout, remember = false)
+        }
     }
 
     override fun onImeUpdate(ime: InputMethodEntry) {
+        if (activeLayoutName() == NumberKeyboard.Name) return
         currentKeyboard?.onInputMethodUpdate(ime)
         // 九宫格 only works with Rime: switching to e.g. English brings back the 26-key layout
         if (t9Pref.getValue()) refreshTextLayout()
@@ -257,11 +367,21 @@ class KeyboardWindow : InputWindow.SimpleInputWindow<KeyboardWindow>(), Essentia
     private var clientPreedit = ""
 
     override fun onInputPanelUpdate(data: FcitxEvent.InputPanelEvent.Data) {
+        if (activeLayoutName() == NumberKeyboard.Name) {
+            panelPreedit = ""
+            updateT9Preedit()
+            return
+        }
         panelPreedit = data.preedit.toString()
         updateT9Preedit()
     }
 
     override fun onClientPreeditUpdate(data: FormattedText) {
+        if (activeLayoutName() == NumberKeyboard.Name) {
+            clientPreedit = ""
+            updateT9Preedit()
+            return
+        }
         clientPreedit = data.toString()
         updateT9Preedit()
     }
