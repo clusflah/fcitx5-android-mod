@@ -36,28 +36,39 @@ object RimeT9 {
      * hasn't loaded its schemas yet (right after fcitx starts, e.g. when switching from another
      * keyboard app): KeyboardWindow tries again when the status area changes.
      */
+    private fun schemaActions(rime: Action): List<Action>? =
+        rime.menu?.takeWhile { !it.isSeparator }?.drop(1)?.takeIf { it.isNotEmpty() }
+
     suspend fun FcitxAPI.enterT9(): Boolean? {
         if (inputMethodEntryCached.uniqueName != RIME) return null
         val rime = rimeAction() ?: return null
         val current = rime.longText
         if (isT9Schema(current)) return true
-        val schemas = rime.menu?.filter { !it.isSeparator }
-        if (current.isEmpty() || schemas.isNullOrEmpty()) return null
+        val schemas = schemaActions(rime)
+        if (current.isEmpty() || schemas == null) return null
         val t9 = schemas.firstOrNull { isT9Schema(it.shortText) } ?: return false
         previousSchema = current
         activateAction(t9.id)
         return true
     }
 
-    /** Goes back to the schema used before [enterT9], if we switched. */
-    suspend fun FcitxAPI.leaveT9() {
-        val previous = previousSchema
-        if (previous.isBlank() || inputMethodEntryCached.uniqueName != RIME) return
-        val rime = rimeAction() ?: return
-        if (isT9Schema(rime.longText)) {
-            rime.menu?.firstOrNull { !it.isSeparator && it.shortText == previous }
-                ?.let { activateAction(it.id) }
+    /** Goes back to the schema used before [enterT9], if we switched (or any non-T9 schema if stuck on T9). */
+    suspend fun FcitxAPI.leaveT9(): Boolean? {
+        if (inputMethodEntryCached.uniqueName != RIME) return null
+        val rime = rimeAction() ?: return null
+        val current = rime.longText
+        val schemas = schemaActions(rime)
+        if (current.isEmpty() || schemas == null) return null
+        if (!isT9Schema(current)) {
+            previousSchema = ""
+            return true
         }
+        val previous = previousSchema
+        val target = schemas.firstOrNull { previous.isNotBlank() && it.shortText == previous }
+            ?: schemas.firstOrNull { !isT9Schema(it.shortText) }
+            ?: return false
+        activateAction(target.id)
         previousSchema = ""
+        return true
     }
 }

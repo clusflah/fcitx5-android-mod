@@ -351,9 +351,10 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         }
     }
 
-    private fun handleBackspaceKey() {
+    fun handleBackspaceKey() {
         // mod: the translate panel's field takes the keyboard's input
         if (org.fcitx.fcitx5.android.input.translate.TranslateDraft.backspace()) return
+        if (currentInputConnection == null || currentInputEditorInfo == null) return
         val lastSelection = selection.latest
         if (lastSelection.isNotEmpty()) {
             selection.predict(lastSelection.start)
@@ -384,8 +385,9 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         }
     }
 
-    private fun handleReturnKey() {
+    fun handleReturnKey() {
         if (org.fcitx.fcitx5.android.input.translate.TranslateDraft.submit()) return
+        if (currentInputConnection == null || currentInputEditorInfo == null) return
         currentInputEditorInfo.run {
             if (inputType and InputType.TYPE_MASK_CLASS == InputType.TYPE_NULL ||
                 imeOptions.hasFlag(EditorInfo.IME_FLAG_NO_ENTER_ACTION)
@@ -1138,6 +1140,14 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
         composing.clear()
         composingText = FormattedText.Empty
         ic.finishComposingText()
+    }
+
+    /**
+     * Clear any active composing preedit text in the client immediately.
+     */
+    fun clearComposing() {
+        if (composing.isEmpty() && composingText.isEmpty()) return
+        updateComposingText(FormattedText.Empty)
     }
 
     @SuppressLint("RestrictedApi")

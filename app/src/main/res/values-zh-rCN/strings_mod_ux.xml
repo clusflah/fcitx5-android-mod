@@ -18,4 +18,7 @@
     <string name="settings_voice_summary">按住空格说话、离线和在线识别引擎</string>
     <string name="settings_ai_summary">大模型 Key、AI 联想、中外互译，以及文字发到哪里</string>
     <string name="mod_welcome">快速上手</string>
+    <string name="mod_github_repo">GitHub 仓库（修改版）</string>
+    <string name="upstream_github_repo">原版仓库</string>
+    <string name="copied_to_clipboard">已复制到剪贴板</string>
 </resources>
