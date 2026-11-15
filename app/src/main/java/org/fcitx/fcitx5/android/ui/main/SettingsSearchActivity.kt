@@ -80,6 +80,9 @@ class SettingsSearchActivity : AppCompatActivity() {
             Entry(getString(R.string.toolbar_buttons), getString(R.string.virtual_keyboard),
                 "工具栏 按钮 撤销 重做 剪贴板 翻译 键盘选择 悬浮键盘 bitwarden 排序 常驻",
                 activity = ToolbarButtonsActivity::class.java),
+            Entry(getString(R.string.about), getString(R.string.about),
+                "关于 版本 检查更新 github 仓库 链接 源代码 开源许可",
+                route = SettingsRoute.About),
         ) +
                 pageEntries(prefs.keyboard, R.string.virtual_keyboard, SettingsRoute.VirtualKeyboard, null) +
                 pageEntries(prefs.voice, R.string.offline_voice, null, OfflineVoiceActivity::class.java) +

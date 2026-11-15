@@ -106,3 +106,16 @@ fun PreferenceGroup.addPreference(
         setOnPreferenceLongClickListener(onLongClick)
     })
 }
+
+fun PreferenceGroup.addPreference(
+    @StringRes title: Int,
+    summary: String,
+    @DrawableRes icon: Int? = null,
+    onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+) {
+    addPreference(LongClickPreference(context).apply {
+        setup(context.getString(title), summary, icon, onClick)
+        setOnPreferenceLongClickListener(onLongClick)
+    })
+}

@@ -18,4 +18,7 @@
     <string name="settings_voice_summary">Hold space to talk, offline and online engines</string>
     <string name="settings_ai_summary">LLM keys, AI suggestions, translation, and where your text goes</string>
     <string name="mod_welcome">Getting started</string>
+    <string name="mod_github_repo">GitHub repository (Mod)</string>
+    <string name="upstream_github_repo">Upstream repository</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
 </resources>

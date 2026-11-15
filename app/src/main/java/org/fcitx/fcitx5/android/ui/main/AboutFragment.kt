@@ -4,9 +4,13 @@
  */
 package org.fcitx.fcitx5.android.ui.main
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import org.fcitx.fcitx5.android.BuildConfig
 import org.fcitx.fcitx5.android.R
 import org.fcitx.fcitx5.android.ui.common.PaddingPreferenceFragment
@@ -30,9 +34,22 @@ class AboutFragment : PaddingPreferenceFragment() {
             ) {
                 navigateWithAnim(SettingsRoute.License)
             }
-            addPreference(R.string.source_code, R.string.github_repo) {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Const.githubRepo)))
-            }
+            addPreference(
+                R.string.mod_github_repo,
+                Const.modGithubRepo,
+                onClick = {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Const.modGithubRepo)))
+                },
+                onLongClick = { copyText(Const.modGithubRepo) }
+            )
+            addPreference(
+                R.string.upstream_github_repo,
+                Const.githubRepo,
+                onClick = {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Const.githubRepo)))
+                },
+                onLongClick = { copyText(Const.githubRepo) }
+            )
             addPreference(R.string.license, Const.licenseSpdxId) {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Const.licenseUrl)))
             }
@@ -47,11 +64,17 @@ class AboutFragment : PaddingPreferenceFragment() {
                 }
                 addPreference(R.string.build_git_hash, BuildConfig.BUILD_GIT_HASH) {
                     val commit = BuildConfig.BUILD_GIT_HASH.substringBefore('-')
-                    val uri = Uri.parse("${Const.githubRepo}/commit/${commit}")
+                    val uri = Uri.parse("${Const.modGithubRepo}/commit/${commit}")
                     startActivity(Intent(Intent.ACTION_VIEW, uri))
                 }
                 addPreference(R.string.build_time, formatDateTime(BuildConfig.BUILD_TIME))
             }
         }
+    }
+
+    private fun copyText(text: String) {
+        val cm = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("url", text))
+        Toast.makeText(requireContext(), R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
     }
 }
