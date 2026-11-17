@@ -34,6 +34,8 @@ interface FcitxAPI {
 
     val inputPanelCached: FcitxEvent.InputPanelEvent.Data
 
+    val candidateTotalCached: Int
+
     fun setLogRule(verbose: Boolean)
 
     fun getAddonReverseDependencies(addon: String): List<Pair<String, AddonDep>>

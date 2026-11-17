@@ -49,6 +49,10 @@ open class CustomGestureView(ctx: Context) : FrameLayout(ctx) {
         findViewTreeLifecycleOwner()?.lifecycleScope!!
     }
 
+    private var activePointerId = MotionEvent.INVALID_POINTER_ID
+    private var swipeDownX = 0f
+    private var swipeDownY = 0f
+
     @Volatile
     private var touchMovedOutside = false
 
@@ -137,12 +141,94 @@ open class CustomGestureView(ctx: Context) : FrameLayout(ctx) {
     }
 
     fun cancelGestures() {
+        activePointerId = MotionEvent.INVALID_POINTER_ID
         isPressed = false
         resetState()
         // reset double tap state on cancel
         if (doubleTapEnabled) {
             maybeDoubleTap = false
             lastClickTime = 0
+        }
+    }
+
+    private fun startTouchDown(pointerId: Int, x: Float, y: Float) {
+        activePointerId = pointerId
+        swipeDownX = x
+        swipeDownY = y
+        drawableHotspotChanged(x, y)
+        isPressed = true
+        InputFeedbacks.hapticFeedback(this)
+        InputFeedbacks.soundEffect(soundEffect)
+        dispatchGestureEvent(GestureType.Down, x, y)
+        if (longPressEnabled) {
+            longPressJob?.cancel()
+            longPressJob = lifecycleScope.launch {
+                delay(longPressDelay.toLong())
+                if (longPressFeedbackEnabled) {
+                    InputFeedbacks.hapticFeedback(this@CustomGestureView, true)
+                }
+                longPressTriggered = performLongClick()
+            }
+        }
+        if (repeatEnabled) {
+            repeatJob?.cancel()
+            repeatJob = lifecycleScope.launch {
+                delay(longPressDelay.toLong())
+                repeatStarted = true
+                var lastTriggerTime: Long
+                while (isActive && isEnabled) {
+                    lastTriggerTime = SystemClock.uptimeMillis()
+                    onRepeatListener?.invoke(this@CustomGestureView)
+                    val t = lastTriggerTime + RepeatInterval - SystemClock.uptimeMillis()
+                    if (t > 0) delay(t)
+                }
+            }
+        }
+        if (swipeEnabled) {
+            swipeLastX = x
+            swipeLastY = y
+        }
+    }
+
+    private fun finishTouchUp(x: Float, y: Float) {
+        isPressed = false
+        if (!touchMovedOutside && !pointInView(x, y)) {
+            touchMovedOutside = true
+        }
+        // Settle the final touch-up delta before dispatching GestureType.Up so fast flicks
+        // whose displacement lands in ACTION_UP are recognized as swipes rather than taps.
+        if (swipeEnabled && !longPressTriggered && !repeatStarted) {
+            val countX = consumeSwipe(x, SwipeAxis.X)
+            val countY = consumeSwipe(y, SwipeAxis.Y)
+            if (countX != 0 || countY != 0) {
+                dispatchGestureEvent(GestureType.Move, x, y, countX, countY)
+            }
+            swipeLastX = x
+            swipeLastY = y
+        }
+        InputFeedbacks.hapticFeedback(this, longPress = true, keyUp = true)
+        dispatchGestureEvent(GestureType.Up, x, y)
+        val shouldPerformClick = !(touchMovedOutside ||
+                longPressTriggered ||
+                repeatStarted ||
+                swipeRepeatTriggered ||
+                gestureConsumed)
+        resetState()
+        activePointerId = MotionEvent.INVALID_POINTER_ID
+        if (shouldPerformClick) {
+            if (doubleTapEnabled) {
+                val now = System.currentTimeMillis()
+                if (maybeDoubleTap && now - lastClickTime <= longPressDelay) {
+                    maybeDoubleTap = false
+                    onDoubleTapListener?.invoke(this)
+                } else {
+                    maybeDoubleTap = true
+                    performClick()
+                }
+                lastClickTime = now
+            } else {
+                performClick()
+            }
         }
     }
 
@@ -153,71 +239,45 @@ open class CustomGestureView(ctx: Context) : FrameLayout(ctx) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 if (!isEnabled) return false
-                drawableHotspotChanged(x, y)
-                isPressed = true
-                InputFeedbacks.hapticFeedback(this)
-                InputFeedbacks.soundEffect(soundEffect)
-                dispatchGestureEvent(GestureType.Down, x, y)
-                if (longPressEnabled) {
-                    longPressJob?.cancel()
-                    longPressJob = lifecycleScope.launch {
-                        delay(longPressDelay.toLong())
-                        if (longPressFeedbackEnabled) {
-                            InputFeedbacks.hapticFeedback(this@CustomGestureView, true)
-                        }
-                        longPressTriggered = performLongClick()
-                    }
+                startTouchDown(event.getPointerId(0), x, y)
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (!isEnabled) return false
+                val newIndex = event.actionIndex
+                val newPointerId = event.getPointerId(newIndex)
+                val oldIndex = event.findPointerIndex(activePointerId)
+                if (oldIndex >= 0) {
+                    finishTouchUp(event.getX(oldIndex), event.getY(oldIndex))
+                } else {
+                    cancelGestures()
                 }
-                if (repeatEnabled) {
-                    repeatJob?.cancel()
-                    repeatJob = lifecycleScope.launch {
-                        delay(longPressDelay.toLong())
-                        repeatStarted = true
-                        var lastTriggerTime: Long
-                        while (isActive && isEnabled) {
-                            lastTriggerTime = SystemClock.uptimeMillis()
-                            onRepeatListener?.invoke(this@CustomGestureView)
-                            val t = lastTriggerTime + RepeatInterval - SystemClock.uptimeMillis()
-                            if (t > 0) delay(t)
-                        }
-                    }
+                startTouchDown(newPointerId, event.getX(newIndex), event.getY(newIndex))
+                return true
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                val upIndex = event.actionIndex
+                if (event.getPointerId(upIndex) == activePointerId) {
+                    finishTouchUp(event.getX(upIndex), event.getY(upIndex))
                 }
-                if (swipeEnabled) {
-                    swipeLastX = x
-                    swipeLastY = y
-                }
+                return true
             }
             MotionEvent.ACTION_UP -> {
-                isPressed = false
-                InputFeedbacks.hapticFeedback(this, longPress = true, keyUp = true)
-                dispatchGestureEvent(GestureType.Up, event.x, event.y)
-                val shouldPerformClick = !(touchMovedOutside ||
-                        longPressTriggered ||
-                        repeatStarted ||
-                        swipeRepeatTriggered ||
-                        gestureConsumed)
-                resetState()
-                if (shouldPerformClick) {
-                    if (doubleTapEnabled) {
-                        val now = System.currentTimeMillis()
-                        if (maybeDoubleTap && now - lastClickTime <= longPressDelay) {
-                            maybeDoubleTap = false
-                            onDoubleTapListener?.invoke(this)
-                        } else {
-                            maybeDoubleTap = true
-                            performClick()
-                        }
-                        lastClickTime = now
-                    } else {
-                        performClick()
-                    }
+                if (activePointerId != MotionEvent.INVALID_POINTER_ID) {
+                    val upIndex = event.findPointerIndex(activePointerId)
+                    val ux = if (upIndex >= 0) event.getX(upIndex) else x
+                    val uy = if (upIndex >= 0) event.getY(upIndex) else y
+                    finishTouchUp(ux, uy)
                 }
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!isEnabled) return false
-                drawableHotspotChanged(x, y)
-                if (!touchMovedOutside && !pointInView(x, y)) {
+                val pointerIndex = event.findPointerIndex(activePointerId)
+                if (pointerIndex < 0) return true
+                val mx = event.getX(pointerIndex)
+                val my = event.getY(pointerIndex)
+                drawableHotspotChanged(mx, my)
+                if (!touchMovedOutside && !pointInView(mx, my)) {
                     touchMovedOutside = true
                     if (longPressEnabled) {
                         longPressJob?.cancel()
@@ -231,12 +291,18 @@ open class CustomGestureView(ctx: Context) : FrameLayout(ctx) {
                         isPressed = false
                     }
                 }
+                if (swipeEnabled && longPressEnabled && !longPressTriggered &&
+                    swipeThresholdY < swipeThresholdX && (my - swipeDownY) > touchSlop * 1.5f
+                ) {
+                    longPressJob?.cancel()
+                    longPressJob = null
+                }
                 if (!swipeEnabled || longPressTriggered || repeatStarted) return true
-                val countX = consumeSwipe(x, SwipeAxis.X)
-                val countY = consumeSwipe(y, SwipeAxis.Y)
-                dispatchGestureEvent(GestureType.Move, x, y, countX, countY)
-                swipeLastX = x
-                swipeLastY = y
+                val countX = consumeSwipe(mx, SwipeAxis.X)
+                val countY = consumeSwipe(my, SwipeAxis.Y)
+                dispatchGestureEvent(GestureType.Move, mx, my, countX, countY)
+                swipeLastX = mx
+                swipeLastY = my
                 return true
             }
             MotionEvent.ACTION_CANCEL -> {
