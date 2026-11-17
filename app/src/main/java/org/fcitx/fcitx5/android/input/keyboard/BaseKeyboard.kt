@@ -78,7 +78,8 @@ abstract class BaseKeyboard(
     var popupActionListener: PopupActionListener? = null
 
     private val selectionSwipeThreshold = dp(10f)
-    private val inputSwipeThreshold = dp(36f)
+    // mod: 20dp (was 36dp) so quick downward flicks within a key trigger swipe instead of a letter tap
+    private val inputSwipeThreshold = dp(20f)
 
     // a rather large threshold effectively disables swipe of the direction
     private val disabledSwipeThreshold = dp(800f)

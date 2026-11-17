@@ -50,6 +50,9 @@ class Fcitx(private val context: Context) : FcitxAPI, FcitxLifecycleOwner {
     override var inputPanelCached = FcitxEvent.InputPanelEvent.Data()
         private set
 
+    override var candidateTotalCached = -1
+        private set
+
     // TODO: custom log rule
     override fun setLogRule(verbose: Boolean) {
         setupLogStream(verbose)
@@ -525,6 +528,8 @@ class Fcitx(private val context: Context) : FcitxAPI, FcitxLifecycleOwner {
             }
             is FcitxEvent.ClientPreeditEvent -> clientPreeditCached = event.data
             is FcitxEvent.InputPanelEvent -> inputPanelCached = event.data
+            is FcitxEvent.CandidateListEvent -> candidateTotalCached = event.data.total
+            is FcitxEvent.PagedCandidateEvent -> candidateTotalCached = event.data.candidates.size
             else -> {}
         }
     }

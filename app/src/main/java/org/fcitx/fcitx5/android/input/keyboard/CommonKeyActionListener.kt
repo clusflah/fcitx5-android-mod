@@ -71,20 +71,20 @@ class CommonKeyActionListener :
         sendKey(KeySym(FcitxKeyMapping.FcitxKey_Escape), KeyStates.Virtual)
     }
 
-    /** mod: nothing is being typed but candidates are shown = prediction words after a commit */
-    private fun isPredictionShown() =
-        AppPrefs.getInstance().keyboard.spaceClearsPrediction.getValue() &&
-                preeditState.isEmpty &&
-                horizontalCandidate.adapter.total > 0
+    /**
+     * mod: nothing is being typed on the Fcitx thread, yet candidates exist = prediction words after a
+     * commit. Checked inside [postFcitxJob] against synchronous native caches so rapid key sequences
+     * never race against delayed UI-thread candidate updates.
+     */
+    private fun FcitxAPI.isPredictionActive(): Boolean =
+        clientPreeditCached.isEmpty() &&
+                inputPanelCached.preedit.isEmpty() &&
+                candidateTotalCached > 0
 
-    private fun isSpaceOverPrediction(action: SymAction) =
-        action.sym.sym == FcitxKeyMapping.FcitxKey_space && isPredictionShown()
-
-    /** a symbol / punctuation / digit key (one non-letter character) while predictions are shown */
-    private fun isSymbolOverPrediction(action: FcitxKeyAction) =
+    private fun isNonLetterCharacter(action: FcitxKeyAction): Boolean =
         action.act.codePointCount(0, action.act.length) == 1 &&
-                !Character.isLetter(action.act.codePointAt(0)) &&
-                isPredictionShown()
+                !Character.isLetter(action.act.codePointAt(0))
+
     private val windowManager: InputWindowManager by manager.must()
 
     private var lastPickerType by AppPrefs.getInstance().internal.lastPickerType
@@ -102,7 +102,11 @@ class CommonKeyActionListener :
             // Chinese: select 1st candidate, except prediction candidates
             if (clientPreeditCached.isNotEmpty() || inputPanelCached.preedit.isNotEmpty()) {
                 // preedit not empty, maybe there are candidates to select ...
-                select(0)
+                if (!select(0)) {
+                    service.finishComposing()
+                }
+            } else if (isPredictionActive()) {
+                dismissPrediction()
             }
         } else {
             // Other languages: commit preedit as-is
@@ -123,22 +127,34 @@ class CommonKeyActionListener :
         KeyActionListener { action, _ ->
             when (action) {
                 is FcitxKeyAction -> {
-                    // mod: drop prediction words first, or the engine picks the first one before the symbol
-                    val clearPrediction = isSymbolOverPrediction(action)
+                    // mod: drop prediction words first on the Fcitx thread, or the engine picks the first one
+                    val nonLetter = isNonLetterCharacter(action)
+                    val spaceClears = kbdPrefs.spaceClearsPrediction.getValue()
                     service.postFcitxJob {
-                        if (clearPrediction) dismissPrediction()
+                        if (nonLetter && spaceClears && isPredictionActive()) {
+                            dismissPrediction()
+                        }
                         sendKey(action.act, action.states.states, action.code)
                     }
                 }
-                is SymAction -> if (isSpaceOverPrediction(action)) {
-                    // mod: nothing is being typed but candidates are shown = prediction words after a
-                    // commit; clear them and type a space instead of picking the first one
+                is SymAction -> {
+                    val spaceClears = kbdPrefs.spaceClearsPrediction.getValue()
                     service.postFcitxJob {
-                        dismissPrediction()
-                        service.lifecycleScope.launch { service.commitText(" ") }
+                        if (spaceClears && isPredictionActive()) {
+                            val sym = action.sym.sym
+                            if (sym == FcitxKeyMapping.FcitxKey_space) {
+                                // mod: nothing is being typed but candidates are shown = prediction words after a
+                                // commit; clear them and type a space instead of picking the first one
+                                dismissPrediction()
+                                service.lifecycleScope.launch { service.commitText(" ") }
+                                return@postFcitxJob
+                            }
+                            if (sym in 0x21..0x7e && !Character.isLetter(sym)) {
+                                dismissPrediction()
+                            }
+                        }
+                        sendKey(action.sym, action.states)
                     }
-                } else service.postFcitxJob {
-                    sendKey(action.sym, action.states)
                 }
                 is CommitAction -> service.postFcitxJob {
                     commitAndReset()

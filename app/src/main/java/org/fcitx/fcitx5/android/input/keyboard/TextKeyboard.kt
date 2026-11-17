@@ -30,6 +30,38 @@ class TextKeyboard(
     companion object {
         const val Name = "Text"
 
+        /**
+         * Transforms a [KeyAction] from the 26-key layout, converting swipe/popup digits (`0`..`9`)
+         * into [KeyAction.CommitAction] so rapid digit swipes never select Chinese candidates or
+         * predictions or enter Rime T9 pinyin while switching schemas.
+         */
+        fun transformKeyAction(
+            action: KeyAction,
+            source: KeyActionListener.Source,
+            capsState: CapsState
+        ): Pair<KeyAction, Boolean> {
+            if (action is KeyAction.FcitxKeyAction) {
+                if (action.act.length == 1 && action.act[0] in '0'..'9') {
+                    return KeyAction.CommitAction(action.act) to (capsState == CapsState.Once)
+                }
+                return when (source) {
+                    KeyActionListener.Source.Keyboard -> when (capsState) {
+                        CapsState.None -> action.copy(act = action.act.lowercase()) to false
+                        CapsState.Once -> action.copy(
+                            act = action.act.uppercase(),
+                            states = KeyStates(KeyState.Virtual, KeyState.Shift)
+                        ) to true
+                        CapsState.Lock -> action.copy(
+                            act = action.act.uppercase(),
+                            states = KeyStates(KeyState.Virtual, KeyState.CapsLock)
+                        ) to false
+                    }
+                    KeyActionListener.Source.Popup -> action to (capsState == CapsState.Once)
+                }
+            }
+            return action to false
+        }
+
         val Layout: List<List<KeyDef>> = listOf(
             listOf(
                 AlphabetKey("Q", "1"),
@@ -116,31 +148,11 @@ class TextKeyboard(
     override fun onAction(action: KeyAction, source: KeyActionListener.Source) {
         var transformed = action
         when (action) {
-            is KeyAction.FcitxKeyAction -> when (source) {
-                KeyActionListener.Source.Keyboard -> {
-                    when (capsState) {
-                        CapsState.None -> {
-                            transformed = action.copy(act = action.act.lowercase())
-                        }
-                        CapsState.Once -> {
-                            transformed = action.copy(
-                                act = action.act.uppercase(),
-                                states = KeyStates(KeyState.Virtual, KeyState.Shift)
-                            )
-                            switchCapsState()
-                        }
-                        CapsState.Lock -> {
-                            transformed = action.copy(
-                                act = action.act.uppercase(),
-                                states = KeyStates(KeyState.Virtual, KeyState.CapsLock)
-                            )
-                        }
-                    }
-                }
-                KeyActionListener.Source.Popup -> {
-                    if (capsState == CapsState.Once) {
-                        switchCapsState()
-                    }
+            is KeyAction.FcitxKeyAction -> {
+                val (nextAction, resetCapsOnce) = transformKeyAction(action, source, capsState)
+                transformed = nextAction
+                if (resetCapsOnce) {
+                    switchCapsState()
                 }
             }
             is KeyAction.CapsAction -> switchCapsState(action.lock)
