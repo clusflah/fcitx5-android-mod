@@ -268,6 +268,15 @@ class IdleUi(
             State.VoiceStatus -> animator.displayedChild = 5
             State.OtpCode -> animator.displayedChild = 6
         }
+        // mod: temporarily hide pinned toolbar buttons during suggestion/status strips so they get the full bar width
+        val showPinned = state == State.Empty || state == State.Toolbar
+        pinnedScroll.visibility = if (showPinned) View.VISIBLE else View.GONE
+        val targetEnd = if (showPinned) pinnedScroll.id else hideKeyboardButton.id
+        val animatorParams = animator.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+        if (animatorParams.endToStart != targetEnd) {
+            animatorParams.endToStart = targetEnd
+            animator.layoutParams = animatorParams
+        }
         if (state == State.NumberRow) {
             numberRow.keyActionListener = commonKeyActionListener.listener
             numberRow.popupActionListener = popup.listener

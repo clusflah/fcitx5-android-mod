@@ -23,6 +23,7 @@ import splitties.views.dsl.constraintlayout.matchConstraints
 import splitties.views.dsl.constraintlayout.startOfParent
 import splitties.views.dsl.core.Ui
 import splitties.views.dsl.core.add
+import splitties.views.dsl.core.horizontalMargin
 import splitties.views.dsl.core.imageView
 import splitties.views.dsl.core.lParams
 import splitties.views.dsl.core.matchParent
@@ -41,7 +42,6 @@ class ClipboardSuggestionUi(override val ctx: Context, private val theme: Theme)
 
     val text = textView {
         isSingleLine = true
-        maxWidth = dp(120)
         ellipsize = TextUtils.TruncateAt.END
         setTextColor(theme.altKeyTextColor)
         org.fcitx.fcitx5.android.input.glass.Glass.applyKeyTextShadow(this, theme)
@@ -57,6 +57,8 @@ class ClipboardSuggestionUi(override val ctx: Context, private val theme: Theme)
         add(text, lParams(wrapContent, wrapContent) {
             after(icon, spacing)
             endOfParent(spacing)
+            constrainedWidth = true
+            horizontalBias = 0f
             centerVertically()
         })
     }
@@ -69,7 +71,7 @@ class ClipboardSuggestionUi(override val ctx: Context, private val theme: Theme)
     /** "↗ github.com": opens an http(s) link found in the clipboard; hidden otherwise */
     val linkView = textView {
         isSingleLine = true
-        maxWidth = dp(140)
+        maxWidth = dp(120)
         ellipsize = TextUtils.TruncateAt.END
         gravity = android.view.Gravity.CENTER_VERTICAL
         setTextColor(theme.altKeyTextColor)
@@ -89,16 +91,19 @@ class ClipboardSuggestionUi(override val ctx: Context, private val theme: Theme)
     private val row = android.widget.LinearLayout(ctx).apply {
         orientation = android.widget.LinearLayout.HORIZONTAL
         gravity = android.view.Gravity.CENTER_VERTICAL
-        addView(suggestionView, android.widget.LinearLayout.LayoutParams(wrapContent, matchParent))
+        addView(suggestionView, android.widget.LinearLayout.LayoutParams(wrapContent, matchParent, 1f))
         addView(linkView, android.widget.LinearLayout.LayoutParams(wrapContent, matchParent).apply {
             marginStart = dp(4)
         })
     }
 
     override val root = constraintLayout {
+        val margin = dp(4)
         add(row, lParams(wrapContent, matchConstraints) {
             centerInParent()
-            verticalMargin = dp(4)
+            horizontalMargin = margin
+            verticalMargin = margin
+            constrainedWidth = true
         })
     }
 }
