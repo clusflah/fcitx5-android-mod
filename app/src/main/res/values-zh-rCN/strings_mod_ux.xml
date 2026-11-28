@@ -21,4 +21,6 @@
     <string name="mod_github_repo">GitHub 仓库（修改版）</string>
     <string name="upstream_github_repo">原版仓库</string>
     <string name="copied_to_clipboard">已复制到剪贴板</string>
+    <string name="preedit_pinyin_tone">预选拼音显示声调</string>
+    <string name="preedit_pinyin_tone_summary">根据首选候选词，在候选栏上方的拼音中标注声调（如 nǐ\'hǎo）</string>
 </resources>

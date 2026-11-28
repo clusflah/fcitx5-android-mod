@@ -5,6 +5,7 @@
 package org.fcitx.fcitx5.android.input.preedit
 
 import android.view.View
+import org.fcitx.fcitx5.android.core.CandidateWord
 import org.fcitx.fcitx5.android.core.FcitxEvent
 import org.fcitx.fcitx5.android.core.FormattedText
 import org.fcitx.fcitx5.android.data.theme.Theme
@@ -47,13 +48,14 @@ class PreeditComponent : UniqueComponent<PreeditComponent>(), Dependent, InputBr
         }
     }
 
-    // mod: on the 九宫格 the preedit shows the first candidate's pinyin instead of digits
+    // mod: on the 九宫格 the preedit shows the first candidate's pinyin instead of digits;
+    // when PreeditTone is enabled, tone marks are added based on the first candidate
     private var lastPanel = FcitxEvent.InputPanelEvent.Data()
-    private var firstComment: String? = null
+    private var firstCandidate: CandidateWord? = null
 
     override fun onCandidateUpdate(data: FcitxEvent.CandidateListEvent.Data) {
-        firstComment = data.candidates.firstOrNull()?.comment
-        if (T9Pinyin.active) show(lastPanel)
+        firstCandidate = data.candidates.firstOrNull()
+        if (T9Pinyin.active || PreeditTone.enabled) show(lastPanel)
     }
 
     override fun onInputPanelUpdate(data: FcitxEvent.InputPanelEvent.Data) {
@@ -62,16 +64,20 @@ class PreeditComponent : UniqueComponent<PreeditComponent>(), Dependent, InputBr
     }
 
     private fun show(data: FcitxEvent.InputPanelEvent.Data) {
+        val candidate = firstCandidate
         val pinyin = if (T9Pinyin.active)
             T9Pinyin.displayPreedit(
                 data.preedit.toString(),
                 data.preedit.cursor.takeIf { it >= 0 } ?: data.preedit.toString().length,
-                firstComment
+                candidate?.comment
             ) else null
-        ui.update(
-            if (pinyin == null) data
+        val base = if (pinyin == null) data
             else data.copy(preedit = FormattedText(arrayOf(pinyin.first), intArrayOf(0), pinyin.second))
-        )
+        val toned = if (PreeditTone.enabled && base.preedit.isNotEmpty()) {
+            PreeditTone.ensureLoaded { if (lastPanel.preedit.isNotEmpty()) show(lastPanel) }
+            base.copy(preedit = PreeditTone.apply(base.preedit, candidate?.text))
+        } else base
+        ui.update(toned)
         ui.root.visibility = if (ui.visible) View.VISIBLE else View.INVISIBLE
     }
 }

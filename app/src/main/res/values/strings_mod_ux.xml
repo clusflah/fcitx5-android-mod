@@ -21,4 +21,6 @@
     <string name="mod_github_repo">GitHub repository (Mod)</string>
     <string name="upstream_github_repo">Upstream repository</string>
     <string name="copied_to_clipboard">Copied to clipboard</string>
+    <string name="preedit_pinyin_tone">Show tone marks on preedit pinyin</string>
+    <string name="preedit_pinyin_tone_summary">Mark tones on the pinyin bar above candidates based on the first candidate (e.g. nǐ\'hǎo)</string>
 </resources>

@@ -22,6 +22,7 @@ import org.fcitx.fcitx5.android.daemon.launchOnReady
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
 import org.fcitx.fcitx5.android.data.theme.Theme
 import org.fcitx.fcitx5.android.input.candidates.floating.PagedCandidatesUi
+import org.fcitx.fcitx5.android.input.preedit.PreeditTone
 import org.fcitx.fcitx5.android.input.preedit.PreeditUi
 import splitties.dimensions.dp
 import splitties.views.dsl.constraintlayout.below
@@ -132,7 +133,13 @@ class CandidatesView(
     }
 
     private fun updateUi() {
-        preeditUi.update(inputPanel)
+        val panel = if (PreeditTone.enabled && inputPanel.preedit.isNotEmpty()) {
+            PreeditTone.ensureLoaded { if (inputPanel.preedit.isNotEmpty()) updateUi() }
+            val activeCandidate = paged.candidates.getOrNull(paged.cursorIndex.coerceAtLeast(0))
+                ?: paged.candidates.firstOrNull()
+            inputPanel.copy(preedit = PreeditTone.apply(inputPanel.preedit, activeCandidate?.text))
+        } else inputPanel
+        preeditUi.update(panel)
         preeditUi.root.visibility = if (preeditUi.visible) VISIBLE else GONE
         candidatesUi.update(paged, orientation)
         if (evaluateVisibility()) {
