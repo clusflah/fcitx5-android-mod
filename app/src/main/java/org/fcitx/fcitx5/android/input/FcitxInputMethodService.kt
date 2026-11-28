@@ -659,6 +659,9 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
 
     override fun onEvaluateFullscreenMode() = false
 
+    @Volatile
+    private var consumedTonedReturn = false
+
     private fun forwardKeyEvent(event: KeyEvent): Boolean {
         // reason to use a self increment index rather than timestamp:
         // KeyUp and KeyDown events actually can happen on the same time
@@ -669,6 +672,20 @@ class FcitxInputMethodService : LifecycleInputMethodService() {
             val states = KeyStates.fromKeyEvent(event)
             val up = event.action == KeyEvent.ACTION_UP
             postFcitxJob {
+                if (sym.sym == FcitxKeyMapping.FcitxKey_Return && states.states == 0u) {
+                    if (!up) {
+                        val toned = org.fcitx.fcitx5.android.input.preedit.PreeditTone.resolveCommitText(this)
+                        if (toned != null) {
+                            consumedTonedReturn = true
+                            reset()
+                            lifecycleScope.launch { commitText(toned) }
+                            return@postFcitxJob
+                        }
+                    } else if (consumedTonedReturn) {
+                        consumedTonedReturn = false
+                        return@postFcitxJob
+                    }
+                }
                 sendKey(sym, states, event.scanCode, up, timestamp)
             }
             return true

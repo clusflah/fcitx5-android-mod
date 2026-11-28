@@ -23,4 +23,6 @@
     <string name="copied_to_clipboard">Copied to clipboard</string>
     <string name="preedit_pinyin_tone">Show tone marks on preedit pinyin</string>
     <string name="preedit_pinyin_tone_summary">Mark tones on the pinyin bar above candidates based on the first candidate (e.g. nǐ\'hǎo)</string>
+    <string name="preedit_pinyin_tone_commit_on_enter">Commit toned pinyin on Enter</string>
+    <string name="preedit_pinyin_tone_commit_on_enter_summary">Pressing Enter while typing pinyin commits it with tone marks (e.g. nǐ hǎo); English and unmarked text stay unchanged</string>
 </resources>

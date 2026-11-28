@@ -116,4 +116,14 @@ class PreeditToneTest {
         assertEquals(listOf(0, 8, 16), toned.flags.toList())
         assertEquals(2, toned.cursor)
     }
+
+    @Test
+    fun commitTextFormatsSeparatorsAndSkipsUnmarked() {
+        assertEquals("nǐ hǎo", PreeditTone.commitTextFor("ni'hao", "你好", table))
+        assertEquals("nǐ hǎo", PreeditTone.commitTextFor("ni hao", "你好", table))
+        assertEquals("你hǎo", PreeditTone.commitTextFor("你hao", "好", table))
+        assertEquals("nǚ", PreeditTone.commitTextFor("nv", "女", table))
+        assertEquals(null, PreeditTone.commitTextFor("hello", "hello", table))
+        assertEquals(null, PreeditTone.commitTextFor(";nihao", "你好", table))
+    }
 }

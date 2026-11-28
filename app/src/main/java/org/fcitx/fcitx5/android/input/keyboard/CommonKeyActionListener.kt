@@ -140,6 +140,16 @@ class CommonKeyActionListener :
                 is SymAction -> {
                     val spaceClears = kbdPrefs.spaceClearsPrediction.getValue()
                     service.postFcitxJob {
+                        if (action.sym.sym == FcitxKeyMapping.FcitxKey_Return &&
+                            (action.states == KeyStates.Virtual || action.states.states == 0u)
+                        ) {
+                            val toned = org.fcitx.fcitx5.android.input.preedit.PreeditTone.resolveCommitText(this)
+                            if (toned != null) {
+                                reset()
+                                service.lifecycleScope.launch { service.commitText(toned) }
+                                return@postFcitxJob
+                            }
+                        }
                         if (spaceClears && isPredictionActive()) {
                             val sym = action.sym.sym
                             if (sym == FcitxKeyMapping.FcitxKey_space) {

@@ -257,6 +257,12 @@ class AppPrefs(private val sharedPreferences: SharedPreferences) {
         val preeditPinyinTone = switch(
             R.string.preedit_pinyin_tone, "preedit_pinyin_tone", true, R.string.preedit_pinyin_tone_summary
         )
+        val preeditPinyinToneCommitOnEnter = switch(
+            R.string.preedit_pinyin_tone_commit_on_enter,
+            "preedit_pinyin_tone_commit_on_enter",
+            false,
+            R.string.preedit_pinyin_tone_commit_on_enter_summary
+        ) { preeditPinyinTone.getValue() }
         val showLangSwitchKey =
             switch(R.string.show_lang_switch_key, "show_lang_switch_key", true)
         val langSwitchKeyBehavior = enumList(

@@ -8,9 +8,11 @@ package org.fcitx.fcitx5.android.input.preedit
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.VisibleForTesting
+import org.fcitx.fcitx5.android.core.FcitxAPI
 import org.fcitx.fcitx5.android.core.FormattedText
 import org.fcitx.fcitx5.android.core.data.DataManager
 import org.fcitx.fcitx5.android.data.prefs.AppPrefs
+import org.fcitx.fcitx5.android.input.keyboard.T9Pinyin
 import org.fcitx.fcitx5.android.utils.appContext
 import timber.log.Timber
 import java.io.File
@@ -73,11 +75,37 @@ object PreeditTone {
     val enabled: Boolean
         get() = AppPrefs.getInstance().keyboard.preeditPinyinTone.getValue()
 
+    val commitOnEnterEnabled: Boolean
+        get() = enabled && AppPrefs.getInstance().keyboard.preeditPinyinToneCommitOnEnter.getValue()
+
     @Volatile
     private var table: Map<Int, IntArray>? = null
 
+    private val loadLock = Any()
     private val loading = AtomicBoolean(false)
     private val pendingCallbacks = mutableListOf<() -> Unit>()
+
+    private fun loadSync(): Map<Int, IntArray>? {
+        table?.let { return it }
+        synchronized(loadLock) {
+            table?.let { return it }
+            val loaded = runCatching {
+                val file = File(DataManager.dataDir, PY_TABLE_REL_PATH)
+                val bytes = if (file.isFile) {
+                    file.readBytes()
+                } else {
+                    appContext.assets.open(PY_TABLE_REL_PATH).use { it.readBytes() }
+                }
+                parseTable(bytes)
+            }.onFailure {
+                Timber.w(it, "Failed to load py_table.mb")
+            }.getOrNull()
+            if (loaded != null) {
+                table = loaded
+            }
+            return loaded
+        }
+    }
 
     /**
      * Loads py_table.mb once on a background thread. If not yet ready, [onLoaded] is posted
@@ -94,19 +122,8 @@ object PreeditTone {
         if (loading.compareAndSet(false, true)) {
             val mainHandler = Handler(Looper.getMainLooper())
             Thread({
-                val loaded = runCatching {
-                    val file = File(DataManager.dataDir, PY_TABLE_REL_PATH)
-                    val bytes = if (file.isFile) {
-                        file.readBytes()
-                    } else {
-                        appContext.assets.open(PY_TABLE_REL_PATH).use { it.readBytes() }
-                    }
-                    parseTable(bytes)
-                }.onFailure {
-                    Timber.w(it, "Failed to load py_table.mb")
-                }.getOrNull()
+                val loaded = loadSync()
                 if (loaded != null) {
-                    table = loaded
                     val callbacks = synchronized(pendingCallbacks) {
                         pendingCallbacks.toList().also { pendingCallbacks.clear() }
                     }
@@ -120,6 +137,37 @@ object PreeditTone {
             }, "PreeditToneLoader").apply { isDaemon = true }.start()
         }
         return false
+    }
+
+    /**
+     * Resolves the toned pinyin string to commit when pressing Enter while composing,
+     * or null when Enter should be handled normally by Fcitx.
+     * Call on a background thread (e.g. inside postFcitxJob).
+     */
+    suspend fun resolveCommitText(fcitx: FcitxAPI): String? {
+        if (!commitOnEnterEnabled) return null
+        val raw = fcitx.inputPanelCached.preedit.toString()
+            .ifEmpty { fcitx.clientPreeditCached.toString() }
+        if (raw.isEmpty()) return null
+        val first = fcitx.getCandidates(0, 1).firstOrNull() ?: return null
+        val base = if (T9Pinyin.active) {
+            T9Pinyin.displayPreedit(raw, first.comment) ?: raw
+        } else {
+            raw
+        }
+        val readings = loadSync() ?: return null
+        return commitTextFor(base, first.text, readings)
+    }
+
+    internal fun commitTextFor(
+        preedit: String,
+        candidate: String,
+        readings: Map<Int, IntArray>? = table
+    ): String? {
+        if (preedit.isEmpty() || candidate.isEmpty()) return null
+        val toned = applyToText(preedit, candidate, readings)
+        if (toned == preedit) return null
+        return toned.replace('\'', ' ')
     }
 
     @VisibleForTesting
